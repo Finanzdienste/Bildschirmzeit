@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Ring wie im Widget: drei Farben für die Top 3, grau der Rest. Erzeugt mit Python (Bögen um 54,54, r 22). -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp" android:height="108dp" android:viewportWidth="108" android:viewportHeight="108">
+    <path android:pathData="M56.30,32.12 A22,22 0 0,1 68.72,70.35" android:strokeColor="#FF3A7BF2" android:strokeWidth="9" android:fillColor="#00000000" />
+    <path android:pathData="M65.00,73.05 A22,22 0 0,1 38.61,69.72" android:strokeColor="#FF1FB37A" android:strokeWidth="9" android:fillColor="#00000000" />
+    <path android:pathData="M35.68,66.17 A22,22 0 0,1 32.08,52.16" android:strokeColor="#FFF5A623" android:strokeWidth="9" android:fillColor="#00000000" />
+    <path android:pathData="M32.94,47.64 A22,22 0 0,1 51.70,32.12" android:strokeColor="#FFC3C8D0" android:strokeWidth="9" android:fillColor="#00000000" />
+</vector>

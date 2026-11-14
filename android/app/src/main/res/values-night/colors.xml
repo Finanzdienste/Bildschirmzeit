@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="widget_hintergrund">#FF1F2125</color>
+    <color name="widget_text">#FFECEEF1</color>
+    <color name="widget_text_leise">#FFA2A8B1</color>
+
+    <color name="app_hintergrund">#FF111215</color>
+    <color name="karte">#FF1D1F23</color>
+    <color name="text">#FFECEEF1</color>
+    <color name="text_leise">#FFA2A8B1</color>
+    <color name="akzent">#FF8AB0FF</color>
+    <color name="akzent_text">#FF0B1E45</color>
+    <color name="akzent_leise">#FF26324A</color>
+    <color name="warnung">#FFFF8A80</color>
+</resources>

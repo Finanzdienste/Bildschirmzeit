@@ -1,0 +1,187 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Der App-Bildschirm: Kopf mit Ring, drei Schritte, die Liste von heute, unten Update und Löschen. -->
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/wurzel"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:clipToPadding="false"
+    android:fillViewport="true">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:paddingStart="16dp"
+        android:paddingTop="4dp"
+        android:paddingEnd="16dp"
+        android:paddingBottom="24dp">
+
+        <LinearLayout
+            style="@style/Karte"
+            android:baselineAligned="false"
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
+
+            <FrameLayout
+                android:layout_width="104dp"
+                android:layout_height="104dp">
+
+                <ImageView
+                    android:id="@+id/kopf_ring"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:importantForAccessibility="no" />
+
+                <TextView
+                    android:id="@+id/kopf_gesamt"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:fontFamily="sans-serif-medium"
+                    android:gravity="center"
+                    android:includeFontPadding="false"
+                    android:lineSpacingMultiplier="0.92"
+                    android:padding="18dp"
+                    android:text="@string/strich"
+                    android:textColor="@color/text"
+                    android:textSize="21sp" />
+            </FrameLayout>
+
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="16dp"
+                android:layout_weight="1"
+                android:orientation="vertical">
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:fontFamily="sans-serif-medium"
+                    android:text="@string/kopf_titel"
+                    android:textColor="@color/text"
+                    android:textSize="22sp" />
+
+                <TextView
+                    android:id="@+id/kopf_stand"
+                    style="@style/Fliesstext" />
+            </LinearLayout>
+        </LinearLayout>
+
+        <LinearLayout style="@style/Karte">
+
+            <TextView
+                android:id="@+id/schritt1_titel"
+                style="@style/Ueberschrift"
+                android:text="@string/schritt1_titel" />
+
+            <TextView
+                android:id="@+id/schritt1_text"
+                style="@style/Fliesstext"
+                android:text="@string/schritt1_text" />
+
+            <Button
+                android:id="@+id/schritt1_knopf"
+                style="@style/Knopf"
+                android:text="@string/schritt1_knopf" />
+
+            <TextView
+                android:id="@+id/schritt1_hinweis"
+                style="@style/Hinweis"
+                android:text="@string/schritt1_hinweis" />
+
+            <Button
+                android:id="@+id/app_info"
+                style="@style/Knopf.Leise"
+                android:text="@string/app_info" />
+        </LinearLayout>
+
+        <LinearLayout style="@style/Karte">
+
+            <TextView
+                style="@style/Ueberschrift"
+                android:text="@string/schritt2_titel" />
+
+            <TextView
+                style="@style/Fliesstext"
+                android:text="@string/schritt2_text" />
+
+            <LinearLayout
+                android:id="@+id/web_liste"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical" />
+        </LinearLayout>
+
+        <LinearLayout style="@style/Karte">
+
+            <TextView
+                android:id="@+id/schritt3_titel"
+                style="@style/Ueberschrift"
+                android:text="@string/schritt3_titel" />
+
+            <TextView
+                android:id="@+id/schritt3_text"
+                style="@style/Fliesstext"
+                android:text="@string/schritt3_text" />
+
+            <Button
+                android:id="@+id/schritt3_knopf"
+                style="@style/Knopf"
+                android:text="@string/schritt3_knopf" />
+
+            <TextView
+                android:id="@+id/schritt3_anleitung"
+                style="@style/Hinweis"
+                android:text="@string/schritt3_anleitung"
+                android:visibility="gone" />
+        </LinearLayout>
+
+        <LinearLayout style="@style/Karte">
+
+            <TextView
+                style="@style/Ueberschrift"
+                android:text="@string/heute_titel" />
+
+            <TextView
+                android:id="@+id/heute_hinweis"
+                style="@style/Fliesstext" />
+
+            <LinearLayout
+                android:id="@+id/app_liste"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:id="@+id/update_karte"
+            style="@style/Karte"
+            android:visibility="gone">
+
+            <TextView
+                style="@style/Ueberschrift"
+                android:text="@string/update_titel" />
+
+            <TextView
+                android:id="@+id/update_text"
+                style="@style/Fliesstext" />
+
+            <Button
+                android:id="@+id/update_knopf"
+                style="@style/Knopf"
+                android:text="@string/update_knopf" />
+        </LinearLayout>
+
+        <Button
+            android:id="@+id/loeschen"
+            style="@style/Knopf.Ohne"
+            android:layout_gravity="center_horizontal"
+            android:layout_marginTop="20dp"
+            android:text="@string/loeschen" />
+
+        <TextView
+            android:id="@+id/version"
+            style="@style/Hinweis"
+            android:gravity="center" />
+    </LinearLayout>
+</ScrollView>

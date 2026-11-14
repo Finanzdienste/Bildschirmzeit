@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Widget (hell; dunkel in values-night) -->
+    <color name="widget_hintergrund">#FFFFFFFF</color>
+    <color name="widget_text">#FF1B1D21</color>
+    <color name="widget_text_leise">#FF6B717A</color>
+
+    <!-- App -->
+    <color name="app_hintergrund">#FFF2F3F6</color>
+    <color name="karte">#FFFFFFFF</color>
+    <color name="text">#FF1B1D21</color>
+    <color name="text_leise">#FF626873</color>
+    <color name="akzent">#FF2F6BEA</color>
+    <color name="akzent_text">#FFFFFFFF</color>
+    <color name="akzent_leise">#FFE4EBFC</color>
+    <color name="warnung">#FFC62828</color>
+
+    <!-- Symbol -->
+    <color name="symbol_hintergrund">#FFF4F6FA</color>
+</resources>

@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Widget 2×2: nur der Ring mit der Gesamtzeit. -->
+<!-- Der innere Rahmen bekommt von WidgetAnsicht die genaue Ringgröße. -->
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@android:id/background"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@drawable/widget_hintergrund"
+    android:clipToOutline="true"
+    android:padding="@dimen/widget_rand">
+
+    <FrameLayout
+        android:id="@+id/ring_rahmen"
+        android:layout_width="@dimen/ring_klein"
+        android:layout_height="@dimen/ring_klein"
+        android:layout_gravity="center"
+        tools:ignore="UselessParent">
+
+        <ImageView
+            android:id="@+id/ring"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:importantForAccessibility="no"
+            android:scaleType="fitCenter" />
+
+        <TextView
+            android:id="@+id/gesamt"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:fontFamily="sans-serif-medium"
+            android:gravity="center"
+            android:importantForAccessibility="no"
+            android:includeFontPadding="false"
+            android:lineSpacingMultiplier="0.92"
+            android:maxLines="3"
+            android:padding="@dimen/ring_innen"
+            android:text="@string/strich"
+            android:textColor="@color/widget_text"
+            android:textSize="20sp" />
+    </FrameLayout>
+</FrameLayout>

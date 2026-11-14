@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources xmlns:tools="http://schemas.android.com/tools">
+    <string name="app_name">Bildschirmzeit</string>
+    <string name="widget_beschreibung">Heutige Bildschirmzeit mit Boxenstopp, Freizeit und Workout als eigene Apps</string>
+    <string name="widget_einrichten">Tippen zum Einrichten</string>
+    <string name="widget_leer">Heute noch nichts</string>
+
+    <string name="kopf_titel">Bildschirmzeit</string>
+    <string name="strich">–</string>
+    <string name="version">Version %1$s</string>
+
+    <string name="schritt1_titel">1  Nutzungsdatenzugriff erlauben</string>
+    <string name="schritt1_fertig">1  Nutzungsdatenzugriff ✓</string>
+    <string name="schritt1_text">Damit die App sieht, wie lange jede App heute offen war. In der Liste „Bildschirmzeit“ antippen und den Schalter einschalten.</string>
+    <string name="schritt1_text_fertig">Erlaubt. Die App sieht, wie lange jede App heute offen war.</string>
+    <string name="schritt1_knopf">Erlauben</string>
+    <string name="schritt1_hinweis">Ist der Schalter grau? Dann zuerst „App-Info öffnen“ → oben rechts ⋮ → „Eingeschränkte Einstellungen zulassen“ – danach noch einmal „Erlauben“.</string>
+    <string name="app_info">App-Info öffnen</string>
+
+    <string name="schritt2_titel">2  Web-Apps verbinden</string>
+    <string name="schritt2_text">Android zählt Boxenstopp, Freizeit und Workout als „Chrome“. Einmal verbinden: Die App öffnet sich und meldet ab dann ihre Minuten – hier und im Widget stehen sie dann unter eigenem Namen.</string>
+    <string name="verbinden">Verbinden</string>
+
+    <string name="schritt3_titel">3  Widget hinzufügen</string>
+    <string name="schritt3_fertig">3  Widget ✓</string>
+    <string name="schritt3_text">Ring mit der Zeit von heute und deinen Top 3. Es rechnet etwa alle 15 Minuten neu, Antippen rechnet sofort.</string>
+    <string name="schritt3_text_fertig">Das Widget ist auf dem Startbildschirm. Antippen rechnet sofort neu.</string>
+    <string name="schritt3_knopf">Widget hinzufügen</string>
+    <string name="schritt3_anleitung">So geht es von Hand: Startbildschirm lange gedrückt halten → „Widgets“ → „Bildschirmzeit“ → antippen → „Hinzufügen“.</string>
+
+    <string name="heute_titel">Heute</string>
+    <string name="heute_ohne_erlaubnis">Erst Schritt 1 – dann steht hier jede App von heute.</string>
+    <string name="heute_leer">Heute noch nichts.</string>
+
+    <string name="update_titel">Neue Version verfügbar</string>
+    <string name="update_text" tools:ignore="PluralsCandidate">Version 1.%1$d ist da (du hast %2$s). Herunterladen, dann die Datei öffnen und „Aktualisieren“ – deine Einstellungen bleiben.</string>
+    <string name="update_knopf">Herunterladen</string>
+
+    <string name="loeschen">Alle Daten löschen</string>
+    <string name="loeschen_titel">Alle Daten löschen?</string>
+    <string name="loeschen_text">Die Minuten von Boxenstopp, Freizeit und Workout werden bei Supabase gelöscht. Die drei trennen sich beim nächsten Melden von selbst; danach kannst du sie neu verbinden. Androids eigene Nutzungsdaten bleiben, wie sie sind.</string>
+    <string name="loeschen_ja">Löschen</string>
+    <string name="abbrechen">Abbrechen</string>
+    <string name="geloescht">Gelöscht. Verbinde die Web-Apps neu, wenn du magst.</string>
+    <string name="loeschen_ohne_netz">Ohne Netz geht Löschen nicht – es ist nichts gelöscht.</string>
+
+    <string name="verbinden_ohne_netz">Ohne Netz geht Verbinden nicht – bitte gleich noch einmal.</string>
+    <string name="kein_browser">Kein Browser gefunden.</string>
+</resources>

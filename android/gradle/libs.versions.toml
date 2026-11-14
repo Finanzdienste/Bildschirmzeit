@@ -1,0 +1,17 @@
+[versions]
+agp = "9.5.1"
+kotlin = "2.4.21"
+core = "1.19.1"
+work = "2.12.0"
+junit = "4.13.2"
+robolectric = "4.18"
+
+[libraries]
+kotlin-gradle-plugin = { module = "org.jetbrains.kotlin:kotlin-gradle-plugin", version.ref = "kotlin" }
+androidx-core = { module = "androidx.core:core-ktx", version.ref = "core" }
+androidx-work = { module = "androidx.work:work-runtime", version.ref = "work" }
+junit = { module = "junit:junit", version.ref = "junit" }
+robolectric = { module = "org.robolectric:robolectric", version.ref = "robolectric" }
+
+[plugins]
+android-application = { id = "com.android.application", version.ref = "agp" }

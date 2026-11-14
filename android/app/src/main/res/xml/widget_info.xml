@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Standard 4×2, verkleinerbar bis 2×2 (dann nur der Ring). minWidth/minHeight
+  nach der Formel 70 × Zellen − 30 dp für Startbildschirme vor Android 12;
+  ab Android 12 gelten targetCellWidth/Height. updatePeriodMillis (30 min,
+  das Kleinste, was Android erlaubt) ist nur die Rückfallebene – eigentlich
+  rechnet WorkManager alle 15 Minuten (Aktualisierung.kt).
+-->
+<appwidget-provider xmlns:android="http://schemas.android.com/apk/res/android"
+    android:description="@string/widget_beschreibung"
+    android:initialLayout="@layout/widget_gross"
+    android:minWidth="250dp"
+    android:minHeight="110dp"
+    android:minResizeWidth="110dp"
+    android:minResizeHeight="110dp"
+    android:previewImage="@drawable/widget_vorschau"
+    android:resizeMode="horizontal|vertical"
+    android:targetCellWidth="4"
+    android:targetCellHeight="2"
+    android:updatePeriodMillis="1800000"
+    android:widgetCategory="home_screen" />

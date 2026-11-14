@@ -1,0 +1,89 @@
+# Prüft Supabase-SQL und Web-Modul, baut dann die APK der Widget-App und
+# veröffentlicht sie als Release „v<Laufnummer>“. Die Laufnummer ist auch der
+# versionCode (android/app/build.gradle.kts) – daran erkennt die App
+# „Neue Version verfügbar“. Tobi lädt die APK direkt aufs Handy:
+# https://github.com/Finanzdienste/Bildschirmzeit/releases/latest/download/bildschirmzeit.apk
+name: APK
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: apk
+  cancel-in-progress: false
+
+jobs:
+  pruefen:
+    name: pruefen
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: lts/*
+          cache: npm
+      - run: npm ci
+      - run: node tests/test-sql.mjs
+      - run: node tests/test-web.mjs
+
+  apk:
+    name: apk
+    needs: pruefen
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: '21'
+      - uses: gradle/actions/setup-gradle@v6
+
+      - name: Testen und bauen
+        run: ./gradlew -p android testReleaseUnitTest assembleRelease
+
+      - name: APK prüfen
+        run: |
+          cp android/app/build/outputs/apk/release/app-release.apk bildschirmzeit.apk
+          werkzeuge="$(ls -d "$ANDROID_HOME"/build-tools/*/ | sort -V | tail -n 1)"
+          "${werkzeuge}apksigner" verify --verbose bildschirmzeit.apk
+          ls -l bildschirmzeit.apk
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: bildschirmzeit-apk
+          path: bildschirmzeit.apk
+
+      - name: Vorschau und Testberichte
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: vorschau
+          path: |
+            docs/vorschau-*.png
+            android/app/build/reports/tests/
+          if-no-files-found: ignore
+
+      - name: Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          LAUF: ${{ github.run_number }}
+        run: |
+          if gh release view "v$LAUF" > /dev/null 2>&1; then
+            # Derselbe Lauf noch einmal gestartet: nur die Datei ersetzen.
+            gh release upload "v$LAUF" bildschirmzeit.apk --clobber
+          else
+            gh release create "v$LAUF" bildschirmzeit.apk \
+              --title "Bildschirmzeit 1.$LAUF" \
+              --notes "APK aus ${GITHUB_SHA::7}. Auf dem Handy: bildschirmzeit.apk antippen, herunterladen, installieren." \
+              --target "$GITHUB_SHA" \
+              --latest
+          fi

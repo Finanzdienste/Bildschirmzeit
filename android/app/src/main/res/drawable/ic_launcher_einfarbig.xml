@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Dasselbe einfarbig für Androids Themen-Symbole. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp" android:height="108dp" android:viewportWidth="108" android:viewportHeight="108">
+    <path android:pathData="M56.30,32.12 A22,22 0 0,1 68.72,70.35" android:strokeColor="#FF000000" android:strokeWidth="9" android:fillColor="#00000000" />
+    <path android:pathData="M65.00,73.05 A22,22 0 0,1 38.61,69.72" android:strokeColor="#FF000000" android:strokeWidth="9" android:fillColor="#00000000" />
+    <path android:pathData="M35.68,66.17 A22,22 0 0,1 32.08,52.16" android:strokeColor="#FF000000" android:strokeWidth="9" android:fillColor="#00000000" />
+    <path android:pathData="M32.94,47.64 A22,22 0 0,1 51.70,32.12" android:strokeColor="#FF000000" android:strokeWidth="9" android:fillColor="#00000000" />
+</vector>
