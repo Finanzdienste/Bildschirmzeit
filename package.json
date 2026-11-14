@@ -1,0 +1,12 @@
+{
+  "name": "bildschirmzeit",
+  "private": true,
+  "type": "module",
+  "description": "Bildschirmzeit-Widget: Supabase-Funktionen, Mess-Modul der Web-Apps und deren Tests (die Android-App liegt in android/)",
+  "scripts": {
+    "test": "node tests/test-sql.mjs && node tests/test-web.mjs"
+  },
+  "devDependencies": {
+    "@electric-sql/pglite": "0.5.10"
+  }
+}
