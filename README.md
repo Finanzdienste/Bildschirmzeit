@@ -951,6 +951,14 @@ spricht mit dem echten Supabase oder GitHub (`Netz.gesperrt`).
   Das README verweist nicht mehr auf Commits, die noch nicht gepusht sind.
   174 JUnit-/Robolectric-Prüfungen grün, 47 SQL, 61 Web-Modul, Lint ohne
   Fehler (7 Warnungen wie vorher); alle Bilder byte-gleich.
+- 15.11.2026: Release **v7** (Fassung 1.7, aus 003ad26) mit Widget und
+  Statistik liegt unter dem APK-Link – vor dem Push die lokalen Commits zu
+  einem zusammengefasst (Zwischenstände nannten Zahlen aus Tobis
+  Screenshot; der Baum blieb gleich). Prüfsumme der Datei gleich dem
+  `digest` bei GitHub, Zertifikat `bc6f91b9…759e`, versionCode 7, targetSdk
+  36, dieselben 9 Rechte wie v6. v7 ist das erste Release, das v6 von selbst
+  installieren soll; ob das auf dem S24 klappt, sagt Tobis nächster
+  Screenshot (Widget ohne Ring = installiert, „Update: antippen“ = nicht).
 - Noch nicht auf dem S24 ausprobiert: Größen des Startbildschirms, Akku-
   Verhalten von One UI (ob es die App trotz Widget schlafen legt), ob
   Chrome den Verbinden-Link in der installierten Web-App oder als Tab
