@@ -1244,9 +1244,14 @@ spricht mit dem echten Supabase oder GitHub (`Netz.gesperrt`).
   `bc6f91b9…759e`, versionCode 8, targetSdk 36, dieselben 9 Rechte. v7
   installiert v8 noch mit dem alten Update-Code; ist die Sperre an, braucht
   es einmal die Klickfolge von Hand.
-- 15.11.2026: Webseiten in Firefox einzeln (Abschnitt oben) gebaut, kommt
-  als v9. Volle Prüfung siehe Commit; Bilder `vorschau-webseiten-dunkel.png`
-  neu, die drei großen App-Bilder mit Karte 4.
+- 15.11.2026: Release **v9** (Fassung 1.9, aus 3a89a1e) mit „Webseiten in
+  Firefox einzeln“ liegt unter dem APK-Link – 212 JUnit-/Robolectric-Prüfungen,
+  47 SQL, 61 Web-Modul grün, Lint ohne Fehler; Prüfsumme gleich dem `digest`
+  bei GitHub, Zertifikat `bc6f91b9…759e`, versionCode 9, dieselben 9 Rechte
+  (der Dienst braucht kein neues: binden darf ihn nur das System). Bild
+  `vorschau-webseiten-dunkel.png` neu, die drei großen App-Bilder mit Karte 4.
+  Auf dem S24 noch nicht ausprobiert: Ob Tobis Firefox die Leiste so zeigt
+  wie in den Quellen, sagt Karte 4 („Zuletzt erkannt: …“).
 - Noch nicht auf dem S24 ausprobiert: Größen des Startbildschirms, Akku-
   Verhalten von One UI (ob es die App trotz Widget schlafen legt), ob
   Chrome den Verbinden-Link in der installierten Web-App oder als Tab
