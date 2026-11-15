@@ -1252,6 +1252,13 @@ spricht mit dem echten Supabase oder GitHub (`Netz.gesperrt`).
   `vorschau-webseiten-dunkel.png` neu, die drei großen App-Bilder mit Karte 4.
   Auf dem S24 noch nicht ausprobiert: Ob Tobis Firefox die Leiste so zeigt
   wie in den Quellen, sagt Karte 4 („Zuletzt erkannt: …“).
+- 15.11.2026, 19:47 (Tobis Screenshots): v9 kam von selbst („Zuletzt
+  aktualisiert: 19:45 auf 1.9“), und der Dienst liest Tobis Firefox: Karte 4
+  „Läuft. Zuletzt erkannt: o2mail.de, 19:46.“ Die Firefox-Zeit von heute
+  stand trotzdem noch ganz unter „Firefox“ – sie war fast ganz von vor dem
+  Einschalten (gezählt wird erst ab dann, früher hat niemand mitgeschrieben,
+  welche Seite offen war), und eine Seite wird erst ab 1 Minute am Tag ein
+  eigener Eintrag.
 - Noch nicht auf dem S24 ausprobiert: Größen des Startbildschirms, Akku-
   Verhalten von One UI (ob es die App trotz Widget schlafen legt), ob
   Chrome den Verbinden-Link in der installierten Web-App oder als Tab
