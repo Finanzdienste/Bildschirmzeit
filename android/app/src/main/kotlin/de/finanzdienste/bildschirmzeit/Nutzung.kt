@@ -14,7 +14,10 @@ enum class Art {
     /** ACTIVITY_PAUSED: sie ist nicht mehr vorn. */
     PAUSIERT,
 
-    /** ACTIVITY_STOPPED: nicht mehr sichtbar (schließt auch, wenn PAUSED fehlte). */
+    /**
+     * ACTIVITY_STOPPED: nicht mehr sichtbar. Schließt nur, wenn PAUSED fehlte –
+     * sonst ist es das späte Ende einer Instanz, die schon pausiert war.
+     */
     GESTOPPT,
 
     /** SCREEN_NON_INTERACTIVE: Bildschirm aus – alles zu. */
@@ -49,9 +52,18 @@ const val SYSTEMUI = "com.android.systemui"
  * vor `von` beginnen (so zählt eine über Mitternacht offene App ab
  * Mitternacht); gezählt wird nur, was in [von, bis] liegt. Ein PAUSIERT ohne
  * vorheriges VORN (die App kam vor Beginn der Abfrage nach vorn) zählt nicht.
+ *
+ * Android nennt nur die Klasse, nicht die Instanz. Kommt eine neue Instanz
+ * derselben Klasse nach vorn – so laufen alle installierten Web-Apps in
+ * Chrome (WebappActivity), so öffnet die Einstellungen-App Unterseiten –,
+ * meldet es PAUSIERT(alt), VORN(neu), GESTOPPT(alt). Das späte GESTOPPT darf
+ * die neue Instanz nicht schließen: Ein GESTOPPT nach einem PAUSIERT
+ * derselben Klasse schließt deshalb nichts mehr (es gehört zur pausierten
+ * Instanz), nur ein GESTOPPT ohne PAUSIERT davor schließt.
  */
 fun vordergrundZeiten(ereignisse: List<Ereignis>, von: Long, bis: Long): Map<String, Long> {
     val offen = HashMap<String, MutableSet<String>>() // Paket → Activities, die gerade vorn sind
+    val pausiert = HashSet<String>() // „paket/klasse“: pausiert, GESTOPPT steht noch aus
     val seit = HashMap<String, Long>() // Paket → seit wann vorn
     val summe = HashMap<String, Long>()
 
@@ -69,6 +81,12 @@ fun vordergrundZeiten(ereignisse: List<Ereignis>, von: Long, bis: Long): Map<Str
     fun alleSchliessen(zeit: Long) {
         for (paket in seit.keys.toList()) schliessen(paket, zeit)
         offen.clear()
+        pausiert.clear()
+    }
+
+    fun nichtMehrVorn(e: Ereignis) {
+        val activities = offen[e.paket] ?: return
+        if (activities.remove(e.klasse) && activities.isEmpty()) schliessen(e.paket, e.zeit)
     }
 
     // sortedBy ist stabil: Ereignisse mit gleicher Zeit behalten ihre Reihenfolge.
@@ -80,14 +98,20 @@ fun vordergrundZeiten(ereignisse: List<Ereignis>, von: Long, bis: Long): Map<Str
                 if (activities.isEmpty()) seit[e.paket] = e.zeit
                 activities.add(e.klasse)
             }
-            Art.PAUSIERT, Art.GESTOPPT -> {
-                val activities = offen[e.paket] ?: continue
-                if (activities.remove(e.klasse) && activities.isEmpty()) schliessen(e.paket, e.zeit)
+            Art.PAUSIERT -> {
+                // Auch ohne VORN davor merken: Das GESTOPPT dazu kann nach dem
+                // VORN einer neuen Instanz kommen.
+                pausiert.add("${e.paket}/${e.klasse}")
+                nichtMehrVorn(e)
+            }
+            Art.GESTOPPT -> {
+                if (!pausiert.remove("${e.paket}/${e.klasse}")) nichtMehrVorn(e)
             }
             Art.BILDSCHIRM_AUS, Art.GESPERRT, Art.AUSGESCHALTET -> alleSchliessen(e.zeit)
             Art.GESTARTET -> {
                 seit.clear()
                 offen.clear()
+                pausiert.clear()
             }
         }
     }

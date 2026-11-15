@@ -60,6 +60,55 @@ class NutzungTest {
     }
 
     @Test
+    fun neueInstanzDerselbenKlasseZaehltWeiter() {
+        // Einstellungen: Unterseite → Unterseite. Android meldet PAUSIERT(alt),
+        // VORN(neu), GESTOPPT(alt) – das späte GESTOPPT darf die neue nicht schließen.
+        val z = rechne(
+            vorn(um(10), "s", "Sub"),
+            pause(um(10, 5), "s", "Sub"),
+            vorn(um(10, 5) + 50, "s", "Sub"),
+            stopp(um(10, 5) + 400, "s", "Sub"),
+            pause(um(10, 20), "s", "Sub"),
+            stopp(um(10, 20) + 400, "s", "Sub"),
+        )
+        assertEquals(mapOf("s" to 20 * min - 50), z)
+    }
+
+    @Test
+    fun webAppsDirektNacheinanderZaehlenGanz() {
+        // Alle installierten Web-Apps laufen in Chrome als dieselbe Klasse:
+        // 20 Min. Workout, dann direkt (Wischgeste, Mitteilung) 10 Min. Boxenstopp.
+        val web = "org.chromium.chrome.browser.webapps.WebappActivity"
+        val e = listOf(
+            vorn(um(10), CHROME, web),
+            pause(um(10, 20), CHROME, web),
+            vorn(um(10, 20) + 80, CHROME, web),
+            stopp(um(10, 20) + 400, CHROME, web),
+            pause(um(10, 30) + 80, CHROME, web),
+            stopp(um(10, 30) + 500, CHROME, web),
+        )
+        val android = heuteJeApp(e, mitternacht, jetzt, setOf(CHROME), emptySet())
+        assertEquals(mapOf(CHROME to 1800L), android)
+        val gemeldet = mapOf("workout" to 1200L, "boxenstopp" to 600L)
+        assertEquals(mapOf("workout" to 1200L, "boxenstopp" to 600L), aufteilen(android, gemeldet))
+    }
+
+    @Test
+    fun pausiertUndWiederVornOhneStopp() {
+        // Ein Dialog darüber: dieselbe Instanz pausiert und kommt wieder, erst später GESTOPPT.
+        val z = rechne(
+            vorn(um(10), "a"),
+            pause(um(10, 5), "a"),
+            vorn(um(10, 6), "a"),
+            pause(um(10, 10), "a"),
+            stopp(um(10, 10) + 300, "a"),
+            vorn(um(11), "a"),
+            stopp(um(11, 3), "a"), // ohne PAUSIERT davor: schließt
+        )
+        assertEquals(mapOf("a" to 12 * min), z)
+    }
+
+    @Test
     fun doppeltesVornZaehltEinmal() {
         assertEquals(mapOf("a" to 10 * min), rechne(vorn(um(10), "a"), vorn(um(10, 2), "a"), pause(um(10, 10), "a")))
     }

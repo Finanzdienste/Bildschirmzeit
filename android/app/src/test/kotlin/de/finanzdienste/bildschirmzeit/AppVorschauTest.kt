@@ -1,5 +1,9 @@
 package de.finanzdienste.bildschirmzeit
 
+import android.content.ComponentName
+import android.content.Intent
+import android.content.IntentFilter
+import android.content.pm.PackageInfo
 import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.os.Looper
@@ -33,6 +37,10 @@ import kotlin.math.roundToInt
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
 @Config(qualifiers = "w384dp-h832dp-xxhdpi")
 class AppVorschauTest {
+    private companion object {
+        const val VORSCHAU_VERSION = "1.22"
+    }
+
     private val stand = ZonedDateTime.of(2026, 11, 14, 21, 40, 0, 0, ZoneId.systemDefault()).toInstant().toEpochMilli()
 
     // Bleibt gesperrt (auch nach dem Test): Die Fäden der Activity könnten nachlaufen.
@@ -87,6 +95,61 @@ class AppVorschauTest {
         assertEquals(7, aktivitaet.findViewById<ViewGroup>(R.id.app_liste).childCount)
     }
 
+    @Test
+    fun verbindenOeffnetChrome() {
+        // Angemeldet: Verbinden geht ohne Netz gleich zum Link.
+        angemeldet()
+        val aktivitaet = Robolectric.buildActivity(MainActivity::class.java).setup().get()
+        warten()
+        aktivitaet.findViewById<ViewGroup>(R.id.web_liste).findViewWithTag<View>("workout")
+            .findViewById<View>(R.id.verbinden).performClick()
+        warten()
+        val geoeffnet = shadowOf(aktivitaet).nextStartedActivity
+        assertEquals(Intent.ACTION_VIEW, geoeffnet.action)
+        assertEquals(CHROME, geoeffnet.`package`)
+        assertTrue(geoeffnet.dataString!!.startsWith("https://finanzdienste.github.io/Workout/#bildschirmzeit="))
+    }
+
+    @Test
+    fun ohneChromeDerStandardbrowser() {
+        val link = WebApp.FREIZEIT.link("x".repeat(43))
+        val absichten = verbindenAbsichten(link)
+        assertEquals(listOf(CHROME, null), absichten.map { it.`package` })
+        assertEquals(listOf(link, link), absichten.map { it.dataString })
+
+        // Auf dem „Gerät“ gibt es nur einen anderen Browser: Der Chrome-Versuch scheitert, der zweite geht.
+        val app = RuntimeEnvironment.getApplication()
+        val browser = ComponentName("com.beispiel.browser", "com.beispiel.browser.Haupt")
+        shadowOf(app.packageManager).apply {
+            installPackage(PackageInfo().apply { packageName = browser.packageName })
+            addActivityIfNotPresent(browser)
+            addIntentFilterForActivity(
+                browser,
+                IntentFilter(Intent.ACTION_VIEW).apply {
+                    addCategory(Intent.CATEGORY_DEFAULT)
+                    addDataScheme("https")
+                },
+            )
+        }
+        angemeldet()
+        val aktivitaet = Robolectric.buildActivity(MainActivity::class.java).setup().get()
+        warten()
+        shadowOf(app).checkActivities(true)
+        aktivitaet.findViewById<ViewGroup>(R.id.web_liste).findViewWithTag<View>("freizeit")
+            .findViewById<View>(R.id.verbinden).performClick()
+        warten()
+        val geoeffnet = shadowOf(aktivitaet).nextStartedActivity
+        assertEquals(null, geoeffnet.`package`)
+        assertTrue(geoeffnet.dataString!!.startsWith("https://finanzdienste.github.io/Freizeit/#bildschirmzeit="))
+    }
+
+    /** Eine (erfundene) Kennung, die Supabase schon kennt – erst erzeugen, dann als angemeldet merken. */
+    private fun angemeldet() {
+        val speicher = Speicher(RuntimeEnvironment.getApplication())
+        speicher.kennung
+        speicher.angemeldet = true
+    }
+
     /** Hintergrundfäden (Rechnung, Versionsprüfung) laufen ohne Netz schnell zu Ende. */
     private fun warten() {
         repeat(20) {
@@ -99,7 +162,10 @@ class AppVorschauTest {
         val aktivitaet = Robolectric.buildActivity(MainActivity::class.java).setup().get()
         warten()
         aktivitaet.zeigen(beispiel())
-        aktivitaet.updateZeigen(23)
+        // Feste Version statt BuildConfig (lokal 1.1, in Actions 1.<Laufnummer>):
+        // Sonst änderte jeder Bau die Bilder in docs/, ohne dass sich etwas geändert hat.
+        aktivitaet.versionZeigen(VORSCHAU_VERSION)
+        aktivitaet.updateZeigen(23, VORSCHAU_VERSION)
         shadowOf(Looper.getMainLooper()).idle()
 
         val inhalt = (aktivitaet.findViewById<ViewGroup>(R.id.wurzel)).getChildAt(0)

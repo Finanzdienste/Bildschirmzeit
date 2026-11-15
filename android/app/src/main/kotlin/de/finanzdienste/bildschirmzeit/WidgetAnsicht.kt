@@ -21,7 +21,9 @@ import kotlin.math.roundToInt
 
 /**
  * Zeichnet das Widget: Ring mit Gesamtzeit, daneben „Bildschirmzeit“ und die
- * Top 3, unten der Stand. Unter GROSS_AB_DP Breite (2×2) nur der Ring.
+ * Top 3, unten der Stand. Unter GROSS_AB_DP Breite (2×2) nur der Ring, unter
+ * SCHMAL_DP (3×2) ein kleinerer Ring und Zeilen ohne App-Symbol – sonst
+ * blieben bei langen Zeiten von den Namen nur „Worko…“.
  *
  * Ab Android 12 bekommt jedes Widget genau die Größen, die der Startbildschirm
  * meldet (Hoch- und Querformat), und den Ring einmal hell und einmal dunkel –
@@ -30,6 +32,7 @@ import kotlin.math.roundToInt
 object WidgetAnsicht {
     const val AKTUALISIEREN = "de.finanzdienste.bildschirmzeit.AKTUALISIEREN"
     private const val GROSS_AB_DP = 200f
+    private const val SCHMAL_DP = 320f
     private const val RAND_DP = 14f
     private const val ABSTAND_DP = 14f
     private const val SYMBOL_DP = 20f
@@ -82,7 +85,8 @@ object WidgetAnsicht {
 
     fun gross(context: Context, ergebnis: Ergebnis, breite: Float, hoehe: Float): RemoteViews {
         val v = RemoteViews(context.packageName, R.layout.widget_gross)
-        val ring = minOf(hoehe - 2 * RAND_DP, (breite - 2 * RAND_DP) * 0.40f).coerceIn(72f, 200f)
+        val schmal = breite < SCHMAL_DP
+        val ring = minOf(hoehe - 2 * RAND_DP, (breite - 2 * RAND_DP) * if (schmal) 0.34f else 0.40f).coerceIn(72f, 200f)
         ringSetzen(context, v, ergebnis, ring)
 
         val top = ergebnis.posten.take(3)
@@ -95,7 +99,9 @@ object WidgetAnsicht {
             val p = top[i]
             v.setViewVisibility(ZEILEN[i], View.VISIBLE)
             farbeSetzen(v, PUNKTE[i], RingFarben.HELL.top[i], RingFarben.DUNKEL.top[i], context)
-            v.setImageViewBitmap(SYMBOLE[i], Symbole.bild(context, p, symbolPx))
+            // Schmal: Der Farbpunkt bleibt (er verbindet Zeile und Ring), das Symbol fällt weg.
+            v.setViewVisibility(SYMBOLE[i], if (schmal) View.GONE else View.VISIBLE)
+            if (!schmal) v.setImageViewBitmap(SYMBOLE[i], Symbole.bild(context, p, symbolPx))
             v.setTextViewText(NAMEN[i], p.name)
             v.setTextViewText(ZEITEN[i], kurzText(p.sekunden))
         }

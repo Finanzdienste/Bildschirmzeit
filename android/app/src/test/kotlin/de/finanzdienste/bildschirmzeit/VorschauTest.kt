@@ -5,6 +5,8 @@ import android.graphics.Canvas
 import android.view.View
 import android.widget.FrameLayout
 import android.widget.RemoteViews
+import android.widget.TextView
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -86,6 +88,24 @@ class VorschauTest {
     fun einrichtenHell() = speichern("einrichten-hell", WidgetAnsicht.einrichten(kontext), 352f, 176f, nacht = false)
 
     @Test
+    fun schmalBleibenDieNamenGanz() {
+        // 3×2 (300 dp, auf manchen Rastern nur gut 260 dp) mit langen Zeiten:
+        // „Workout“ und „Einstellungen“ ganz, dafür ohne App-Symbol.
+        for (breite in listOf(300f, 264f)) {
+            val view = aufgebaut(WidgetAnsicht.gross(kontext, langerTag(), breite, 176f), breite, 176f)
+            assertEquals("Workout", view.findViewById<TextView>(R.id.name2).text.toString())
+            assertEquals("$breite dp: Workout gekürzt", 0, view.findViewById<TextView>(R.id.name2).layout.getEllipsisCount(0))
+            if (breite >= 300f) {
+                assertEquals("$breite dp: Einstellungen gekürzt", 0, view.findViewById<TextView>(R.id.name3).layout.getEllipsisCount(0))
+            }
+            assertEquals(View.GONE, view.findViewById<View>(R.id.symbol2).visibility)
+        }
+        val breit = aufgebaut(WidgetAnsicht.gross(kontext, langerTag(), 352f, 176f), 352f, 176f)
+        assertEquals(View.VISIBLE, breit.findViewById<View>(R.id.symbol2).visibility)
+        assertEquals(0, breit.findViewById<TextView>(R.id.name2).layout.getEllipsisCount(0))
+    }
+
+    @Test
     fun auswahlBilder() {
         // Für res/drawable-nodpi/widget_vorschau.png (und -night-): ohne Hintergrund.
         val ordner = File(System.getProperty("vorschau.bau") ?: return)
@@ -113,14 +133,23 @@ class VorschauTest {
         assertTrue(datei.length() > 1000)
     }
 
+    /** Die RemoteViews als echte Views, gemessen und gelegt in breite × hoehe dp. */
+    private fun aufgebaut(ansicht: RemoteViews, breite: Float, hoehe: Float): View {
+        val dichte = kontext.resources.displayMetrics.density
+        val b = (breite * dichte).roundToInt()
+        val h = (hoehe * dichte).roundToInt()
+        val view = ansicht.apply(kontext, FrameLayout(kontext))
+        view.measure(View.MeasureSpec.makeMeasureSpec(b, View.MeasureSpec.EXACTLY), View.MeasureSpec.makeMeasureSpec(h, View.MeasureSpec.EXACTLY))
+        view.layout(0, 0, b, h)
+        return view
+    }
+
     private fun zeichnen(ansicht: RemoteViews, breite: Float, hoehe: Float, rahmen: Int, hintergrund: Int): Bitmap {
         val dichte = kontext.resources.displayMetrics.density
         val b = (breite * dichte).roundToInt()
         val h = (hoehe * dichte).roundToInt()
         val r = (rahmen * dichte).roundToInt()
-        val view = ansicht.apply(kontext, FrameLayout(kontext))
-        view.measure(View.MeasureSpec.makeMeasureSpec(b, View.MeasureSpec.EXACTLY), View.MeasureSpec.makeMeasureSpec(h, View.MeasureSpec.EXACTLY))
-        view.layout(0, 0, b, h)
+        val view = aufgebaut(ansicht, breite, hoehe)
         val bild = Bitmap.createBitmap(b + 2 * r, h + 2 * r, Bitmap.Config.ARGB_8888)
         val leinwand = Canvas(bild)
         leinwand.drawColor(hintergrund)

@@ -16,7 +16,9 @@ eigenem Namen und mit eigenem Symbol statt als „Chrome“.
 
 Weitere Vorschauen (mit erfundenen Zahlen, von `VorschauTest` und
 `AppVorschauTest` gezeichnet): `docs/vorschau-klein-*.png` (2×2, nur der
-Ring), `vorschau-lang-hell.png` (3×2, lange Zeiten, ohne Netz),
+Ring), `vorschau-lang-hell.png` (3×2, lange Zeiten, ohne Netz – unter
+320 dp Breite kleinerer Ring und Zeilen ohne App-Symbol, damit die Namen
+ganz bleiben),
 `vorschau-flach-hell.png`, `vorschau-einrichten-hell.png` (ohne Erlaubnis),
 `vorschau-app-hell.png` / `-dunkel.png` (der App-Bildschirm).
 
@@ -51,9 +53,13 @@ Einmal, alles am Handy:
    App „App-Info öffnen“ → oben rechts ⋮ → „Eingeschränkte Einstellungen
    zulassen“ → dann noch einmal „Erlauben“.
 6. **Schritt 2** – dreimal: bei Boxenstopp „Verbinden“ → die Web-App öffnet
-   sich und meldet „Bildschirmzeit verbunden …“ → zurückwischen zur
+   sich in Chrome (als installierte App oder als Tab, beides teilt sich den
+   Speicher) und meldet „Bildschirmzeit verbunden …“ → zurückwischen zur
    Bildschirmzeit-App. Dasselbe für Freizeit und Workout. Danach steht dort
-   „heute … Min., zuletzt 21:40“.
+   „heute … Min., zuletzt 21:40“. Der Link geht ausdrücklich an Chrome, auch
+   wenn Samsung Internet der Standardbrowser ist: Sonst landete die Kennung
+   im Speicher von Samsung Internet, und die Web-Apps in Chrome blieben
+   unverbunden. Nur ohne Chrome nimmt die App den Standardbrowser.
 7. **Schritt 3** „Widget hinzufügen“ → „Hinzufügen“. Von Hand:
    Startbildschirm lange drücken → „Widgets“ → „Bildschirmzeit“ → antippen →
    „Hinzufügen“. Größe ändern: Widget lange drücken, an den Rändern ziehen
@@ -75,6 +81,15 @@ von lokaler Mitternacht bis jetzt, aus `UsageStatsManager.queryEvents`.
   jetzt].
 - Eine App ist vorn, solange eine ihrer Activities `ACTIVITY_RESUMED` hat und
   noch kein `PAUSED`/`STOPPED`. Zwei Activities derselben App zählen einmal.
+- Android nennt nur die Klasse, nicht die Instanz. Alle installierten
+  Web-Apps laufen in Chrome als dieselbe Klasse (`WebappActivity`); wechselt
+  man direkt von Workout zu Boxenstopp, kommt `PAUSED`(Workout),
+  `RESUMED`(Boxenstopp), dann erst `STOPPED`(Workout). Ein `STOPPED` nach
+  einem `PAUSED` derselben Klasse schließt deshalb nichts (es ist das späte
+  Ende der pausierten Instanz); nur ein `STOPPED` ohne `PAUSED` davor
+  schließt. Vorher fehlte so die ganze zweite Sitzung bei Chrome (und damit
+  in der Gesamtzeit) – Test `webAppsDirektNacheinanderZaehlenGanz`. Dasselbe
+  gilt für Unterseiten der Einstellungen-App.
 - `SCREEN_NON_INTERACTIVE`, `KEYGUARD_SHOWN` und `DEVICE_SHUTDOWN` schließen
   alles. Nach `DEVICE_STARTUP` ohne vorheriges Ausschalten (Akku leer) zählt
   das Offene nicht – wie lange es lief, weiß niemand.
@@ -99,8 +114,9 @@ das Widget schreibt leise „Stand 21:40 · ohne Netz“ (nur wenn mindestens ei
 Web-App verbunden ist).
 
 **Wann:** WorkManager alle 15 Minuten (unique, KEEP; eingeplant beim ersten
-Widget, beim App-Start; nach einem Neustart plant WorkManager selbst neu),
-dazu `updatePeriodMillis` 30 Minuten als Rückfallebene. Antippen schickt
+Widget, beim App-Start; nach einem Neustart plant WorkManager selbst neu).
+`updatePeriodMillis` ist 0: Androids eigener 30-Minuten-Takt weckte das
+Handy auch nachts und rechnete und funkte doppelt. Antippen schickt
 einen Broadcast an das Widget, das gleich dort rechnet (`goAsync`, eigener
 Faden): erst ohne Netz zeichnen, dann mit. Eine Sperre verhindert zwei
 Rechnungen zugleich; „Alle Daten löschen“ läuft unter derselben Sperre.
@@ -254,17 +270,25 @@ echo "sdk.dir=$HOME/.android-sdk" > android/local.properties
 ```
 
 Die Tests schreiben die Vorschau neu nach `docs/` – nach einer Änderung am
-Widget die Bilder ansehen und mit committen. Die Bilder für die
+Widget die Bilder ansehen und mit committen. Die App-Vorschau zeigt eine
+feste Version („1.22“), damit ein Bau mit anderer Laufnummer die Bilder
+nicht ändert. Die Bilder für die
 Widget-Auswahl (`res/drawable-nodpi/widget_vorschau.png`, `-night-`) kommen
 aus `android/app/build/vorschau/` und werden von Hand kopiert. Kein Test
 spricht mit dem echten Supabase oder GitHub (`Netz.gesperrt`).
 
 ## Stand
 
-- 14.11.2026, Fassung 1.1 (lokal gebaut): App, Widget, Tests (66 JUnit-/
+- 14.11.2026, Fassung 1.1 (lokal gebaut): App, Widget, Tests (72 JUnit-/
   Robolectric-Prüfungen, 47 SQL, 61 Web-Modul), Workflow. Supabase ist live
-  eingespielt und geprüft. Das Repo liegt noch nicht auf GitHub – der erste
-  Push auf `main` baut Release v1; vorher führt der APK-Link oben ins Leere.
+  eingespielt und geprüft.
+- Das Repo `Finanzdienste/Bildschirmzeit` gibt es auf GitHub (öffentlich,
+  angelegt am 14.11. mit einem „Initial commit“, nur `README.md`). Die
+  lokale Geschichte steht auf diesem Commit (`origin/main`), der Push auf
+  `main` ist also ein Fast-Forward, ohne Force. Noch ist nichts gepusht:
+  apk.yml ist nie gelaufen, Release v1 kommt mit dem ersten Push; bis dahin
+  führt der APK-Link oben ins Leere. Actions braucht dafür Schreibrecht auf
+  `contents` (steht im Workflow unter `permissions`).
 - Noch nicht auf dem S24 ausprobiert: Größen des Startbildschirms, Akku-
   Verhalten von One UI, ob „Nutzungsdatenzugriff“ direkt die Seite der App
   öffnet.

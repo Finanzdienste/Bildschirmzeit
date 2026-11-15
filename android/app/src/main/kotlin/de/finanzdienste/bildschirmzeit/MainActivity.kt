@@ -53,7 +53,7 @@ class MainActivity : Activity() {
             oeffnen(Intent(Intent.ACTION_VIEW, NeueVersion.APK.toUri()))
         }
         findViewById<Button>(R.id.loeschen).setOnClickListener { loeschenFragen() }
-        findViewById<TextView>(R.id.version).text = getString(R.string.version, BuildConfig.VERSION_NAME)
+        versionZeigen(BuildConfig.VERSION_NAME)
         webZeilenAnlegen()
 
         Aktualisierung.einplanen(this)
@@ -166,7 +166,7 @@ class MainActivity : Activity() {
             imVordergrund {
                 knopf.isEnabled = true
                 if (bereit) {
-                    oeffnen(Intent(Intent.ACTION_VIEW, app.link(kennung).toUri()))
+                    versuchen(verbindenAbsichten(app.link(kennung)))
                 } else {
                     Toast.makeText(this, R.string.verbinden_ohne_netz, Toast.LENGTH_LONG).show()
                 }
@@ -200,9 +200,14 @@ class MainActivity : Activity() {
         if (!angefragt) findViewById<View>(R.id.schritt3_anleitung).visibility = View.VISIBLE
     }
 
-    internal fun updateZeigen(laufnummer: Int) {
+    /** `version`: nur die Vorschau (AppVorschauTest) setzt eine feste, damit die Bilder nicht an der Laufnummer hängen. */
+    internal fun versionZeigen(version: String) {
+        findViewById<TextView>(R.id.version).text = getString(R.string.version, version)
+    }
+
+    internal fun updateZeigen(laufnummer: Int, version: String = BuildConfig.VERSION_NAME) {
         findViewById<View>(R.id.update_karte).visibility = View.VISIBLE
-        findViewById<TextView>(R.id.update_text).text = getString(R.string.update_text, laufnummer, BuildConfig.VERSION_NAME)
+        findViewById<TextView>(R.id.update_text).text = getString(R.string.update_text, laufnummer, version)
     }
 
     private fun loeschenFragen() {
@@ -241,12 +246,19 @@ class MainActivity : Activity() {
         }
     }
 
-    private fun oeffnen(intent: Intent) {
-        try {
-            startActivity(intent)
-        } catch (e: ActivityNotFoundException) {
-            Toast.makeText(this, R.string.kein_browser, Toast.LENGTH_LONG).show()
+    private fun oeffnen(intent: Intent) = versuchen(listOf(intent))
+
+    /** Der erste Versuch, den Android starten kann; sonst „Kein Browser gefunden“. */
+    private fun versuchen(absichten: List<Intent>) {
+        for (intent in absichten) {
+            try {
+                startActivity(intent)
+                return
+            } catch (e: ActivityNotFoundException) {
+                // nächster Versuch
+            }
         }
+        Toast.makeText(this, R.string.kein_browser, Toast.LENGTH_LONG).show()
     }
 
     private fun ringFarben(): RingFarben =
@@ -255,6 +267,18 @@ class MainActivity : Activity() {
     private fun imVordergrund(arbeit: () -> Unit) {
         runOnUiThread { if (!isFinishing && !isDestroyed) arbeit() }
     }
+}
+
+/**
+ * Der Verbinden-Link geht zuerst ausdrücklich an Chrome: Dort laufen die drei
+ * Web-Apps, und nur dort teilen sie sich den localStorage, in den der Link
+ * die Kennung legt. Im Standardbrowser (auf Samsung oft Samsung Internet)
+ * landete sie im Speicher dieses Browsers, und die Web-Apps in Chrome
+ * blieben unverbunden. Gibt es kein Chrome, dann doch der Standardbrowser.
+ */
+fun verbindenAbsichten(link: String): List<Intent> {
+    val uri = link.toUri()
+    return listOf(Intent(Intent.ACTION_VIEW, uri).setPackage(CHROME), Intent(Intent.ACTION_VIEW, uri))
 }
 
 /** „heute 23 Min., zuletzt 21:40“ oder „noch nicht verbunden“ – Schritt 2 der App. */
