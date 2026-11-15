@@ -100,6 +100,53 @@
                     android:text="@string/pfeil_weiter" />
             </LinearLayout>
 
+            <!-- Eine App gewählt (Tipp auf ihre Zeile): ihr Symbol und Name, rechts zurück zu allen Apps. -->
+            <LinearLayout
+                android:id="@+id/app_kopf"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:gravity="center_vertical"
+                android:orientation="horizontal"
+                android:visibility="gone">
+
+                <ImageView
+                    android:id="@+id/app_kopf_symbol"
+                    android:layout_width="28dp"
+                    android:layout_height="28dp"
+                    android:importantForAccessibility="no" />
+
+                <TextView
+                    android:id="@+id/app_kopf_name"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="10dp"
+                    android:layout_weight="1"
+                    android:ellipsize="end"
+                    android:fontFamily="sans-serif-medium"
+                    android:maxLines="1"
+                    android:textColor="@color/text"
+                    android:textSize="17sp" />
+
+                <TextView
+                    android:id="@+id/alle_apps"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="8dp"
+                    android:background="@drawable/knopf_leise"
+                    android:clickable="true"
+                    android:focusable="true"
+                    android:fontFamily="sans-serif-medium"
+                    android:gravity="center"
+                    android:maxLines="1"
+                    android:minHeight="40dp"
+                    android:paddingStart="16dp"
+                    android:paddingEnd="16dp"
+                    android:text="@string/alle_apps"
+                    android:textColor="@color/akzent"
+                    android:textSize="14sp" />
+            </LinearLayout>
+
             <TextView
                 android:id="@+id/gesamt"
                 android:layout_width="match_parent"

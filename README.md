@@ -26,6 +26,7 @@ Weitere Vorschauen (mit erfundenen Zahlen, von `VorschauTest` und
 Statistik einer Woche, darunter die Einrichtung und die Update-Karte – hell
 noch nicht eingerichtet, dunkel eingerichtet), `vorschau-app-monat-*.png`
 (ein Monat mit Lücken), `vorschau-app-tag-hell.png` (der Reiter Tag),
+`vorschau-app-eine-hell.png` / `-dunkel.png` (eine App angetippt: ihre Woche),
 `vorschau-app-einrichten-hell.png` (die App ohne Erlaubnis: deren Karte vor
 der Statistik, mit dem Weg über die eingeschränkte Einstellung).
 
@@ -60,6 +61,12 @@ der Statistik, mit dem Weg über die eingeschränkte Einstellung).
   Tag, Woche, Monat, je mit allen Apps (unten „Statistik und Verlauf in der
   App“). Offen gelassen, also entschieden: Woche Montag bis Sonntag, beim
   ersten Mal der Reiter Woche, danach der zuletzt gewählte.
+- „Ich will auch auf ne eigene App klicken und dann deren verteilung zb über
+  die Woche sehen können“ (15.11., 17:21, Screenshot der Woche in v7) – ein
+  Tipp auf eine App in der Statistik zeigt nur sie, je Tag (unten „Eine App
+  allein“). Entschieden: Die App bleibt gewählt, wenn er Reiter oder Zeitraum
+  wechselt; „Alle Apps“ oder Zurück führt zurück; am Tag nur Zeit und Anteil
+  (Stunden hat der Verlauf nicht).
 - „Alter stand? Keinen bock immer zu aktualisieren“ (15.11., 08:49, das
   Widget zeigte „Stand 08:43“) – gemeint war beides, und beides ist gebaut:
   Das Widget bleibt von selbst frisch, solange das Handy benutzt wird
@@ -693,6 +700,45 @@ Sicherung) und ist jetzt grün.
 aufhebt (AOSP: zehn Tage – „Daten seit“ sagt es nach dem ersten Start), wie
 die Statistik in Tobis Hand aussieht.
 
+## Eine App allein (nächstes Release)
+
+> „Ich will auch auf ne eigene App klicken und dann deren verteilung zb über
+> die Woche sehen können“ – Tobi, 15.11., 17:21 (Screenshot: die Woche in v7).
+
+![Eine App, Woche, dunkel](docs/vorschau-app-eine-dunkel.png)
+
+**Vorher (v7):** Die Liste unter den Balken zeigte alle Apps des Zeitraums;
+antippen ließ sich nur ein Balken (der Tag).
+
+**Jetzt** (`Statistik.kt`, `MainActivity.kt`): Jede Zeile der Liste lässt
+sich antippen. Dann zeigt die Statistik nur diese App:
+
+- Oben ihr Symbol und Name, rechts „Alle Apps“. Die große Zahl ist ihre Zeit
+  im Zeitraum, darunter „Ø je Tag …“ (über die Tage mit Daten, auch die, an
+  denen sie nicht lief) und „27 % deiner Bildschirmzeit“.
+- Die Balken sind ihre Tage: ein Tag mit Daten, an dem sie nicht lief, ist
+  der flache Strich (0), ein Tag ohne Daten bleibt der leere Kreis. Damit
+  auch eine App mit wenigen Minuten Linien bekommt, kennt die Achse jetzt
+  auch 5 und 10 Minuten (`Balken.stufe`).
+- Die Liste ist weg, solange eine App gewählt ist (die Balken sind ihre
+  Verteilung). Reiter, ‹ › und ein Tipp auf einen Balken behalten die App –
+  so blättert Tobi durch ihre Wochen und Monate. Am Tag stehen nur Zeit und
+  Anteil: Der Verlauf kennt Tage, keine Stunden.
+- Zurück: aus dem Tag vom Balken in den Zeitraum, dann zu allen Apps, dann
+  schließt die App wie gewohnt (derselbe `OnBackInvokedCallback`, angemeldet,
+  solange ein Tag vom Balken oder eine App offen ist). „Alle Apps“ führt die
+  Liste dorthin zurück, wo sie war. Drehen behält die App; ein neues Antippen
+  des Widgets zeigt wieder alle.
+- Gerechnet wird aus demselben Verlauf (`auswerten(…, nur = Schlüssel)`):
+  keine neue Datei, kein Netz.
+
+**Geprüft:** `StatistikTest.eineAppUeberDieWoche` und
+`eineAppOhneZeitUndAmTag` (Werte je Tag, 0 gegen „keine Daten“, Ø, Anteil,
+ohne Auswahl wie bisher); `AppStatistikTest.appAntippenZeigtIhreVerteilung`
+(Tipp auf die Zeile, Kopf, Zeit, Balken für TalkBack, Monat und Woche zurück,
+„Alle Apps“), `zurueckVonDerAppZuAllen`, `appUeberstehtDrehenAberNichtDasWidget`;
+Bilder `vorschau-app-eine-hell.png` / `-dunkel.png`.
+
 ## Der Vertrag zwischen Widget-App, Supabase und Web-Apps
 
 **Supabase** – Projekt `vjyohppohmvhhxgwouti` („Finanzdienste's Project“),
@@ -959,6 +1005,13 @@ spricht mit dem echten Supabase oder GitHub (`Netz.gesperrt`).
   36, dieselben 9 Rechte wie v6. v7 ist das erste Release, das v6 von selbst
   installieren soll; ob das auf dem S24 klappt, sagt Tobis nächster
   Screenshot (Widget ohne Ring = installiert, „Update: antippen“ = nicht).
+- 15.11.2026, 17:21: Tobis Screenshot zeigt v7 auf dem S24 (Statistik
+  Woche). Wie v7 ankam – von selbst, nach „Noch einmal versuchen“ oder mit
+  ausgeschalteter Automatischer Sperre –, ist noch offen. Danach gebaut, noch
+  nicht im Release: eine App allein (Abschnitt „Eine App allein“), 181
+  JUnit-/Robolectric-Prüfungen grün, Lint ohne Fehler; die App-Bilder neu
+  (die Zeilen der Liste haben jetzt oben und unten je 6 dp statt oben 12 dp,
+  damit das Antippen eine ganze Fläche hat).
 - Noch nicht auf dem S24 ausprobiert: Größen des Startbildschirms, Akku-
   Verhalten von One UI (ob es die App trotz Widget schlafen legt), ob
   Chrome den Verbinden-Link in der installierten Web-App oder als Tab

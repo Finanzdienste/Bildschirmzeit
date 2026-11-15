@@ -1,11 +1,15 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Eine App in der Statistik: Symbol, Name, Zeit, Anteil am Zeitraum. -->
+<!-- Eine App in der Statistik: Symbol, Name, Zeit, Anteil am Zeitraum. Antippen zeigt nur diese App. -->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
+    android:background="@drawable/zeile_tipp"
+    android:clickable="true"
+    android:focusable="true"
     android:gravity="center_vertical"
     android:orientation="horizontal"
-    android:paddingTop="12dp">
+    android:paddingTop="6dp"
+    android:paddingBottom="6dp">
 
     <ImageView
         android:id="@+id/symbol"

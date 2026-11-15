@@ -189,4 +189,48 @@ class StatistikTest {
         )
         assertEquals("Mo 1 Std. 5 Min., Di keine Daten, Mi 1 Min. (heute)", Balken.beschreibung(w, LocalDate.of(2026, 11, 11)))
     }
+    /**
+     * Tobi, 15.11.: „Ich will auch auf ne eigene App klicken und dann deren
+     * verteilung zb über die Woche sehen können“. Eine App über die Woche:
+     * ihre Zeit je Tag, 0 an einem Tag mit Daten ohne sie, „keine Daten“ bleibt.
+     */
+    @Test
+    fun eineAppUeberDieWoche() {
+        val mo = LocalDate.of(2026, 11, 9)
+        val verlauf = mapOf(
+            mo to tag(mo, "org.mozilla.firefox" to 3600L, "com.beispiel.chat" to 1200L),
+            mo.plusDays(1) to tag(mo.plusDays(1), "com.beispiel.chat" to 600L),
+            // Mi ohne Daten
+            mo.plusDays(3) to tag(mo.plusDays(3), "org.mozilla.firefox" to 1800L, "com.beispiel.chat" to 600L),
+        )
+        val a = auswerten(Zeitraum.um(Reiter.WOCHE, mo), verlauf, mo.plusDays(3), mo, nur = "org.mozilla.firefox")
+        assertEquals(listOf(3600L, 0L, null, 1800L, null, null, null), a.tage.map { it.sekunden })
+        assertEquals(listOf(false, false, false, false, true, true, true), a.tage.map { it.zukunft })
+        assertEquals(listOf("org.mozilla.firefox"), a.apps.map { it.schluessel })
+        assertEquals(5400L, a.gesamt)
+        assertEquals(7800L, a.alle)
+        // Ø über die drei Tage mit Daten (auch den ohne Firefox), Anteil an allem.
+        assertEquals(1800L, a.schnitt)
+        assertEquals("Ø je Tag 30 Min. · 3 von 4 Tagen mit Daten\n69\u00A0% deiner Bildschirmzeit", schnittText(a))
+        assertEquals("1 Std. 30 Min.", gesamtText(a))
+        // Ohne Auswahl wie bisher: alle Apps, Summe je Tag.
+        val alle = auswerten(Zeitraum.um(Reiter.WOCHE, mo), verlauf, mo.plusDays(3), mo)
+        assertEquals(listOf(4800L, 600L, null, 2400L, null, null, null), alle.tage.map { it.sekunden })
+        assertEquals("Ø je Tag 43 Min. · 3 von 4 Tagen mit Daten", schnittText(alle))
+    }
+
+    /** Eine App, die im Zeitraum gar nicht lief: „0 Min.“, kein Anteil; am Tag nur der Anteil. */
+    @Test
+    fun eineAppOhneZeitUndAmTag() {
+        val mo = LocalDate.of(2026, 11, 9)
+        val verlauf = mapOf(mo to tag(mo, "com.beispiel.chat" to 1200L, "org.mozilla.firefox" to 300L))
+        val leer = auswerten(Zeitraum.um(Reiter.WOCHE, mo), verlauf, mo, mo, nur = "com.beispiel.karten")
+        assertTrue(leer.apps.isEmpty())
+        assertEquals("0 Min.", gesamtText(leer))
+        assertEquals("Ø je Tag 0 Min.", schnittText(leer))
+        val amTag = auswerten(Zeitraum.um(Reiter.TAG, mo), verlauf, mo, mo, nur = "org.mozilla.firefox")
+        assertEquals("5 Min.", gesamtText(amTag))
+        assertEquals("20\u00A0% deiner Bildschirmzeit", schnittText(amTag))
+        assertNull(schnittText(auswerten(Zeitraum.um(Reiter.TAG, mo), verlauf, mo, mo)))
+    }
 }
