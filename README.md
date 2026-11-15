@@ -279,16 +279,16 @@ spricht mit dem echten Supabase oder GitHub (`Netz.gesperrt`).
 
 ## Stand
 
-- 14.11.2026, Fassung 1.1 (lokal gebaut): App, Widget, Tests (72 JUnit-/
-  Robolectric-Prüfungen, 47 SQL, 61 Web-Modul), Workflow. Supabase ist live
-  eingespielt und geprüft.
-- Das Repo `Finanzdienste/Bildschirmzeit` gibt es auf GitHub (öffentlich,
-  angelegt am 14.11. mit einem „Initial commit“, nur `README.md`). Die
-  lokale Geschichte steht auf diesem Commit (`origin/main`), der Push auf
-  `main` ist also ein Fast-Forward, ohne Force. Noch ist nichts gepusht:
-  apk.yml ist nie gelaufen, Release v1 kommt mit dem ersten Push; bis dahin
-  führt der APK-Link oben ins Leere. Actions braucht dafür Schreibrecht auf
-  `contents` (steht im Workflow unter `permissions`).
+- 15.11.2026: Release **v1** (Fassung 1.1, aus 4593f43) liegt unter dem
+  APK-Link oben – in Actions gebaut, 72 JUnit-/Robolectric-Prüfungen, 47 SQL,
+  61 Web-Modul grün, Zertifikat-SHA-256 `bc6f91b9…759e` wie oben. Supabase
+  ist live eingespielt und geprüft. Die drei Web-Apps sind angebunden:
+  Workout v263, Boxenstopp v78, Freizeit v42 (je `js/bildschirmzeit.js`,
+  byte-gleich mit `web/bildschirmzeit.js`).
+- Reine Doku-Commits mit „[skip ci]“ in der Nachricht: Sonst baut jeder Push
+  ein neues Release, und die App meldet „Neue Version verfügbar“ ohne
+  Änderung.
 - Noch nicht auf dem S24 ausprobiert: Größen des Startbildschirms, Akku-
   Verhalten von One UI, ob „Nutzungsdatenzugriff“ direkt die Seite der App
-  öffnet.
+  öffnet, ob Chrome den Verbinden-Link in der installierten Web-App oder als
+  Tab öffnet (beides teilt sich den Speicher).
