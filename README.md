@@ -560,6 +560,14 @@ spricht mit dem echten Supabase oder GitHub (`Netz.gesperrt`).
   4-mal rot und ist jetzt grün. `WeckerTest.nachNeustartUndUpdateWiederEingeplant`
   wartet jetzt, bis sein Hintergrundfaden fertig ist – sonst hielt der die
   Sperre noch im nächsten Test (`ohneWidgetKeinWecker` wurde rot).
+- 15.11.2026: Release **v6** (Fassung 1.6, aus 1124751) mit beidem liegt
+  unter dem APK-Link – Prüfsumme der Datei gleich dem `digest` bei GitHub,
+  Zertifikat `bc6f91b9…759e`, versionCode 6, targetSdk 36, die drei neuen
+  Rechte drin. Der Push hatte keinen Lauf gebaut: Die Nachricht von 1124751
+  zitierte „[skip ci]“, und GitHub liest das auch in Anführungszeichen. Den
+  Lauf „APK“ dann von Hand gestartet (workflow_dispatch). Tobi installiert
+  v6 einmal von Hand und richtet Schritt 9 ein; erst das nächste Release
+  zeigt, ob die App sich auf dem S24 wirklich selbst aktualisiert.
 - Noch nicht auf dem S24 ausprobiert: Größen des Startbildschirms, Akku-
   Verhalten von One UI (ob es die App trotz Widget schlafen legt), ob
   Chrome den Verbinden-Link in der installierten Web-App oder als Tab

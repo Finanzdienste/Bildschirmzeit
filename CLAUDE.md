@@ -41,6 +41,9 @@ Abschnitt lesen.
    Supabase-Connector einspielen (Projekt vjyohppohmvhhxgwouti).
 5. Push auf `main` baut Release `v<Laufnummer>` (der Link im README zeigt
    immer auf das neueste). Reine Doku-Commits mit „[skip ci]“, sonst
-   installiert die App das Release ohne Änderung von selbst. Danach prüfen: Lauf „APK“
-   grün, Release mit `bildschirmzeit.apk`.
+   installiert die App das Release ohne Änderung von selbst. Sonst darf die
+   Zeichenfolge in keiner Commit-Nachricht stehen, auch nicht zitiert – GitHub
+   baut dann nicht (so bei 1124751; dann „APK“ von Hand starten,
+   workflow_dispatch). Danach prüfen: Lauf „APK“ grün, Release mit
+   `bildschirmzeit.apk`.
 6. Commit-Nachrichten deutsch; README „Stand“ nachziehen.
