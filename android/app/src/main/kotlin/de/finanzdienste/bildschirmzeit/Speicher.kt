@@ -53,6 +53,17 @@ class Speicher(context: Context) {
             p.edit { putLong(NETZ_VERSUCH, wert) }
         }
 
+    /**
+     * Ging der letzte Netzversuch schief? Dann ist der Zwischenspeicher alt,
+     * auch wenn zwischen zwei Versuchen ohne Netz gerechnet wird – das Widget
+     * schreibt weiter „· ohne Netz“, bis Supabase wieder antwortet.
+     */
+    var netzFehlt: Boolean
+        get() = p.getBoolean(NETZ_FEHLT, false)
+        set(wert) {
+            p.edit { putBoolean(NETZ_FEHLT, wert) }
+        }
+
     /** Was zuletzt von Supabase kam – für die Zeit ohne Netz. */
     fun zwischenspeichern(gelesen: Long, zeilen: List<Zeile>) {
         val o = JSONObject().put("gelesen", gelesen).put("zeilen", zeilenAlsJson(zeilen))
@@ -76,6 +87,7 @@ class Speicher(context: Context) {
         const val ZWISCHENSPEICHER = "web"
         const val GERECHNET = "gerechnet"
         const val NETZ_VERSUCH = "netz_versuch"
+        const val NETZ_FEHLT = "netz_fehlt"
         val SPERRE = Any()
     }
 }

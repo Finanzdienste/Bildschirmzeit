@@ -161,6 +161,29 @@ class UpdateRegelnTest {
         assertTrue(alt.text.contains("dann „Aktualisieren“"))
     }
 
+    /** Das Widget sagt „Update: antippen“ nur, wenn es ohne Tobi nicht weitergeht (Benachrichtigungen hat die App nicht). */
+    @Test
+    fun widgetHinweisNurWennEsOhneTobiNichtAnkommt() {
+        fun hinweis(l: UpdateLage) = UpdateRegeln.widgetHinweis(l)
+        assertFalse("aktuell", hinweis(lage(freigabe = freigabe(7))))
+        assertFalse("aktuell, alter Fehler", hinweis(lage(freigabe = freigabe(7), fehler = UpdateFehler.BLOCKIERT)))
+        assertFalse("kein Release bekannt", hinweis(lage(freigabe = null, darf = false)))
+        assertFalse("kommt von selbst", hinweis(lage()))
+        assertFalse("wird installiert", hinweis(lage(laeuft = true, fehler = UpdateFehler.BESTAETIGEN)))
+
+        assertTrue("nicht eingerichtet", hinweis(lage(darf = false)))
+        assertTrue("keine Prüfsumme bei GitHub", hinweis(lage(freigabe = freigabe(8).copy(sha256 = null))))
+        assertTrue("unter Android 12", hinweis(lage().copy(still = false)))
+        for (f in listOf(UpdateFehler.BESTAETIGEN, UpdateFehler.ABGEBROCHEN, UpdateFehler.BLOCKIERT, UpdateFehler.FALSCHE_DATEI, UpdateFehler.KONFLIKT, UpdateFehler.INKOMPATIBEL)) {
+            assertTrue(f.name, hinweis(lage(fehler = f)))
+        }
+        // Was Warten behebt, erst nach drei Fehlschlägen hintereinander.
+        assertFalse(hinweis(lage(fehler = UpdateFehler.KEIN_NETZ).copy(fehlversuche = 2)))
+        assertTrue(hinweis(lage(fehler = UpdateFehler.KEIN_NETZ).copy(fehlversuche = 3)))
+        // Ein altes „nicht erlaubt“, obwohl es jetzt erlaubt ist: Das holt der Hintergrund nach.
+        assertFalse(hinweis(lage(fehler = UpdateFehler.NICHT_ERLAUBT).copy(fehlversuche = 1)))
+    }
+
     @Test
     fun aktuellOhneKnopf() {
         val a = UpdateRegeln.anzeige(lage(freigabe = freigabe(7)))

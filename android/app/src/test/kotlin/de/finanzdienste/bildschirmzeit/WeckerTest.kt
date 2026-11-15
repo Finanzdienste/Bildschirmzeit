@@ -2,12 +2,15 @@ package de.finanzdienste.bildschirmzeit
 
 import android.Manifest
 import android.app.AlarmManager
+import android.app.AppOpsManager
 import android.appwidget.AppWidgetManager
 import android.content.ComponentName
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Looper
 import android.os.PowerManager
+import android.os.Process
+import android.widget.TextView
 import androidx.work.Configuration
 import androidx.work.WorkManager
 import org.junit.Assert.assertEquals
@@ -19,6 +22,8 @@ import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.RuntimeEnvironment
 import org.robolectric.Shadows.shadowOf
+import java.time.Instant
+import java.time.ZoneId
 
 /**
  * Tobi, 15.11. (Widget zeigte „Stand 08:43“ um 08:49): „Alter stand? Keinen
@@ -87,11 +92,15 @@ class WeckerTest {
     @Test
     fun nachNeustartUndUpdateWiederEingeplant() {
         widgetDa()
+        val speicher = Speicher(kontext)
         for (aktion in listOf(Intent.ACTION_BOOT_COMPLETED, Intent.ACTION_MY_PACKAGE_REPLACED)) {
             Aktualisierung.abbestellen(kontext)
             assertEquals(0, wecker.scheduledAlarms.size)
+            speicher.gerechnet = 0L
             kontext.sendBroadcast(Intent(aktion).setComponent(ComponentName(kontext, Hintergrund::class.java)))
-            warten { wecker.scheduledAlarms.size == 1 }
+            // Bis der Faden auch gerechnet hat: Sonst hält er die Sperre noch im nächsten Test.
+            warten { wecker.scheduledAlarms.size == 1 && speicher.gerechnet > 0L }
+            Aktualisierung.allein { }
             assertEquals(aktion, 1, wecker.scheduledAlarms.size)
         }
     }
@@ -123,6 +132,32 @@ class WeckerTest {
         // Antippen fragt immer.
         assertTrue(Aktualisierung.imTakt(kontext, Anlass.TIPPEN, t + 12 * minute + 1000))
         assertEquals(t + 12 * minute + 1000, speicher.netzVersuch)
+    }
+
+    /**
+     * Ohne Netz bleibt „· ohne Netz“ stehen, auch bei den Rechnungen zwischen
+     * zwei Netzversuchen (der Wecker fragt Supabase nur alle 5 Minuten). Vorher
+     * fiel es dort weg, obwohl die Minuten der Web-Apps zwei Stunden alt waren
+     * (Prüfer, 15.11.) – in v5 fragte jeder Lauf Supabase, es blieb stehen.
+     */
+    @Test
+    fun ohneNetzBleibtZwischenDenNetzversuchenStehen() {
+        widgetDa()
+        shadowOf(kontext.getSystemService(AppOpsManager::class.java))
+            .setMode(AppOpsManager.OPSTR_GET_USAGE_STATS, Process.myUid(), kontext.packageName, AppOpsManager.MODE_ALLOWED)
+        val tag = Instant.ofEpochMilli(t).atZone(ZoneId.systemDefault()).toLocalDate().toString()
+        val speicher = Speicher(kontext)
+        speicher.kennung // Die erste Kennung leert den Zwischenspeicher – also vorher.
+        speicher.zwischenspeichern(t - 120 * minute, listOf(Zeile("boxenstopp", tag, 600, t - 120 * minute)))
+        val mitNetz = mutableListOf<Boolean>()
+        for (m in listOf(0L, 3L, 6L, 9L, 12L)) {
+            assertTrue(Aktualisierung.imTakt(kontext, Anlass.WECKER, t + m * minute))
+            mitNetz += speicher.netzVersuch == t + m * minute
+            val stand = shadowOf(AppWidgetManager.getInstance(kontext)).getViewFor(7).findViewById<TextView>(R.id.stand).text.toString()
+            assertTrue("+$m Min. (mit Netzversuch: ${mitNetz.last()}): $stand", stand.endsWith("· ohne Netz"))
+        }
+        // Nach 3 und 9 Minuten wirklich ohne Supabase gerechnet – sonst prüfte der Test nichts.
+        assertEquals(listOf(true, false, true, false, true), mitNetz)
     }
 
     @Test

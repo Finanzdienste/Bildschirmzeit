@@ -3,9 +3,11 @@
   Standard 4×2, verkleinerbar bis 2×2 (dann nur der Ring). minWidth/minHeight
   nach der Formel 70 × Zellen − 30 dp für Startbildschirme vor Android 12;
   ab Android 12 gelten targetCellWidth/Height. updatePeriodMillis="0": Es
-  rechnet WorkManager alle 15 Minuten (Aktualisierung.kt), auch nach einem
-  Neustart. Ein Android-Takt dazu würde das Handy alle 30 Minuten aufwecken,
-  auch nachts, und doppelt rechnen und funken.
+  rechnen ein nicht weckender Wecker alle 2 Minuten, solange das Handy
+  benutzt wird, und gleich nach dem Einschalten (Takt.kt), dazu WorkManager
+  alle 15 Minuten (Aktualisierung.kt); beide nach einem Neustart wieder. Ein
+  Android-Takt dazu würde das Handy alle 30 Minuten aufwecken, auch nachts,
+  und doppelt rechnen und funken.
 -->
 <appwidget-provider xmlns:android="http://schemas.android.com/apk/res/android"
     android:description="@string/widget_beschreibung"

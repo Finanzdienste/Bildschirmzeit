@@ -6,6 +6,8 @@
     <string name="widget_andere">Andere Apps</string>
     <string name="widget_andere_kurz">Andere</string>
     <string name="widget_leer">Heute noch nichts</string>
+    <!-- Titel des Widgets, wenn ein Update auf Tobi wartet (UpdateRegeln.widgetHinweis); Antippen öffnet die App. -->
+    <string name="widget_update">Update: antippen</string>
 
     <string name="kopf_titel">Bildschirmzeit</string>
     <string name="strich">–</string>

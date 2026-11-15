@@ -1,13 +1,16 @@
 package de.finanzdienste.bildschirmzeit
 
 import android.app.PendingIntent
+import android.appwidget.AppWidgetManager
 import android.content.ComponentName
 import android.content.Intent
 import android.content.pm.PackageInfo
 import android.content.pm.PackageInstaller
 import android.net.Uri
+import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
+import android.os.PowerManager
 import android.provider.Settings
 import android.view.View
 import android.widget.Button
@@ -311,6 +314,93 @@ class SelbstupdateTest {
         assertTrue(Selbstupdate.datei(kontext, neu).exists())
     }
 
+    /**
+     * Verwirft die App eine Sitzung selbst, schickt Android dazu noch
+     * „abgebrochen“ (AOSP PackageInstallerSession.abandon →
+     * dispatchSessionFinished(INSTALL_FAILED_ABORTED) an den Status-Empfänger
+     * aus commit). Robolectric meldet das nicht – hier von Hand. Vorher
+     * überschrieb diese Meldung „bestätigen“ mit „Abgebrochen“ und zählte den
+     * Fehlversuch doppelt (Prüfer, 15.11.).
+     */
+    @Test
+    fun androidsAbbruchNachDemEigenenVerwerfenZaehltNicht() {
+        Selbstupdate.imHintergrund(kontext, t)
+        val id = sitzungen().single()
+        Selbstupdate.statusErhalten(
+            kontext,
+            status(id, PackageInstaller.STATUS_PENDING_USER_ACTION, vorn = false, rueckfrage = rueckfrage(id)),
+            t + minute,
+        )
+        Selbstupdate.statusErhalten(kontext, status(id, PackageInstaller.STATUS_FAILURE_ABORTED), t + minute)
+        val s = UpdateSpeicher(kontext)
+        assertEquals(UpdateFehler.BESTAETIGEN, s.fehler)
+        assertEquals(1, s.fehlversuche)
+        val a = anzeige()
+        assertEquals("Neue Version verfügbar", a.titel)
+        assertEquals(UpdateKnopf.INSTALLIEREN, a.knopf)
+        assertTrue(a.text, a.text.contains("einmal bestätigt"))
+
+        // Dasselbe für eine zu alte Sitzung, die die Karte beim Öffnen verwirft (Rückfrage liegen gelassen).
+        val alt = installer.createSession(Selbstupdate.sitzungsParameter(kontext.packageName))
+        s.fehlerVergessen()
+        s.sitzungMerken(alt, t, neu)
+        Selbstupdate.lage(kontext, t + 11 * minute)
+        assertNull(installer.getSessionInfo(alt))
+        Selbstupdate.statusErhalten(kontext, status(alt, PackageInstaller.STATUS_FAILURE_ABORTED), t + 11 * minute)
+        assertNull(s.fehler)
+        assertEquals(0, s.fehlversuche)
+        // Meldungen ohne Sitzungsnummer zählen nie (außer einem Erfolg).
+        Selbstupdate.statusErhalten(kontext, Intent(UpdateStatus.STATUS).putExtra(PackageInstaller.EXTRA_STATUS, PackageInstaller.STATUS_FAILURE), t + 12 * minute)
+        assertNull(s.fehler)
+    }
+
+    /**
+     * Benachrichtigungen hat die App nicht: Kommt ein Update ohne Tobi nicht an,
+     * sagt es das Widget („Update: antippen“, Antippen öffnet die App). Vorher
+     * stand das nur auf der Karte in der App (Prüfer, 15.11.).
+     */
+    @Test
+    fun widgetSagtBescheidWennDasUpdateAufTobiWartet() {
+        assertFalse("noch kein Release bekannt", Selbstupdate.widgetHinweis(kontext, t))
+        darf(false)
+        Selbstupdate.imHintergrund(kontext, t)
+        assertTrue("nicht eingerichtet", Selbstupdate.widgetHinweis(kontext, t))
+        darf(true)
+        assertFalse("kommt von selbst", Selbstupdate.widgetHinweis(kontext, t))
+        Selbstupdate.imHintergrund(kontext, t + minute)
+        val id = sitzungen().single()
+        assertFalse("wird gerade installiert", Selbstupdate.widgetHinweis(kontext, t + minute))
+        Selbstupdate.statusErhalten(
+            kontext,
+            status(id, PackageInstaller.STATUS_PENDING_USER_ACTION, vorn = false, rueckfrage = rueckfrage(id)),
+            t + 2 * minute,
+        )
+        assertTrue("Android will es bestätigt haben", Selbstupdate.widgetHinweis(kontext, t + 2 * minute))
+
+        // Gezeichnet über den Wecker, in Tobis Größe (400 × 201 dp): der Titel sagt es, Antippen öffnet die App.
+        val awm = AppWidgetManager.getInstance(kontext)
+        shadowOf(awm).bindAppWidgetId(7, ComponentName(kontext, BildschirmzeitWidget::class.java))
+        awm.updateAppWidgetOptions(
+            7,
+            Bundle().apply {
+                putInt(AppWidgetManager.OPTION_APPWIDGET_MIN_WIDTH, 400)
+                putInt(AppWidgetManager.OPTION_APPWIDGET_MAX_HEIGHT, 201)
+            },
+        )
+        shadowOf(kontext.getSystemService(PowerManager::class.java)).turnScreenOn(true)
+        assertTrue(Aktualisierung.imTakt(kontext, Anlass.WECKER, t + 3 * minute))
+        val widget = shadowOf(awm).getViewFor(7)
+        assertEquals("Update: antippen", widget.findViewById<TextView>(R.id.titel).text.toString())
+        widget.findViewById<View>(android.R.id.background).performClick()
+        warten()
+        assertEquals(ComponentName(kontext, MainActivity::class.java), shadowOf(kontext).nextStartedActivity?.component)
+
+        // Installiert (MY_PACKAGE_REPLACED in der neuen Fassung): wieder „Bildschirmzeit“, Antippen rechnet.
+        UpdateSpeicher(kontext).freigabe = NeueVersion.freigabeAus(antwort(eigene))
+        assertTrue(Aktualisierung.imTakt(kontext, Anlass.WECKER, t + 6 * minute))
+        assertEquals("Bildschirmzeit", shadowOf(awm).getViewFor(7).findViewById<TextView>(R.id.titel).text.toString())
+    }
+
     @Test
     fun rueckfrageImVordergrundZeigtAndroidsDialog() {
         val aktivitaet = Robolectric.buildActivity(MainActivity::class.java).setup().get()
@@ -325,10 +415,13 @@ class SelbstupdateTest {
         assertEquals(UpdateFehler.BESTAETIGEN, UpdateSpeicher(kontext).fehler)
 
         // Eine fremde Absicht statt Androids Rückfrage: nicht starten.
+        UpdateSpeicher(kontext).fehlerVergessen()
+        UpdateSpeicher(kontext).sitzungMerken(5, t, neu)
         val fremd = Intent(Intent.ACTION_VIEW, Uri.parse("https://example.com/"))
         Selbstupdate.statusErhalten(kontext, status(5, PackageInstaller.STATUS_PENDING_USER_ACTION, vorn = true, rueckfrage = fremd), t)
         assertNull(shadowOf(aktivitaet).nextStartedActivity)
         assertEquals(UpdateFehler.BESTAETIGEN, UpdateSpeicher(kontext).fehler)
+        assertEquals(-1, UpdateSpeicher(kontext).sitzung)
 
         // Androids Rückfrage, während Tobi gerade „Neue Version installieren“ getippt hat: der Dialog kommt, die Sitzung bleibt.
         val id = installer.createSession(Selbstupdate.sitzungsParameter(kontext.packageName))
@@ -341,6 +434,11 @@ class SelbstupdateTest {
         assertEquals(id, UpdateSpeicher(kontext).sitzung)
         assertNotNull(installer.getSessionInfo(id))
         assertEquals(UpdateKnopf.WARTEN, aktivitaet.findViewById<Button>(R.id.update_knopf).tag)
+
+        // Tobi tippt in Androids Dialog „Abbrechen“: Das zählt (es ist die laufende Sitzung).
+        Selbstupdate.statusErhalten(kontext, status(id, PackageInstaller.STATUS_FAILURE_ABORTED, vorn = true), t)
+        assertEquals(UpdateFehler.ABGEBROCHEN, UpdateSpeicher(kontext).fehler)
+        assertEquals(-1, UpdateSpeicher(kontext).sitzung)
 
         // Nicht mehr vorn: dann auch keine Rückfrage.
         Robolectric.buildActivity(MainActivity::class.java).setup().pause()

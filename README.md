@@ -20,6 +20,7 @@ Ring), `vorschau-lang-hell.png` (3×2, lange Zeiten, ohne Netz – unter
 320 dp Breite kleinerer Ring und Zeilen ohne App-Symbol, damit die Namen
 ganz bleiben),
 `vorschau-flach-hell.png`, `vorschau-einrichten-hell.png` (ohne Erlaubnis),
+`vorschau-update-hell.png` (ein Update wartet auf Tobi: oben „Update: antippen“),
 `vorschau-app-hell.png` / `-dunkel.png` (der App-Bildschirm; unten die
 Update-Karte – hell noch nicht eingerichtet, dunkel eingerichtet),
 `vorschau-app-einrichten-hell.png` (die App ohne Erlaubnis, mit dem Weg
@@ -111,7 +112,9 @@ Einmal, alles am Handy:
    installieren“ → antippen → „Aktualisieren“. Klappt es nicht, sagt die
    Karte warum und was zu tun ist (z. B. bei „blockiert“: Einstellungen →
    Sicherheit und Datenschutz → Automatische Sperre → aus, dann „Noch einmal
-   versuchen“).
+   versuchen“). Steht im Widget oben „Update: antippen“, wartet ein Update
+   auf Tobi: Widget antippen → die App öffnet sich → ganz nach unten → der
+   Knopf auf der Karte.
 
    **Einmal noch von Hand:** Wer eine Fassung ohne diese Karte hat (Tobi:
    1.1), installiert die nächste wie in Schritt 1–4 (Automatische Sperre
@@ -158,7 +161,9 @@ Bruchteil) – die Gesamtzeit ist also immer die von Android. Was von Chrome
 
 **Ohne Netz:** Es gilt, was zuletzt von Supabase kam (SharedPreferences), und
 das Widget schreibt leise „Stand 21:40 · ohne Netz“ (nur wenn mindestens eine
-Web-App verbunden ist).
+Web-App verbunden ist). Das steht da, solange der letzte Netzversuch
+schiefging – auch bei den Rechnungen dazwischen, die Supabase gar nicht fragen
+(`Speicher.netzFehlt`).
 
 **Wann** (`Takt.kt`, `Aktualisierung.kt`; Begründung unten „Von selbst
 frisch“): ein nicht weckender Wecker alle 2 Minuten, solange das Handy
@@ -216,8 +221,13 @@ Mitternacht, Millisekunden) – der Wecker rechnet bei jedem Klingeln, nur
 nicht, wenn die letzte Rechnung keine Minute her ist. Teuer ist das Netz:
 Supabase höchstens alle 5 Minuten (öfter melden die Web-Apps auch nicht),
 bei dunklem Bildschirm gar nicht aus dem Wecker und aus WorkManager
-höchstens stündlich; dazwischen gilt der Zwischenspeicher (ohne „ohne
-Netz“ – der Stand ist ja frisch). Antippen fragt immer.
+höchstens stündlich; dazwischen gilt der Zwischenspeicher. „· ohne Netz“
+richtet sich nach dem letzten Netzversuch: Hat Supabase geantwortet, fehlt
+es (die Zahlen sind höchstens ein paar Minuten alt), ging er schief, bleibt
+es bei jeder Rechnung stehen, bis Supabase wieder antwortet. Im ersten
+Versuch fiel es zwischen zwei Versuchen weg, obwohl die Zahlen der Web-Apps
+Stunden alt sein konnten (Prüfer, 15.11.; in v5 fragte jeder Lauf Supabase).
+Antippen fragt immer.
 
 **Was es kostet, ehrlich:** Akku: Der Wecker läuft nur, wenn das Handy
 ohnehin wach ist – bei angeschaltetem Bildschirm höchstens 30-mal in der
@@ -232,8 +242,10 @@ Vorher waren es 96 am Tag (alle 15 Minuten, auch nachts).
 **Geprüft:** `TaktTest` (die Regeln), `WeckerTest` (nicht weckend,
 ungenau, 2 Minuten, Supabase nach 5 Minuten, im Dunkeln ohne Netz, neu
 eingeplant nach Neustart und Update, ohne Widget kein Wecker, Empfänger
-nicht exportiert). Gegen f02bb03 (v5) bauten die neuen Tests nicht (die
-Klassen fehlten); ein Test nur mit Schnittstellen, die beide Fassungen
+nicht exportiert; `ohneNetzBleibtZwischenDenNetzversuchenStehen`: offline
+steht „· ohne Netz“ bei jeder Wecker-Zeichnung, auch ohne Netzversuch – in
+der ersten Fassung fehlte es dort). Gegen f02bb03 (v5) bauten die neuen
+Tests nicht (die Klassen fehlten); ein Test nur mit Schnittstellen, die beide Fassungen
 haben, war dort 3-mal rot (kein Wecker, kein Empfänger für Neustart und
 Update, keine Rechte zum Installieren) und ist jetzt grün.
 
@@ -274,7 +286,15 @@ einmal nach (`REASON_REMIND_OWNERSHIP`). Diese Rückfrage zeigt die App nur
 im Vordergrund – nach Tobis Tippen auf „Neue Version installieren“ und nur
 Androids eigene `CONFIRM_INSTALL`-Absicht, ohne weitergereichte
 Dateirechte; kommt sie im Hintergrund, wird die Sitzung verworfen und die
-Karte sagt „Android will dieses Update einmal bestätigt haben“.
+Karte sagt „Android will dieses Update einmal bestätigt haben“. Verwirft die
+App eine Sitzung selbst (diese Rückfrage, eine über 10 Minuten alte, Reste),
+schickt Android dazu noch „abgebrochen“ (`abandon` →
+`dispatchSessionFinished(INSTALL_FAILED_ABORTED)`). Deshalb merkt sich die
+App die Sitzung gleich nach `createSession` (vor `commit`, Androids Antwort
+kann vorher kommen), vergisst sie vor dem Verwerfen und nimmt außer einem
+Erfolg nur Meldungen zur gemerkten Sitzung an. Im ersten Versuch
+überschrieb dieses „abgebrochen“ den wahren Grund, die Karte sagte
+„Abgebrochen“, und der Fehlversuch zählte doppelt (Prüfer, 15.11.).
 `setRequestUpdateOwnership` setzt die App nicht: Laut AOSP wirkt es nur bei
 der Erstinstallation („on package update is a no-op“), und ein
 Selbst-Update braucht keine Update-Hoheit.
@@ -301,18 +321,36 @@ Stunden; bei falscher Datei, Konflikt oder inkompatibel gar nicht mehr bis
 zum nächsten Release. Der Knopf wartet nie. Ein neues Release setzt alles
 zurück.
 
+**Wenn es Tobi braucht, sagt es das Widget:** Benachrichtigungen hat die App
+nicht, und wer sie nicht öffnet, sieht die Karte nie. Kommt ein neueres
+Release ohne Tobi nicht an, steht im Widget oben „Update: antippen“ statt
+„Bildschirmzeit“, und Antippen öffnet die App (die dabei auch neu rechnet);
+unten wartet die Karte mit Grund und Knopf. Das gilt, wenn Schritt 9 fehlt,
+GitHub keine Prüfsumme nennt, Android bestätigt haben will, Tobi abgebrochen
+hat, Android blockiert (Automatische Sperre), bei falscher Datei, Konflikt,
+inkompatibel – und nach drei Fehlschlägen hintereinander, auch wenn Warten
+sonst hilft (`UpdateRegeln.widgetHinweis`). Nicht, solange installiert wird
+oder der Hintergrund es noch von selbst schafft. Ist das Widget so flach,
+dass der Titel wegfällt (unter 150 dp), oder ist es 2×2 (nur der Ring), gibt
+es keinen Hinweis, und Antippen rechnet wie immer. Was es kostet: beim
+Zeichnen ein Blick in den eigenen Speicher, nichts übers Netz. Vorher stand
+das nur auf der Karte (Prüfer, 15.11.).
+
 **Was es kostet:** höchstens 6 Anfragen an GitHub am Tag aus dem
 Hintergrund (je rund 4 KB), dazu beim Öffnen der App; die APK (rund
 0,75 MB) einmal je Release.
 
 **Geprüft:** `UpdateRegelnTest` (Prüfsumme, Fassung, Wartezeit, Status →
-Text, die Karte), `SelbstupdateTest` (der ganze Weg auf einem
-nachgebauten Gerät: installiert ohne Rückfrage, falsche Prüfsumme →
+Text, die Karte, wann das Widget Bescheid sagt), `SelbstupdateTest` (der
+ganze Weg auf einem nachgebauten Gerät: installiert ohne Rückfrage, falsche Prüfsumme →
 nichts, ohne Erlaubnis kein Download, nie gleich alt oder älter, GitHub
 höchstens alle 4 Stunden, kein zweites Update während eines laufenden,
 Wartezeit nach Fehlern, Rückfrage im Hintergrund verworfen und im
-Vordergrund nur nach dem Knopf gezeigt, Karte → Einstellungen →
-Installieren), `DatenTest` (die Antwort von GitHub, nur Adressen dieses
+Vordergrund nur nach dem Knopf gezeigt, Androids „abgebrochen“ nach dem
+eigenen Verwerfen zählt nicht, Tobis „Abbrechen“ im Dialog schon, Karte →
+Einstellungen → Installieren, das Widget sagt „Update: antippen“ und öffnet
+die App), `VorschauTest` (`updateHinweisImTitel`: der Titel ganz, auch bei
+3×2), `DatenTest` (die Antwort von GitHub, nur Adressen dieses
 Repos), `WeckerTest` (Rechte im Manifest). Mutationen (Prüfsumme weg,
 Rückfrage auch ohne Knopf, Wartezeit weg, zweite Sitzung erlaubt, Wecker
 weckend) machen je mindestens einen Test rot. Nie das echte GitHub
@@ -507,10 +545,21 @@ spricht mit dem echten Supabase oder GitHub (`Netz.gesperrt`).
 - 15.11.2026, nach Tobis „Alter stand? Keinen bock immer zu aktualisieren“
   (08:49, Widget „Stand 08:43“, v5 noch nicht installiert): Wecker alle 2
   Minuten und Updates von selbst gebaut (die zwei Abschnitte oben) – im
-  nächsten Release nach v5. 108 JUnit-/Robolectric-Prüfungen grün (vorher 75), Lint
-  ohne Fehler, die Widget-Bilder unverändert, die App-Bilder mit der neuen
-  Update-Karte. Tobi hat 1.1: Diese Fassung installiert er noch einmal von
-  Hand und richtet dann Schritt 9 ein (Klickfolge oben).
+  nächsten Release nach v5. Lint ohne Fehler, die Widget-Bilder unverändert,
+  die App-Bilder mit der neuen Update-Karte. Tobi hat 1.1: Diese Fassung
+  installiert er noch einmal von Hand und richtet dann Schritt 9 ein
+  (Klickfolge oben).
+- 15.11.2026, nach der Prüfung dieses Umbaus (noch vor dem Release)
+  nachgebessert: Androids „abgebrochen“ nach dem eigenen Verwerfen einer
+  Sitzung überschreibt nicht mehr den wahren Grund; „· ohne Netz“ bleibt
+  offline auch zwischen zwei Netzversuchen stehen; das Widget sagt „Update:
+  antippen“, wenn ein Update auf Tobi wartet (neues Bild
+  `vorschau-update-hell.png`, die übrigen Bilder byte-gleich). 114
+  JUnit-/Robolectric-Prüfungen grün (75 in v5, 108 im ersten Versuch); ein
+  Test nur mit Schnittstellen beider Fassungen war gegen den ersten Versuch
+  4-mal rot und ist jetzt grün. `WeckerTest.nachNeustartUndUpdateWiederEingeplant`
+  wartet jetzt, bis sein Hintergrundfaden fertig ist – sonst hielt der die
+  Sperre noch im nächsten Test (`ohneWidgetKeinWecker` wurde rot).
 - Noch nicht auf dem S24 ausprobiert: Größen des Startbildschirms, Akku-
   Verhalten von One UI (ob es die App trotz Widget schlafen legt), ob
   Chrome den Verbinden-Link in der installierten Web-App oder als Tab

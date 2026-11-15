@@ -52,9 +52,10 @@ object WidgetAnsicht {
 
     fun zeigen(context: Context, ergebnis: Ergebnis, ids: IntArray) {
         val awm = AppWidgetManager.getInstance(context)
+        val mitHinweis = ergebnis.copy(updateHinweis = updateHinweis(context))
         for (id in ids) {
             try {
-                awm.updateAppWidget(id, fuerWidget(context, ergebnis, awm.getAppWidgetOptions(id)))
+                awm.updateAppWidget(id, fuerWidget(context, mitHinweis, awm.getAppWidgetOptions(id)))
             } catch (e: RuntimeException) {
                 Log.w(LOG, "Widget nicht gezeichnet", e)
             }
@@ -125,7 +126,12 @@ object WidgetAnsicht {
         // Flache Widgets (manche Startbildschirme, 4×1½): erst der Titel weg, dann der Stand.
         v.setViewVisibility(R.id.titel, if (hoehe < FLACH_DP) View.GONE else View.VISIBLE)
         v.setViewVisibility(R.id.stand, if (hoehe < SEHR_FLACH_DP) View.GONE else View.VISIBLE)
-        v.setOnClickPendingIntent(android.R.id.background, neuRechnen(context))
+        // Wartet ein Update auf Tobi (Benachrichtigungen hat die App nicht): Der Titel sagt es, Antippen öffnet
+        // die App mit der Karte – die rechnet dabei auch neu. Immer setzen: Der Startbildschirm legt neue
+        // RemoteViews über die alten, ein einmal gesetzter Titel bliebe sonst stehen.
+        val hinweis = ergebnis.updateHinweis && hoehe >= FLACH_DP
+        v.setTextViewText(R.id.titel, context.getString(if (hinweis) R.string.widget_update else R.string.app_name))
+        v.setOnClickPendingIntent(android.R.id.background, if (hinweis) appOeffnen(context) else neuRechnen(context))
         return v
     }
 
@@ -139,12 +145,20 @@ object WidgetAnsicht {
 
     fun einrichten(context: Context): RemoteViews {
         val v = RemoteViews(context.packageName, R.layout.widget_einrichten)
-        val app = Intent(context, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-        v.setOnClickPendingIntent(
-            android.R.id.background,
-            PendingIntent.getActivity(context, 1, app, PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT),
-        )
+        v.setOnClickPendingIntent(android.R.id.background, appOeffnen(context))
         return v
+    }
+
+    private fun appOeffnen(context: Context): PendingIntent {
+        val app = Intent(context, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        return PendingIntent.getActivity(context, 1, app, PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT)
+    }
+
+    /** Fehlt etwas (kein Speicher, kein PackageManager), dann eben kein Hinweis – das Widget zeichnet trotzdem. */
+    private fun updateHinweis(context: Context): Boolean = try {
+        Selbstupdate.widgetHinweis(context)
+    } catch (e: RuntimeException) {
+        false
     }
 
     /** „Stand 21:40“, leise „· ohne Netz“, wenn die Web-Apps aus dem Zwischenspeicher kommen. */

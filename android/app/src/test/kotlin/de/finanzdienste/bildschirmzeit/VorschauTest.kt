@@ -1,5 +1,6 @@
 package de.finanzdienste.bildschirmzeit
 
+import android.content.ComponentName
 import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.view.View
@@ -7,11 +8,13 @@ import android.widget.FrameLayout
 import android.widget.RemoteViews
 import android.widget.TextView
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.RuntimeEnvironment
+import org.robolectric.Shadows.shadowOf
 import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
 import java.io.File
@@ -86,6 +89,36 @@ class VorschauTest {
 
     @Test
     fun einrichtenHell() = speichern("einrichten-hell", WidgetAnsicht.einrichten(kontext), 352f, 176f, nacht = false)
+
+    @Test
+    fun updateHell() = speichern("update-hell", WidgetAnsicht.gross(kontext, beispiel().copy(updateHinweis = true), 352f, 176f), 352f, 176f, nacht = false)
+
+    /**
+     * Wartet ein Update auf Tobi, steht statt „Bildschirmzeit“ „Update:
+     * antippen“ oben – ganz, auch bei 3×2 – und Antippen öffnet die App. Ist das
+     * Widget so flach, dass der Titel wegfällt, bleibt Antippen beim Rechnen.
+     */
+    @Test
+    fun updateHinweisImTitel() {
+        for ((breite, hoehe) in listOf(400f to 201f, 352f to 176f, 300f to 176f, 264f to 176f, 352f to 150f)) {
+            val wo = "$breite × $hoehe dp"
+            val view = aufgebaut(WidgetAnsicht.gross(kontext, beispiel().copy(updateHinweis = true), breite, hoehe), breite, hoehe)
+            val titel = view.findViewById<TextView>(R.id.titel)
+            assertEquals(wo, View.VISIBLE, titel.visibility)
+            assertEquals(wo, "Update: antippen", titel.text.toString())
+            assertEquals(wo, 0, titel.layout.getEllipsisCount(0))
+            assertEquals(wo, "Stand 21:40", view.findViewById<TextView>(R.id.stand).text.toString().takeLast(11))
+            view.findViewById<View>(android.R.id.background).performClick()
+            assertEquals(wo, ComponentName(kontext, MainActivity::class.java), shadowOf(kontext).nextStartedActivity?.component)
+        }
+        val flach = aufgebaut(WidgetAnsicht.gross(kontext, beispiel().copy(updateHinweis = true), 352f, 130f), 352f, 130f)
+        assertEquals(View.GONE, flach.findViewById<View>(R.id.titel).visibility)
+        flach.findViewById<View>(android.R.id.background).performClick()
+        assertNull(shadowOf(kontext).nextStartedActivity)
+        // Ohne Hinweis: „Bildschirmzeit“.
+        val ohne = aufgebaut(WidgetAnsicht.gross(kontext, beispiel(), 352f, 176f), 352f, 176f)
+        assertEquals("Bildschirmzeit", ohne.findViewById<TextView>(R.id.titel).text.toString())
+    }
 
     @Test
     fun schmalBleibenDieNamenGanz() {

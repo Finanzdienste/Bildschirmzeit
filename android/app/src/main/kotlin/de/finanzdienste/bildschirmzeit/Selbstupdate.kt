@@ -77,6 +77,8 @@ data class UpdateLage(
     val laeuft: Boolean,
     val fehler: UpdateFehler?,
     val fehlerStatus: Int,
+    /** Fehlschläge hintereinander (für den Hinweis im Widget). */
+    val fehlversuche: Int = 0,
     val erfolg: Int,
     val erfolgUm: Long,
     val geprueft: Long,
@@ -102,6 +104,15 @@ object UpdateRegeln {
 
     /** Hier hilft Warten nicht – erst ein neues Release (oder Tobis Knopf). */
     private val ENDGUELTIG = setOf(UpdateFehler.FALSCHE_DATEI, UpdateFehler.KONFLIKT, UpdateFehler.INKOMPATIBEL)
+
+    /**
+     * Hier kommt das Update ohne Tobi nicht an: Rückfrage, abgebrochen, blockiert – und das Endgültige.
+     * (Fehlt die Erlaubnis, sagt es `darf`; ein altes „nicht erlaubt“ bei erteilter Erlaubnis holt der Hintergrund nach.)
+     */
+    private val BRAUCHT_TOBI = ENDGUELTIG + setOf(UpdateFehler.BESTAETIGEN, UpdateFehler.ABGEBROCHEN, UpdateFehler.BLOCKIERT)
+
+    /** So oft hintereinander gescheitert (auch an etwas, das Warten sonst behebt): dann doch Bescheid sagen. */
+    const val HINWEIS_NACH_FEHLVERSUCHEN = 3
 
     fun githubFaellig(geprueft: Long, jetzt: Long, abstand: Long): Boolean = Takt.seit(geprueft, jetzt) >= abstand
 
@@ -161,6 +172,20 @@ object UpdateRegeln {
     private const val EINRICHTEN_TEXT = "Neue Versionen kommen von selbst, wenn Bildschirmzeit Apps installieren darf – " +
         "sie installiert damit nur sich selbst, aus den Releases auf GitHub. Einmal: „Automatische Updates einrichten“ → " +
         "Schalter „Diese Quelle zulassen“ ein → zurück."
+
+    /**
+     * Soll das Widget „Update: antippen“ zeigen? Benachrichtigungen hat die App
+     * nicht, und wer die App nie öffnet, sieht die Karte nicht. Nur, wenn eine
+     * neuere Fassung da ist, die ohne Tobi nicht ankommt: nicht eingerichtet,
+     * keine Prüfsumme bei GitHub, unter Android 12, ein Fehler, den Warten nicht
+     * behebt, oder drei Fehlschläge hintereinander. Nicht, solange installiert
+     * wird, und nicht, solange der Hintergrund es noch von selbst schafft.
+     */
+    fun widgetHinweis(l: UpdateLage): Boolean {
+        val neu = l.freigabe?.takeIf { neuer(it, l.eigene) } ?: return false
+        if (l.laeuft) return false
+        return !l.darf || !neu.installierbar || !l.still || l.fehler in BRAUCHT_TOBI || l.fehlversuche >= HINWEIS_NACH_FEHLVERSUCHEN
+    }
 
     /** Die Update-Karte der App. */
     fun anzeige(l: UpdateLage): UpdateAnzeige {
@@ -276,20 +301,33 @@ object Selbstupdate {
 
     fun lage(context: Context, jetzt: Long = System.currentTimeMillis()): UpdateLage {
         val s = UpdateSpeicher(context)
-        return UpdateLage(
-            eigene = BuildConfig.VERSION_CODE,
-            eigeneName = BuildConfig.VERSION_NAME,
-            freigabe = s.freigabe,
-            darf = darf(context),
-            still = Build.VERSION.SDK_INT >= 31,
-            laeuft = laeuftGerade(context, s, jetzt),
-            fehler = s.fehler,
-            fehlerStatus = s.fehlerStatus,
-            erfolg = s.erfolg,
-            erfolgUm = s.erfolgUm,
-            geprueft = s.geprueft,
-            jetzt = jetzt,
-        )
+        return lageAus(context, s, jetzt, laeuftGerade(context, s, jetzt))
+    }
+
+    private fun lageAus(context: Context, s: UpdateSpeicher, jetzt: Long, installiertGerade: Boolean) = UpdateLage(
+        eigene = BuildConfig.VERSION_CODE,
+        eigeneName = BuildConfig.VERSION_NAME,
+        freigabe = s.freigabe,
+        darf = darf(context),
+        still = Build.VERSION.SDK_INT >= 31,
+        laeuft = installiertGerade,
+        fehler = s.fehler,
+        fehlerStatus = s.fehlerStatus,
+        fehlversuche = s.fehlversuche,
+        erfolg = s.erfolg,
+        erfolgUm = s.erfolgUm,
+        geprueft = s.geprueft,
+        jetzt = jetzt,
+    )
+
+    /**
+     * Fürs Widget (bei jedem Zeichnen): wartet ein Update auf Tobi? Nur lesen –
+     * hier wird keine Sitzung verworfen und nichts gefragt.
+     */
+    fun widgetHinweis(context: Context, jetzt: Long = System.currentTimeMillis()): Boolean {
+        val s = UpdateSpeicher(context)
+        if (!UpdateRegeln.neuer(s.freigabe, BuildConfig.VERSION_CODE)) return false
+        return UpdateRegeln.widgetHinweis(lageAus(context, s, jetzt, installiertGerade = laeuft.get() || s.sitzung >= 0))
     }
 
     /** Beim Öffnen der App: GitHub höchstens alle 10 Minuten. */
@@ -357,8 +395,9 @@ object Selbstupdate {
             null
         }
         if (info != null && Takt.seit(s.sitzungSeit, jetzt) <= UpdateRegeln.SITZUNG_MS) return true
-        if (info != null) verwerfen(context, id)
+        // Erst vergessen, dann verwerfen: Androids „abgebrochen“ zu dieser Sitzung zählt dann nicht.
         s.sitzungVergessen()
+        if (info != null) verwerfen(context, id)
         return false
     }
 
@@ -374,8 +413,8 @@ object Selbstupdate {
                 s.fehlerMerken(fehler, 0, jetzt)
                 return
             }
-            val id = try {
-                sitzungStarten(context, datei, vordergrund)
+            try {
+                sitzungStarten(context, s, datei, f.laufnummer, vordergrund, jetzt)
             } catch (e: IOException) {
                 s.fehlerMerken(UpdateFehler.SPEICHER, 0, jetzt)
                 return
@@ -383,7 +422,6 @@ object Selbstupdate {
                 s.fehlerMerken(UpdateFehler.NICHT_ERLAUBT, 0, jetzt)
                 return
             }
-            s.sitzungMerken(id, jetzt, f.laufnummer)
             Log.i(LOG, "Update auf 1.${f.laufnummer} gestartet")
         } finally {
             laeuft.set(false)
@@ -437,11 +475,17 @@ object Selbstupdate {
             if (Build.VERSION.SDK_INT >= 31) setRequireUserAction(PackageInstaller.SessionParams.USER_ACTION_NOT_REQUIRED)
         }
 
-    private fun sitzungStarten(context: Context, datei: File, vordergrund: Boolean): Int {
+    /**
+     * Die Sitzung wird gleich nach createSession gemerkt, vor commit: Androids
+     * Antwort (Rückfrage, blockiert …) kann kommen, bevor commit zurückkehrt,
+     * und statusErhalten nimmt nur Meldungen zur gemerkten Sitzung an.
+     */
+    private fun sitzungStarten(context: Context, s: UpdateSpeicher, datei: File, ziel: Int, vordergrund: Boolean, jetzt: Long) {
         val installer = context.packageManager.packageInstaller
-        // Reste früherer Versuche (Prozess beendet, bevor die Sitzung fertig war).
+        // Reste früherer Versuche (Prozess beendet, bevor die Sitzung fertig war). Ihr „abgebrochen“ zählt nicht (andere Nummer).
         for (alt in installer.mySessions) if (alt.appPackageName == context.packageName) verwerfen(context, alt.sessionId)
         val id = installer.createSession(sitzungsParameter(context.packageName))
+        s.sitzungMerken(id, jetzt, ziel)
         try {
             installer.openSession(id).use { sitzung ->
                 sitzung.openWrite("bildschirmzeit.apk", 0, datei.length()).use { aus ->
@@ -451,13 +495,14 @@ object Selbstupdate {
                 sitzung.commit(statusAbsender(context, id, vordergrund).intentSender)
             }
         } catch (e: IOException) {
+            s.sitzungVergessen()
             verwerfen(context, id)
             throw e
         } catch (e: RuntimeException) {
+            s.sitzungVergessen()
             verwerfen(context, id)
             throw e
         }
-        return id
     }
 
     /**
@@ -480,8 +525,11 @@ object Selbstupdate {
         val id = intent.getIntExtra(PackageInstaller.EXTRA_SESSION_ID, -1)
         val status = intent.getIntExtra(PackageInstaller.EXTRA_STATUS, PackageInstaller.STATUS_FAILURE)
         Log.i(LOG, "Update: Status $status")
-        // Eine Meldung zu einer Sitzung, die nicht (mehr) die laufende ist: nur ein Erfolg zählt.
-        if (status != PackageInstaller.STATUS_SUCCESS && s.sitzung >= 0 && id != s.sitzung) return
+        // Nur die gemerkte Sitzung zählt (sonst nur ein Erfolg). Verwirft die App eine Sitzung selbst
+        // (Rückfrage im Hintergrund, zu alt, Reste), schickt Android dazu noch „abgebrochen“
+        // (AOSP PackageInstallerSession.abandon → dispatchSessionFinished(INSTALL_FAILED_ABORTED)) –
+        // sie ist dann schon vergessen, und die Meldung überschreibt nicht den wahren Grund.
+        if (status != PackageInstaller.STATUS_SUCCESS && (id < 0 || id != s.sitzung)) return
         when (status) {
             PackageInstaller.STATUS_SUCCESS -> {
                 s.erfolgMerken(s.ziel.takeIf { it > 0 } ?: BuildConfig.VERSION_CODE, jetzt)
@@ -493,8 +541,8 @@ object Selbstupdate {
                 val vorn = intent.getBooleanExtra(UpdateStatus.VORDERGRUND, false)
                 val gezeigt = vorn && rueckfrage != null && beobachter?.bestaetigen(rueckfrage) == true
                 if (!gezeigt) {
-                    verwerfen(context, id)
                     s.sitzungVergessen()
+                    verwerfen(context, id)
                     s.fehlerMerken(UpdateFehler.BESTAETIGEN, status, jetzt)
                 }
             }
