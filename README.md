@@ -56,9 +56,11 @@ Einmal, alles am Handy:
    die Seite „Zugriff auf Nutzungsdaten“ der App (auf dem S24 so gesehen) →
    Schalter ein → zurück. Ist der Schalter grau („Gesteuert durch
    eingeschränkte Einstellung“ – so bei einer APK aus Chrome):
-   1. Trotzdem auf „Berechtigung erteilen“ tippen, den Hinweis „Eingeschränkte
-      Einstellung“ mit „OK“ schließen. Erst danach hat die App-Info oben
-      rechts ⋮ – vorher fehlt es ganz (Tobis Screenshot vom 15.11.).
+   1. Trotzdem auf „Berechtigung erteilen“ tippen. Auf dem S24 (One UI 8) kommt
+      „App wurde Zugriff verweigert … Informationen dazu, wie du den Zugriff
+      erlaubst“ → „Schließen“ (auf anderen Geräten „Eingeschränkte
+      Einstellung“ → „OK“). Erst danach hat die App-Info oben rechts ⋮ –
+      vorher fehlt es ganz (Tobis Screenshots vom 15.11.).
    2. Die App-Info frisch öffnen: Einstellungen → Apps → Bildschirmzeit (oder
       in der App „App-Info öffnen“) → oben rechts ⋮ → „Eingeschränkte
       Einstellungen zulassen“ → mit PIN oder Fingerabdruck bestätigen.
