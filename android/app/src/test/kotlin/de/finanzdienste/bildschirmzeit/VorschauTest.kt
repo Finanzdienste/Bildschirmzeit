@@ -105,6 +105,43 @@ class VorschauTest {
         assertEquals(0, breit.findViewById<TextView>(R.id.name2).layout.getEllipsisCount(0))
     }
 
+    /**
+     * Tobi, 15.11. (Widget: Claude, Boxenstopp, Chrome, 36 Min.): „Hab ich
+     * wirklich nur diese drei Apps heute verwendet?“ – der graue Rest des Rings
+     * steht als vierte Zeile „Andere Apps“ da; ist das Widget zu flach, vorn im
+     * Stand. Die Spalte muss dabei ganz ins Widget passen.
+     */
+    @Test
+    fun andereAppsAlsVierteZeile() {
+        // Rest von beispiel(): Chrome 26 + Karten 21 + Freizeit 14 + Kamera 8 = 69 Min.
+        // 352 × 176: S24, 4×5-Raster (Annahme); 400 × 201: Tobis Widget, aus seinem Screenshot gemessen;
+        // 352 × 172: gerade noch vier Zeilen.
+        for ((breite, hoehe) in listOf(352f to 176f, 400f to 201f, 300f to 176f, 264f to 176f, 352f to 172f)) {
+            val view = aufgebaut(WidgetAnsicht.gross(kontext, beispiel(), breite, hoehe), breite, hoehe)
+            val wo = "$breite × $hoehe dp"
+            assertEquals(wo, View.VISIBLE, view.findViewById<View>(R.id.zeile4).visibility)
+            assertEquals(wo, if (breite < 290f) "Andere" else "Andere Apps", view.findViewById<TextView>(R.id.name4).text.toString())
+            assertEquals(wo, "1:09 Std.", view.findViewById<TextView>(R.id.zeit4).text.toString())
+            assertEquals(wo, 0, view.findViewById<TextView>(R.id.name4).layout.getEllipsisCount(0))
+            val stand = view.findViewById<TextView>(R.id.stand)
+            assertEquals(wo, "Stand 21:40", stand.text.toString())
+            standGanz(stand, wo)
+        }
+        // Zu flach für vier Zeilen: der Rest vorn im Stand – und der Stand ganz zu sehen.
+        for (hoehe in listOf(171f, 150f, 130f)) {
+            val flach = aufgebaut(WidgetAnsicht.gross(kontext, beispiel(), 352f, hoehe), 352f, hoehe)
+            assertEquals("352 × $hoehe", View.GONE, flach.findViewById<View>(R.id.zeile4).visibility)
+            val stand = flach.findViewById<TextView>(R.id.stand)
+            assertEquals("352 × $hoehe", "1:09 Std. andere · Stand 21:40", stand.text.toString())
+            standGanz(stand, "352 × $hoehe")
+        }
+        // Nur drei Apps: keine vierte Zeile, kein Zusatz.
+        val drei = beispiel().let { it.copy(posten = it.posten.take(3)) }
+        val nurDrei = aufgebaut(WidgetAnsicht.gross(kontext, drei, 352f, 176f), 352f, 176f)
+        assertEquals(View.GONE, nurDrei.findViewById<View>(R.id.zeile4).visibility)
+        assertEquals("Stand 21:40", nurDrei.findViewById<TextView>(R.id.stand).text.toString())
+    }
+
     @Test
     fun auswahlBilder() {
         // Für res/drawable-nodpi/widget_vorschau.png (und -night-): ohne Hintergrund.
@@ -131,6 +168,13 @@ class VorschauTest {
         val datei = File(ordner, "vorschau-$name.png")
         datei.outputStream().use { bild.compress(Bitmap.CompressFormat.PNG, 100, it) }
         assertTrue(datei.length() > 1000)
+    }
+
+    /** Die letzte Zeile der Spalte liegt ganz im Widget – sonst schnitte der Startbildschirm den Stand ab. */
+    private fun standGanz(stand: TextView, wo: String) {
+        val spalte = stand.parent as View
+        assertTrue("$wo: Stand abgeschnitten (unten ${stand.bottom} > ${spalte.height} px)", stand.bottom <= spalte.height)
+        assertTrue("$wo: Spalte höher als das Widget", spalte.top >= 0 && spalte.bottom <= (spalte.parent as View).height)
     }
 
     /** Die RemoteViews als echte Views, gemessen und gelegt in breite × hoehe dp. */

@@ -3,6 +3,8 @@
     <string name="app_name">Bildschirmzeit</string>
     <string name="widget_beschreibung">Heutige Bildschirmzeit mit Boxenstopp, Freizeit und Workout als eigene Apps</string>
     <string name="widget_einrichten">Tippen zum Einrichten</string>
+    <string name="widget_andere">Andere Apps</string>
+    <string name="widget_andere_kurz">Andere</string>
     <string name="widget_leer">Heute noch nichts</string>
 
     <string name="kopf_titel">Bildschirmzeit</string>

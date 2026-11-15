@@ -8,7 +8,7 @@
 > wie bisher.“ – Tobi
 
 Eine kleine Android-App mit Widget: Ring mit der Bildschirmzeit von heute,
-daneben die Top 3 – und Boxenstopp, Freizeit und Workout stehen dort unter
+daneben die Top 3 und „Andere Apps“ – und Boxenstopp, Freizeit und Workout stehen dort unter
 eigenem Namen und mit eigenem Symbol statt als „Chrome“.
 
 ![Widget 4×2, hell](docs/vorschau-gross-hell.png)
@@ -30,6 +30,16 @@ ganz bleiben),
   (Risiko ist erklärt, unten „Signaturschlüssel“).
 - Der Ring zeigt die Anteile der Apps: voller Ring = Gesamtzeit heute, Top 3
   farbig (blau, grün, orange), der Rest grau.
+- „Hab ich wirklich nur diese drei Apps heute verwendet?“ (15.11., Widget mit
+  Claude 16, Boxenstopp 6, Chrome 5 von 36 Min.) – seit Release v5 steht der
+  graue Rest als vierte Zeile „Andere Apps“ da (unter 290 dp Breite „Andere“).
+  Vorher: nur die Top 3, der Rest war nur grau im Ring. Ist das Widget flacher
+  als 172 dp, steht er vorn im Stand („1:09 Std. andere · Stand 21:40“); ganz
+  flach (unter 125 dp) fällt der Stand samt Rest weg. Dafür sind die Abstände
+  der Zeilen etwas enger (5 statt 7 dp). Geprüft in VorschauTest
+  `andereAppsAlsVierteZeile` (auch, dass der Stand nie abgeschnitten wird –
+  bei 352 × 176 dp war er es im ersten Versuch). Tobis Widget meldet laut
+  Screenshot etwa 400 × 201 dp.
 - Verbunden wird aus der Widget-App (je App ein Knopf „Verbinden“); die
   Web-Apps zeigen nur „verbunden · Trennen“.
 
@@ -315,7 +325,10 @@ spricht mit dem echten Supabase oder GitHub (`Netz.gesperrt`).
   noch; Verdacht: die Automatische Sperre, die laut Schritt 3 nach der
   Installation wieder an war. Seit Release v3 nennt der Hinweis das, dazu den
   Weg über Einstellungen → Apps (ob die App-Info, aus der App geöffnet, das
-  Menü zeigt, ist bei Samsung nicht sicher). Noch offen, ob es so geht.
+  Menü zeigt, ist bei Samsung nicht sicher). Um 08:39 kam beim Antippen
+  „App wurde Zugriff verweigert“ → „Schließen“, um 08:40 zeigte das Widget
+  Zahlen (36 Min.) – die Freigabe ging also. Ob die Automatische Sperre
+  dabei aus sein musste, ist nicht bekannt.
 - Noch nicht auf dem S24 ausprobiert: Größen des Startbildschirms, Akku-
   Verhalten von One UI, ob Chrome den Verbinden-Link in der installierten
   Web-App oder als Tab öffnet (beides teilt sich den Speicher).

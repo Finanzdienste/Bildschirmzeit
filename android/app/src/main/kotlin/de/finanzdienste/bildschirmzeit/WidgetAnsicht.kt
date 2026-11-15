@@ -20,8 +20,10 @@ import androidx.core.os.BundleCompat
 import kotlin.math.roundToInt
 
 /**
- * Zeichnet das Widget: Ring mit Gesamtzeit, daneben „Bildschirmzeit“ und die
- * Top 3, unten der Stand. Unter GROSS_AB_DP Breite (2×2) nur der Ring, unter
+ * Zeichnet das Widget: Ring mit Gesamtzeit, daneben „Bildschirmzeit“, die
+ * Top 3 und „Andere Apps“ (alle übrigen zusammen, der graue Teil des Rings),
+ * unten der Stand. Ist das Widget zu flach für die vierte Zeile, steht der
+ * Rest vorn im Stand („9 Min. andere · Stand 08:40“). Unter GROSS_AB_DP Breite (2×2) nur der Ring, unter
  * SCHMAL_DP (3×2) ein kleinerer Ring und Zeilen ohne App-Symbol – sonst
  * blieben bei langen Zeiten von den Namen nur „Worko…“.
  *
@@ -38,6 +40,9 @@ object WidgetAnsicht {
     private const val SYMBOL_DP = 20f
     private const val FLACH_DP = 150f
     private const val SEHR_FLACH_DP = 125f
+    // Titel, vier Zeilen und Stand brauchen gut 144 dp plus den Rand (VorschauTest prüft es).
+    private const val VIER_ZEILEN_DP = 172f
+    private const val SEHR_SCHMAL_DP = 290f
 
     private val ZEILEN = intArrayOf(R.id.zeile1, R.id.zeile2, R.id.zeile3)
     private val PUNKTE = intArrayOf(R.id.punkt1, R.id.punkt2, R.id.punkt3)
@@ -106,7 +111,17 @@ object WidgetAnsicht {
             v.setTextViewText(ZEITEN[i], kurzText(p.sekunden))
         }
         v.setViewVisibility(R.id.leer, if (top.isEmpty()) View.VISIBLE else View.GONE)
-        v.setTextViewText(R.id.stand, standText(ergebnis))
+        // Tobi, 15.11.: „Hab ich wirklich nur diese drei Apps heute verwendet?“ – der graue Rest bekommt eine Zeile.
+        val rest = ergebnis.posten.drop(3).sumOf { it.sekunden }
+        val restZeile = rest > 0 && hoehe >= VIER_ZEILEN_DP
+        v.setViewVisibility(R.id.zeile4, if (restZeile) View.VISIBLE else View.GONE)
+        if (restZeile) {
+            farbeSetzen(v, R.id.punkt4, RingFarben.HELL.rest, RingFarben.DUNKEL.rest, context)
+            v.setTextViewText(R.id.zeit4, kurzText(rest))
+            // Sehr schmal (3×2 auf engen Rastern): „Andere“ statt „Andere A…“.
+            v.setTextViewText(R.id.name4, context.getString(if (breite < SEHR_SCHMAL_DP) R.string.widget_andere_kurz else R.string.widget_andere))
+        }
+        v.setTextViewText(R.id.stand, if (rest > 0 && !restZeile) "${kurzText(rest)} andere · ${standText(ergebnis)}" else standText(ergebnis))
         // Flache Widgets (manche Startbildschirme, 4×1½): erst der Titel weg, dann der Stand.
         v.setViewVisibility(R.id.titel, if (hoehe < FLACH_DP) View.GONE else View.VISIBLE)
         v.setViewVisibility(R.id.stand, if (hoehe < SEHR_FLACH_DP) View.GONE else View.VISIBLE)

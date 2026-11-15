@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Widget ab 3×2: Ring links, rechts „Bildschirmzeit“, Top 3 und Stand. Gefüllt von WidgetAnsicht.kt. -->
+<!-- Widget ab 3×2: Ring links, rechts „Bildschirmzeit“, Top 3, „Andere Apps“ (der graue Rest) und Stand. Gefüllt von WidgetAnsicht.kt. -->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:id="@android:id/background"
     android:layout_width="match_parent"
@@ -61,7 +61,7 @@
             android:id="@+id/zeile1"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="9dp"
+            android:layout_marginTop="8dp"
             android:gravity="center_vertical"
             android:orientation="horizontal">
 
@@ -105,7 +105,7 @@
             android:id="@+id/zeile2"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="7dp"
+            android:layout_marginTop="5dp"
             android:gravity="center_vertical"
             android:orientation="horizontal">
 
@@ -149,7 +149,7 @@
             android:id="@+id/zeile3"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="7dp"
+            android:layout_marginTop="5dp"
             android:gravity="center_vertical"
             android:orientation="horizontal">
 
@@ -189,6 +189,45 @@
                 android:textSize="13sp" />
         </LinearLayout>
 
+        <!-- Alle übrigen Apps zusammen: der graue Teil des Rings. Ohne Symbol – so bleibt „Andere Apps“ auch bei 4×2 mit langen Zeiten ganz. -->
+        <LinearLayout
+            android:id="@+id/zeile4"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="5dp"
+            android:gravity="center_vertical"
+            android:orientation="horizontal"
+            android:visibility="gone">
+
+            <ImageView
+                android:id="@+id/punkt4"
+                android:layout_width="8dp"
+                android:layout_height="8dp"
+                android:importantForAccessibility="no"
+                android:src="@drawable/punkt" />
+
+            <TextView
+                android:id="@+id/name4"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="8dp"
+                android:layout_weight="1"
+                android:ellipsize="end"
+                android:maxLines="1"
+                android:text="@string/widget_andere"
+                android:textColor="@color/widget_text_leise"
+                android:textSize="13sp" />
+
+            <TextView
+                android:id="@+id/zeit4"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="6dp"
+                android:maxLines="1"
+                android:textColor="@color/widget_text_leise"
+                android:textSize="13sp" />
+        </LinearLayout>
+
         <TextView
             android:id="@+id/leer"
             android:layout_width="match_parent"
@@ -203,7 +242,7 @@
             android:id="@+id/stand"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="9dp"
+            android:layout_marginTop="7dp"
             android:maxLines="1"
             android:textColor="@color/widget_text_leise"
             android:textSize="11sp" />
