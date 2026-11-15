@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<resources xmlns:tools="http://schemas.android.com/tools">
+<resources>
     <string name="app_name">Bildschirmzeit</string>
     <string name="widget_beschreibung">Heutige Bildschirmzeit mit Boxenstopp, Freizeit und Workout als eigene Apps</string>
     <string name="widget_einrichten">Tippen zum Einrichten</string>
@@ -25,7 +25,7 @@
 
     <string name="schritt3_titel">3  Widget hinzufügen</string>
     <string name="schritt3_fertig">3  Widget ✓</string>
-    <string name="schritt3_text">Ring mit der Zeit von heute und deinen Top 3. Es rechnet etwa alle 15 Minuten neu, Antippen rechnet sofort.</string>
+    <string name="schritt3_text">Ring mit der Zeit von heute und deinen Top 3. Es bleibt von selbst aktuell, solange du das Handy benutzt (alle 2 Minuten und gleich nach dem Einschalten); Antippen rechnet sofort.</string>
     <string name="schritt3_text_fertig">Das Widget ist auf dem Startbildschirm. Antippen rechnet sofort neu.</string>
     <string name="schritt3_knopf">Widget hinzufügen</string>
     <string name="schritt3_anleitung">So geht es von Hand: Startbildschirm lange gedrückt halten → „Widgets“ → „Bildschirmzeit“ → antippen → „Hinzufügen“.</string>
@@ -34,9 +34,8 @@
     <string name="heute_ohne_erlaubnis">Erst Schritt 1 – dann steht hier jede App von heute.</string>
     <string name="heute_leer">Heute noch nichts.</string>
 
-    <string name="update_titel">Neue Version verfügbar</string>
-    <string name="update_text" tools:ignore="PluralsCandidate">Version 1.%1$d ist da (du hast %2$s). Herunterladen, dann die Datei öffnen und „Aktualisieren“ – deine Einstellungen bleiben.</string>
-    <string name="update_knopf">Herunterladen</string>
+    <!-- Die Texte der Update-Karte stehen in UpdateRegeln.anzeige (Selbstupdate.kt), getestet in UpdateRegelnTest. -->
+    <string name="update_titel">Automatische Updates</string>
 
     <string name="loeschen">Alle Daten löschen</string>
     <string name="loeschen_titel">Alle Daten löschen?</string>

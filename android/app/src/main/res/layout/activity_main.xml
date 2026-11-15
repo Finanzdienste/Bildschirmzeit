@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Der App-Bildschirm: Kopf mit Ring, drei Schritte, die Liste von heute, unten Update und Löschen. -->
+<!-- Der App-Bildschirm: Kopf mit Ring, drei Schritte, die Liste von heute, unten automatische Updates und Löschen. -->
 <ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
     android:id="@+id/wurzel"
     android:layout_width="match_parent"
@@ -159,6 +159,7 @@
             android:visibility="gone">
 
             <TextView
+                android:id="@+id/update_titel"
                 style="@style/Ueberschrift"
                 android:text="@string/update_titel" />
 
@@ -169,7 +170,7 @@
             <Button
                 android:id="@+id/update_knopf"
                 style="@style/Knopf"
-                android:text="@string/update_knopf" />
+                android:visibility="gone" />
         </LinearLayout>
 
         <Button

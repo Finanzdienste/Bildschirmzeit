@@ -75,12 +75,37 @@ class AppVorschauTest {
         ),
     )
 
+    /**
+     * Die Update-Karte: hell, wie Tobi sie nach dem Installieren dieser Fassung
+     * sieht (neue Version da, noch nicht eingerichtet); dunkel eingerichtet und
+     * aktuell. Feste Zahlen statt BuildConfig – wie die Version unten.
+     */
+    private fun update(eingerichtet: Boolean, neu: Boolean = !eingerichtet) = UpdateLage(
+        eigene = 22,
+        eigeneName = VORSCHAU_VERSION,
+        freigabe = Freigabe(
+            if (neu) 23 else 22,
+            "https://github.com/Finanzdienste/Bildschirmzeit/releases/download/v23/bildschirmzeit.apk",
+            "0".repeat(64),
+            774_584,
+        ),
+        darf = eingerichtet,
+        still = true,
+        laeuft = false,
+        fehler = null,
+        fehlerStatus = 0,
+        erfolg = if (eingerichtet) 22 else 0,
+        erfolgUm = stand - 5 * 3_600_000L,
+        geprueft = stand - 17 * 60_000L,
+        jetzt = stand,
+    )
+
     @Test
-    fun appHell() = aufnehmen("app-hell", 0xFFF2F3F6.toInt())
+    fun appHell() = aufnehmen("app-hell", 0xFFF2F3F6.toInt(), update = update(eingerichtet = false))
 
     @Test
     @Config(qualifiers = "+night")
-    fun appDunkel() = aufnehmen("app-dunkel", 0xFF111215.toInt())
+    fun appDunkel() = aufnehmen("app-dunkel", 0xFF111215.toInt(), update = update(eingerichtet = true))
 
     /**
      * Tobis S24 (15.11.): Der Schalter war grau, „Gesteuert durch eingeschränkte
@@ -114,7 +139,7 @@ class AppVorschauTest {
     }
 
     @Test
-    fun appEinrichtenHell() = aufnehmen("app-einrichten-hell", 0xFFF2F3F6.toInt(), ohneErlaubnis())
+    fun appEinrichtenHell() = aufnehmen("app-einrichten-hell", 0xFFF2F3F6.toInt(), ohneErlaubnis(), update(eingerichtet = false, neu = false))
 
     private fun ohneErlaubnis() = beispiel().copy(erlaubt = false, posten = emptyList(), web = WebDaten.LEER)
 
@@ -194,14 +219,14 @@ class AppVorschauTest {
         }
     }
 
-    private fun aufnehmen(name: String, hintergrund: Int, ergebnis: Ergebnis = beispiel()) {
+    private fun aufnehmen(name: String, hintergrund: Int, ergebnis: Ergebnis = beispiel(), update: UpdateLage) {
         val aktivitaet = Robolectric.buildActivity(MainActivity::class.java).setup().get()
         warten()
         aktivitaet.zeigen(ergebnis)
         // Feste Version statt BuildConfig (lokal 1.1, in Actions 1.<Laufnummer>):
         // Sonst änderte jeder Bau die Bilder in docs/, ohne dass sich etwas geändert hat.
         aktivitaet.versionZeigen(VORSCHAU_VERSION)
-        aktivitaet.updateZeigen(23, VORSCHAU_VERSION)
+        aktivitaet.updateZeigen(UpdateRegeln.anzeige(update))
         shadowOf(Looper.getMainLooper()).idle()
 
         val inhalt = (aktivitaet.findViewById<ViewGroup>(R.id.wurzel)).getChildAt(0)

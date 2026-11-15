@@ -6,6 +6,7 @@ import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.os.Bundle
+import android.os.PowerManager
 import android.util.Log
 import androidx.work.ExistingPeriodicWorkPolicy
 import androidx.work.PeriodicWorkRequest
@@ -16,39 +17,53 @@ import java.util.concurrent.TimeUnit
 import java.util.concurrent.locks.ReentrantLock
 
 /**
- * Wann das Widget neu gerechnet wird: alle 15 Minuten (WorkManager, auch nach
- * einem Neustart), beim Antippen, beim Hinzufügen, wenn der Startbildschirm
+ * Wann das Widget neu gerechnet wird: der nicht weckende Wecker (alle 2
+ * Minuten, solange das Handy benutzt wird, und gleich nach dem Einschalten –
+ * Takt.kt), WorkManager alle 15 Minuten (auch nach einem Neustart; prüft dabei
+ * auch auf Updates), beim Antippen, beim Hinzufügen, wenn der Startbildschirm
  * die Größe ändert und wenn die App offen ist. Nie zwei Rechnungen zugleich.
  */
 object Aktualisierung {
     private const val ARBEIT = "widget-aktualisieren"
     private val sperre = ReentrantLock()
 
-    /** Alle 15 Minuten; KEEP: Ist schon geplant, bleibt es dabei. */
+    /** WorkManager alle 15 Minuten (KEEP: Ist schon geplant, bleibt es dabei) und, wenn es ein Widget gibt, der Wecker. */
     fun einplanen(context: Context) {
         val anfrage = PeriodicWorkRequest.Builder(WidgetArbeit::class.java, 15, TimeUnit.MINUTES).build()
         WorkManager.getInstance(context).enqueueUniquePeriodicWork(ARBEIT, ExistingPeriodicWorkPolicy.KEEP, anfrage)
+        if (widgetIds(context).isNotEmpty()) Wecker.einplanen(context) else Wecker.abbestellen(context)
     }
 
     fun abbestellen(context: Context) {
         WorkManager.getInstance(context).cancelUniqueWork(ARBEIT)
+        Wecker.abbestellen(context)
     }
 
     fun widgetIds(context: Context): IntArray =
         AppWidgetManager.getInstance(context).getAppWidgetIds(ComponentName(context, BildschirmzeitWidget::class.java))
 
     /**
-     * Für Antippen und WorkManager. `schnell`: erst ohne Netz zeichnen (sofort
-     * etwas Neues zu sehen), dann mit. Rechnet gerade schon jemand, bleibt es
-     * bei dessen Ergebnis.
+     * Rechnet die Widgets neu, so oft und mit so viel Netz, wie `Takt.plan` für
+     * den `anlass` sagt. Beim Antippen erst ohne Netz zeichnen (sofort etwas
+     * Neues zu sehen), dann mit. Rechnet gerade schon jemand, bleibt es bei
+     * dessen Ergebnis. true: gerechnet.
      */
-    fun widgetsNeu(context: Context, schnell: Boolean, netz: Boolean = true) {
-        if (!sperre.tryLock()) return
+    fun imTakt(context: Context, anlass: Anlass, jetzt: Long = System.currentTimeMillis()): Boolean {
+        if (!sperre.tryLock()) return false
         try {
             val ids = widgetIds(context)
-            if (ids.isEmpty()) return
-            if (schnell || !netz) WidgetAnsicht.zeigen(context, Rechner.berechnen(context, netz = false), ids)
-            if (netz) WidgetAnsicht.zeigen(context, Rechner.berechnen(context, netz = true), ids)
+            if (ids.isEmpty()) {
+                // Kein Widget mehr: Dann soll auch kein Wecker mehr klingeln.
+                Wecker.abbestellen(context)
+                return false
+            }
+            val speicher = Speicher(context)
+            val plan = Takt.plan(anlass, jetzt, speicher.gerechnet, speicher.netzVersuch, interaktiv(context))
+            if (!plan.rechnen) return false
+            if (anlass == Anlass.TIPPEN) WidgetAnsicht.zeigen(context, Rechner.berechnen(context, netz = false, jetzt = jetzt), ids)
+            WidgetAnsicht.zeigen(context, Rechner.berechnen(context, netz = plan.netz, jetzt = jetzt), ids)
+            speicher.gerechnet = jetzt
+            return true
         } finally {
             sperre.unlock()
         }
@@ -72,23 +87,36 @@ object Aktualisierung {
     fun fuerApp(context: Context): Ergebnis {
         sperre.lock()
         try {
-            val ergebnis = Rechner.berechnen(context, netz = true)
+            val jetzt = System.currentTimeMillis()
+            val ergebnis = Rechner.berechnen(context, netz = true, jetzt = jetzt)
             val ids = widgetIds(context)
-            if (ids.isNotEmpty()) WidgetAnsicht.zeigen(context, ergebnis, ids)
+            if (ids.isNotEmpty()) {
+                WidgetAnsicht.zeigen(context, ergebnis, ids)
+                Speicher(context).gerechnet = jetzt
+            }
             return ergebnis
         } finally {
             sperre.unlock()
         }
     }
+
+    /** Bildschirm an? Ohne PowerManager lieber ja (dann gilt der 5-Minuten-Takt). */
+    private fun interaktiv(context: Context): Boolean =
+        context.getSystemService(PowerManager::class.java)?.isInteractive ?: true
 }
 
-/** Der 15-Minuten-Lauf. */
+/** Der 15-Minuten-Lauf: das Widget, danach (höchstens alle 4 Stunden bei GitHub) das Update. */
 class WidgetArbeit(context: Context, parameter: WorkerParameters) : Worker(context, parameter) {
     override fun doWork(): Result {
         try {
-            Aktualisierung.widgetsNeu(applicationContext, schnell = false)
+            Aktualisierung.imTakt(applicationContext, Anlass.ARBEIT)
         } catch (e: RuntimeException) {
-            Log.w(LOG, "Widget-Lauf fehlgeschlagen", e)
+            Log.w(LOG, "Widget-Lauf fehlgeschlagen: ${e.javaClass.simpleName}")
+        }
+        try {
+            Selbstupdate.imHintergrund(applicationContext)
+        } catch (e: RuntimeException) {
+            Log.w(LOG, "Update-Lauf fehlgeschlagen: ${e.javaClass.simpleName}")
         }
         return Result.success()
     }
@@ -103,19 +131,22 @@ class BildschirmzeitWidget : AppWidgetProvider() {
 
     override fun onReceive(context: Context, intent: Intent) {
         if (intent.action == WidgetAnsicht.AKTUALISIEREN) {
-            imHintergrund { Aktualisierung.widgetsNeu(context.applicationContext, schnell = true) }
+            imHintergrund { Aktualisierung.imTakt(context.applicationContext, Anlass.TIPPEN) }
             return
         }
         super.onReceive(context, intent)
     }
 
     override fun onUpdate(context: Context, appWidgetManager: AppWidgetManager, appWidgetIds: IntArray) {
-        Aktualisierung.einplanen(context)
-        imHintergrund { Aktualisierung.widgetsNeu(context.applicationContext, schnell = true) }
+        val app = context.applicationContext
+        imHintergrund {
+            Aktualisierung.einplanen(app)
+            Aktualisierung.imTakt(app, Anlass.TIPPEN)
+        }
     }
 
     override fun onAppWidgetOptionsChanged(context: Context, appWidgetManager: AppWidgetManager, appWidgetId: Int, newOptions: Bundle) {
-        imHintergrund { Aktualisierung.widgetsNeu(context.applicationContext, schnell = false, netz = false) }
+        imHintergrund { Aktualisierung.imTakt(context.applicationContext, Anlass.GROESSE) }
     }
 
     override fun onEnabled(context: Context) {
@@ -124,18 +155,5 @@ class BildschirmzeitWidget : AppWidgetProvider() {
 
     override fun onDisabled(context: Context) {
         Aktualisierung.abbestellen(context)
-    }
-
-    private fun imHintergrund(arbeit: () -> Unit) {
-        val ausstehend = goAsync()
-        Thread {
-            try {
-                arbeit()
-            } catch (e: RuntimeException) {
-                Log.w(LOG, "Widget nicht aktualisiert", e)
-            } finally {
-                ausstehend.finish()
-            }
-        }.start()
     }
 }

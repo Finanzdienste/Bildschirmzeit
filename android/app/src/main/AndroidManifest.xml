@@ -7,6 +7,13 @@
         android:name="android.permission.PACKAGE_USAGE_STATS"
         tools:ignore="ProtectedPermissions" />
     <uses-permission android:name="android.permission.INTERNET" />
+    <!-- Updates von selbst (Selbstupdate.kt): Die App installiert nur sich selbst, aus den
+         Releases dieses Repos. REQUEST_INSTALL_PACKAGES gibt Tobi einmal frei („Unbekannte Apps
+         installieren“); ohne UPDATE_PACKAGES_WITHOUT_USER_ACTION fragte Android jedes Mal. -->
+    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
+    <uses-permission android:name="android.permission.UPDATE_PACKAGES_WITHOUT_USER_ACTION" />
+    <!-- Nach einem Neustart den Wecker fürs Widget neu stellen (Takt.kt). -->
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
 
     <!-- Statt QUERIES_ALL_PACKAGES: nur Apps mit Eintrag im App-Drawer und Startbildschirme. -->
     <queries>
@@ -53,5 +60,20 @@
                 android:name="android.appwidget.provider"
                 android:resource="@xml/widget_info" />
         </receiver>
+
+        <!-- Wecker (eigener PendingIntent), Neustart und Update – nicht exportiert, das System erreicht ihn trotzdem. -->
+        <receiver
+            android:name=".Hintergrund"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+                <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
+            </intent-filter>
+        </receiver>
+
+        <!-- Status der Installer-Sitzung: nur über den expliziten PendingIntent der App. -->
+        <receiver
+            android:name=".UpdateStatus"
+            android:exported="false" />
     </application>
 </manifest>

@@ -26,9 +26,12 @@ import java.util.concurrent.Executors
 import kotlin.math.roundToInt
 
 /** Der App-Bildschirm: einrichten, verbinden, heute ansehen, Update, löschen. */
-class MainActivity : Activity() {
+class MainActivity : Activity(), UpdateBeobachter {
     private lateinit var faeden: ExecutorService
     private lateinit var speicher: Speicher
+
+    /** Zwischen onResume und onPause: Nur dann darf Androids Rückfrage zum Update kommen. */
+    private var vorn = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -49,28 +52,53 @@ class MainActivity : Activity() {
             oeffnen(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, "package:$packageName".toUri()))
         }
         findViewById<Button>(R.id.schritt3_knopf).setOnClickListener { widgetHinzufuegen() }
-        findViewById<Button>(R.id.update_knopf).setOnClickListener {
-            oeffnen(Intent(Intent.ACTION_VIEW, NeueVersion.APK.toUri()))
-        }
+        findViewById<Button>(R.id.update_knopf).setOnClickListener { updateKnopf(it.tag as? UpdateKnopf) }
         findViewById<Button>(R.id.loeschen).setOnClickListener { loeschenFragen() }
         versionZeigen(BuildConfig.VERSION_NAME)
         webZeilenAnlegen()
 
         Aktualisierung.einplanen(this)
         faeden.execute {
-            val neu = runCatching { NeueVersion.pruefen(BuildConfig.VERSION_CODE) }.getOrNull()
-            if (neu != null) imVordergrund { updateZeigen(neu) }
+            Selbstupdate.pruefenFuerApp(applicationContext)
+            imVordergrund { updateKarteNeu() }
         }
     }
 
     override fun onResume() {
         super.onResume()
+        vorn = true
+        Selbstupdate.beobachter = this
         neuLaden()
+        // Zurück aus „Unbekannte Apps installieren“: Die Karte zeigt gleich, ob es jetzt erlaubt ist.
+        updateKarteNeu()
+    }
+
+    override fun onPause() {
+        vorn = false
+        if (Selbstupdate.beobachter === this) Selbstupdate.beobachter = null
+        super.onPause()
     }
 
     override fun onDestroy() {
         faeden.shutdown()
         super.onDestroy()
+    }
+
+    override fun updateGeaendert() {
+        imVordergrund { updateKarteNeu() }
+    }
+
+    /** Androids Rückfrage „Möchtest du diese App aktualisieren?“ – nur, solange die App vorn ist. */
+    override fun bestaetigen(absicht: Intent): Boolean {
+        if (!vorn || isFinishing || isDestroyed) return false
+        return try {
+            startActivity(absicht)
+            true
+        } catch (e: ActivityNotFoundException) {
+            false
+        } catch (e: SecurityException) {
+            false
+        }
     }
 
     /** Erst was sofort geht (Erlaubnis, Widget), dann im Hintergrund rechnen. */
@@ -175,12 +203,15 @@ class MainActivity : Activity() {
     }
 
     /** Möglichst gleich auf der Seite dieser App, sonst die Liste, sonst App-Info. */
-    private fun nutzungszugriffOeffnen() {
-        val versuche = listOf(
+    private fun nutzungszugriffOeffnen() = einstellungOeffnen(
+        listOf(
             Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS, "package:$packageName".toUri()),
             Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS),
             Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, "package:$packageName".toUri()),
-        )
+        ),
+    )
+
+    private fun einstellungOeffnen(versuche: List<Intent>) {
         for (intent in versuche) {
             try {
                 startActivity(intent)
@@ -205,9 +236,36 @@ class MainActivity : Activity() {
         findViewById<TextView>(R.id.version).text = getString(R.string.version, version)
     }
 
-    internal fun updateZeigen(laufnummer: Int, version: String = BuildConfig.VERSION_NAME) {
+    /** Die Update-Karte nach dem Stand von Selbstupdate (im Hintergrund gelesen: Android fragen dauert). */
+    private fun updateKarteNeu() {
+        if (faeden.isShutdown) return
+        faeden.execute {
+            val anzeige = UpdateRegeln.anzeige(Selbstupdate.lage(applicationContext))
+            imVordergrund { updateZeigen(anzeige) }
+        }
+    }
+
+    internal fun updateZeigen(a: UpdateAnzeige) {
         findViewById<View>(R.id.update_karte).visibility = View.VISIBLE
-        findViewById<TextView>(R.id.update_text).text = getString(R.string.update_text, laufnummer, version)
+        findViewById<TextView>(R.id.update_titel).text = a.titel
+        findViewById<TextView>(R.id.update_text).text = a.text
+        val knopf = findViewById<Button>(R.id.update_knopf)
+        knopf.tag = a.knopf
+        knopf.visibility = if (a.knopf == null) View.GONE else View.VISIBLE
+        knopf.text = a.knopf?.text.orEmpty()
+        knopf.isEnabled = a.knopf != UpdateKnopf.WARTEN
+    }
+
+    private fun updateKnopf(knopf: UpdateKnopf?) {
+        when (knopf) {
+            UpdateKnopf.EINRICHTEN -> einstellungOeffnen(installQuelleAbsichten(packageName))
+            UpdateKnopf.INSTALLIEREN, UpdateKnopf.NOCHMAL -> {
+                findViewById<Button>(R.id.update_knopf).isEnabled = false
+                faeden.execute { Selbstupdate.jetztInstallieren(applicationContext) }
+            }
+            UpdateKnopf.BROWSER -> oeffnen(Intent(Intent.ACTION_VIEW, NeueVersion.APK.toUri()))
+            UpdateKnopf.WARTEN, null -> Unit
+        }
     }
 
     private fun loeschenFragen() {

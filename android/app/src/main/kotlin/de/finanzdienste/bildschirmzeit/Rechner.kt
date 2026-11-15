@@ -57,6 +57,7 @@ object Rechner {
     /** Die Web-Apps von Supabase (letzte acht Tage) oder aus dem Zwischenspeicher. */
     fun webDaten(speicher: Speicher, heute: java.time.LocalDate, netz: Boolean, jetzt: Long): WebDaten {
         if (netz) {
+            speicher.netzVersuch = jetzt
             try {
                 val kennung = speicher.kennung
                 if (!speicher.angemeldet && Supabase.anmelden(kennung)) speicher.angemeldet = true

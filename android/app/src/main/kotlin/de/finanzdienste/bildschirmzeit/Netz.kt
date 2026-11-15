@@ -3,9 +3,11 @@ package de.finanzdienste.bildschirmzeit
 import org.json.JSONArray
 import org.json.JSONException
 import org.json.JSONObject
+import java.io.File
 import java.io.IOException
 import java.net.HttpURLConnection
 import java.net.URL
+import java.security.MessageDigest
 import java.time.LocalDate
 import java.time.OffsetDateTime
 
@@ -43,7 +45,67 @@ internal object Netz {
             verbindung.disconnect()
         }
     }
+
+    /**
+     * Lädt `adresse` nach `ziel` (für das Update: die APK von GitHub) und gibt
+     * den SHA-256 des Geladenen als Hex zurück. Nur HTTPS, auch nach
+     * Weiterleitungen (github.com leitet auf seinen Dateiserver weiter); mehr als
+     * `hoechstens` Byte sind ein Fehler.
+     */
+    fun laden(adresse: String, ziel: File, hoechstens: Long): String {
+        if (gesperrt) throw IOException("Netz gesperrt")
+        if (!adresse.startsWith("https://")) throw IOException("Nur HTTPS")
+        val verbindung = URL(adresse).openConnection() as HttpURLConnection
+        try {
+            verbindung.instanceFollowRedirects = true
+            verbindung.connectTimeout = LADEN_WARTEN_MS
+            verbindung.readTimeout = LADEN_WARTEN_MS
+            verbindung.useCaches = false
+            verbindung.setRequestProperty("User-Agent", USER_AGENT)
+            verbindung.setRequestProperty("Accept", "application/octet-stream")
+            val status = verbindung.responseCode
+            if (status !in 200..299) throw IOException("Fehler $status")
+            // HttpURLConnection folgt nur Weiterleitungen im selben Protokoll – trotzdem prüfen.
+            if (verbindung.url.protocol != "https") throw IOException("Nur HTTPS")
+            val pruefsumme = MessageDigest.getInstance("SHA-256")
+            var gelesen = 0L
+            verbindung.inputStream.use { ein ->
+                ziel.outputStream().use { aus ->
+                    val puffer = ByteArray(64 * 1024)
+                    while (true) {
+                        val n = ein.read(puffer)
+                        if (n < 0) break
+                        gelesen += n
+                        if (gelesen > hoechstens) throw IOException("Datei zu groß")
+                        pruefsumme.update(puffer, 0, n)
+                        aus.write(puffer, 0, n)
+                    }
+                }
+            }
+            return hex(pruefsumme.digest())
+        } finally {
+            verbindung.disconnect()
+        }
+    }
+
+    private const val LADEN_WARTEN_MS = 20_000
 }
+
+/** SHA-256 einer Datei als Hex (klein geschrieben). */
+fun sha256(datei: File): String {
+    val pruefsumme = MessageDigest.getInstance("SHA-256")
+    datei.inputStream().use { ein ->
+        val puffer = ByteArray(64 * 1024)
+        while (true) {
+            val n = ein.read(puffer)
+            if (n < 0) break
+            pruefsumme.update(puffer, 0, n)
+        }
+    }
+    return hex(pruefsumme.digest())
+}
+
+fun hex(bytes: ByteArray): String = bytes.joinToString("") { "%02x".format(it.toInt() and 0xff) }
 
 /** Eine Zeile aus bildschirmzeit_lesen: so lange war `app` am `tag` offen. */
 data class Zeile(val app: String, val tag: String, val sekunden: Long, val aktualisiert: Long)

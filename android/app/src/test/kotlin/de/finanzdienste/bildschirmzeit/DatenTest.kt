@@ -111,6 +111,47 @@ class DatenTest {
         assertNull(NeueVersion.ausAntwort("kein json"))
     }
 
+    /** So antwortet GitHub auf releases/latest (gekürzt; Release v5 vom 15.11., die Prüfsumme ist erfunden). */
+    private val release = """
+        {"tag_name":"v5","name":"Bildschirmzeit 1.5","draft":false,"prerelease":false,
+         "assets":[{"name":"bildschirmzeit.apk","state":"uploaded","size":774584,
+                    "digest":"sha256:${"ab".repeat(32)}","content_type":"application/vnd.android.package-archive",
+                    "browser_download_url":"https://github.com/Finanzdienste/Bildschirmzeit/releases/download/v5/bildschirmzeit.apk"}]}
+    """.trimIndent()
+
+    @Test
+    fun freigabeMitPruefsummeAusDerAntwortVonGitHub() {
+        val f = NeueVersion.freigabeAus(release)!!
+        assertEquals(5, f.laufnummer)
+        assertEquals("https://github.com/Finanzdienste/Bildschirmzeit/releases/download/v5/bildschirmzeit.apk", f.adresse)
+        assertEquals("ab".repeat(32), f.sha256)
+        assertEquals(774_584L, f.groesse)
+        assertTrue(f.installierbar)
+        assertEquals(f, NeueVersion.ausJson(NeueVersion.alsJson(f)))
+
+        // Nur Dateien aus den Releases dieses Repos, unter dem Tag des Release.
+        for (fremd in listOf(
+            "https://example.com/bildschirmzeit.apk",
+            "http://github.com/Finanzdienste/Bildschirmzeit/releases/download/v5/bildschirmzeit.apk",
+            "https://github.com/jemand/Bildschirmzeit/releases/download/v5/bildschirmzeit.apk",
+            "https://github.com/Finanzdienste/Bildschirmzeit/releases/download/v4/bildschirmzeit.apk",
+        )) {
+            val g = NeueVersion.freigabeAus(release.replace("https://github.com/Finanzdienste/Bildschirmzeit/releases/download/v5/bildschirmzeit.apk", fremd))!!
+            assertNull(fremd, g.adresse)
+            assertFalse(fremd, g.installierbar)
+        }
+        // Ohne digest (ältere Releases): anzeigen ja, selbst installieren nein.
+        val ohne = NeueVersion.freigabeAus(release.replace("\"digest\":\"sha256:${"ab".repeat(32)}\",", ""))!!
+        assertNull(ohne.sha256)
+        assertFalse(ohne.installierbar)
+        assertEquals(ohne, NeueVersion.ausJson(NeueVersion.alsJson(ohne)))
+        // Noch nicht fertig hochgeladen, Entwurf, Vorabversion: nicht.
+        assertFalse(NeueVersion.freigabeAus(release.replace("\"uploaded\"", "\"starter\""))!!.installierbar)
+        assertNull(NeueVersion.freigabeAus(release.replace("\"draft\":false", "\"draft\":true")))
+        assertNull(NeueVersion.freigabeAus(release.replace("\"prerelease\":false", "\"prerelease\":true")))
+        assertNull(NeueVersion.ausJson("kaputt"))
+    }
+
     @Test
     fun ringZeichenGrosseZahlenKleineEinheiten() {
         val text = WidgetAnsicht.ringZeichen(3 * 3600 + 12 * 60)

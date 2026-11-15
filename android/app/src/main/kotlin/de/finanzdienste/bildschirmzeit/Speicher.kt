@@ -39,6 +39,20 @@ class Speicher(context: Context) {
             p.edit { putBoolean(ANGEMELDET, wert) }
         }
 
+    /** Wann das Widget zuletzt gerechnet wurde (ms) – für den Takt (Takt.kt). */
+    var gerechnet: Long
+        get() = p.getLong(GERECHNET, 0L)
+        set(wert) {
+            p.edit { putLong(GERECHNET, wert) }
+        }
+
+    /** Wann zuletzt Supabase gefragt wurde, ob mit Erfolg oder ohne (ms) – höchstens alle 5 Minuten. */
+    var netzVersuch: Long
+        get() = p.getLong(NETZ_VERSUCH, 0L)
+        set(wert) {
+            p.edit { putLong(NETZ_VERSUCH, wert) }
+        }
+
     /** Was zuletzt von Supabase kam – für die Zeit ohne Netz. */
     fun zwischenspeichern(gelesen: Long, zeilen: List<Zeile>) {
         val o = JSONObject().put("gelesen", gelesen).put("zeilen", zeilenAlsJson(zeilen))
@@ -60,6 +74,8 @@ class Speicher(context: Context) {
         const val KENNUNG = "kennung"
         const val ANGEMELDET = "angemeldet"
         const val ZWISCHENSPEICHER = "web"
+        const val GERECHNET = "gerechnet"
+        const val NETZ_VERSUCH = "netz_versuch"
         val SPERRE = Any()
     }
 }
