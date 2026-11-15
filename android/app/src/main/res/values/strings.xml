@@ -11,10 +11,10 @@
 
     <string name="schritt1_titel">1  Nutzungsdatenzugriff erlauben</string>
     <string name="schritt1_fertig">1  Nutzungsdatenzugriff ✓</string>
-    <string name="schritt1_text">Damit die App sieht, wie lange jede App heute offen war. In der Liste „Bildschirmzeit“ antippen und den Schalter einschalten.</string>
+    <string name="schritt1_text">Damit die App sieht, wie lange jede App heute offen war. „Erlauben“ öffnet „Zugriff auf Nutzungsdaten“ – dort den Schalter einschalten (steht eine Liste da, erst „Bildschirmzeit“ antippen).</string>
     <string name="schritt1_text_fertig">Erlaubt. Die App sieht, wie lange jede App heute offen war.</string>
     <string name="schritt1_knopf">Erlauben</string>
-    <string name="schritt1_hinweis">Ist der Schalter grau? Dann zuerst „App-Info öffnen“ → oben rechts ⋮ → „Eingeschränkte Einstellungen zulassen“ – danach noch einmal „Erlauben“.</string>
+    <string name="schritt1_hinweis">Ist der Schalter grau („Gesteuert durch eingeschränkte Einstellung“)?\n1. Trotzdem auf „Berechtigung erteilen“ tippen und den Hinweis mit „OK“ schließen – erst danach gibt es Schritt 2.\n2. Hier „App-Info öffnen“ → oben rechts ⋮ → „Eingeschränkte Einstellungen zulassen“ → mit PIN oder Fingerabdruck bestätigen.\n3. Noch einmal „Erlauben“ und den Schalter einschalten.</string>
     <string name="app_info">App-Info öffnen</string>
 
     <string name="schritt2_titel">2  Web-Apps verbinden</string>

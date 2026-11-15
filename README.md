@@ -20,7 +20,9 @@ Ring), `vorschau-lang-hell.png` (3×2, lange Zeiten, ohne Netz – unter
 320 dp Breite kleinerer Ring und Zeilen ohne App-Symbol, damit die Namen
 ganz bleiben),
 `vorschau-flach-hell.png`, `vorschau-einrichten-hell.png` (ohne Erlaubnis),
-`vorschau-app-hell.png` / `-dunkel.png` (der App-Bildschirm).
+`vorschau-app-hell.png` / `-dunkel.png` (der App-Bildschirm),
+`vorschau-app-einrichten-hell.png` (die App ohne Erlaubnis, mit dem Weg
+über die eingeschränkte Einstellung).
 
 ## Tobis Entscheidungen
 
@@ -48,10 +50,16 @@ Einmal, alles am Handy:
    danach wieder einschalten.
 4. Warnt Play Protect („Unsichere App blockiert“ o. Ä.): „Weitere Details“ →
    „Trotzdem installieren“. Fragt es nach einem Scan, ist beides in Ordnung.
-5. „Bildschirmzeit“ öffnen. **Schritt 1** „Erlauben“ → in der Liste
-   „Bildschirmzeit“ → Schalter ein → zurück. Ist der Schalter grau: in der
-   App „App-Info öffnen“ → oben rechts ⋮ → „Eingeschränkte Einstellungen
-   zulassen“ → dann noch einmal „Erlauben“.
+5. „Bildschirmzeit“ öffnen. **Schritt 1** „Erlauben“ → es öffnet sich gleich
+   die Seite „Zugriff auf Nutzungsdaten“ der App (auf dem S24 so gesehen) →
+   Schalter ein → zurück. Ist der Schalter grau („Gesteuert durch
+   eingeschränkte Einstellung“ – so bei einer APK aus Chrome):
+   1. Trotzdem auf „Berechtigung erteilen“ tippen, den Hinweis „Eingeschränkte
+      Einstellung“ mit „OK“ schließen. Erst danach hat die App-Info oben
+      rechts ⋮ – vorher fehlt es ganz (Tobis Screenshot vom 15.11.).
+   2. In der App „App-Info öffnen“ → oben rechts ⋮ → „Eingeschränkte
+      Einstellungen zulassen“ → mit PIN oder Fingerabdruck bestätigen.
+   3. Noch einmal „Erlauben“ → Schalter ein.
 6. **Schritt 2** – dreimal: bei Boxenstopp „Verbinden“ → die Web-App öffnet
    sich in Chrome (als installierte App oder als Tab, beides teilt sich den
    Speicher) und meldet „Bildschirmzeit verbunden …“ → zurückwischen zur
@@ -288,7 +296,13 @@ spricht mit dem echten Supabase oder GitHub (`Netz.gesperrt`).
 - Reine Doku-Commits mit „[skip ci]“ in der Nachricht: Sonst baut jeder Push
   ein neues Release, und die App meldet „Neue Version verfügbar“ ohne
   Änderung.
+- 15.11.2026, auf dem S24 (Tobis Screenshots): „Erlauben“ öffnet direkt die
+  Seite „Zugriff auf Nutzungsdaten“ der App. Der Schalter ist dort grau
+  („Gesteuert durch eingeschränkte Einstellung“), und die App-Info hat
+  zunächst kein ⋮ – Android zeigt „Eingeschränkte Einstellungen zulassen“
+  erst, nachdem man den grauen Schalter einmal angetippt hat. Der Hinweis in
+  der App nennt diesen Schritt zuerst (seit Release v2, AppVorschauTest
+  `ohneErlaubnisErstDenGrauenSchalterAntippen`).
 - Noch nicht auf dem S24 ausprobiert: Größen des Startbildschirms, Akku-
-  Verhalten von One UI, ob „Nutzungsdatenzugriff“ direkt die Seite der App
-  öffnet, ob Chrome den Verbinden-Link in der installierten Web-App oder als
-  Tab öffnet (beides teilt sich den Speicher).
+  Verhalten von One UI, ob Chrome den Verbinden-Link in der installierten
+  Web-App oder als Tab öffnet (beides teilt sich den Speicher).

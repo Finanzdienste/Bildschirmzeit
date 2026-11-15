@@ -82,6 +82,36 @@ class AppVorschauTest {
     @Config(qualifiers = "+night")
     fun appDunkel() = aufnehmen("app-dunkel", 0xFF111215.toInt())
 
+    /**
+     * Tobis S24 (15.11.): Der Schalter war grau, „Gesteuert durch eingeschränkte
+     * Einstellung“, und in der App-Info fehlte ⋮. Das Menü gibt es erst, wenn man
+     * den grauen Schalter einmal angetippt und den Hinweis geschlossen hat – der
+     * Hinweis sagt das als ersten Schritt, vor dem Weg über die App-Info.
+     */
+    @Test
+    fun ohneErlaubnisErstDenGrauenSchalterAntippen() {
+        val aktivitaet = Robolectric.buildActivity(MainActivity::class.java).setup().get()
+        warten()
+        aktivitaet.zeigen(ohneErlaubnis())
+        shadowOf(Looper.getMainLooper()).idle()
+        val hinweis = aktivitaet.findViewById<TextView>(R.id.schritt1_hinweis)
+        assertEquals(View.VISIBLE, hinweis.visibility)
+        assertEquals(View.VISIBLE, aktivitaet.findViewById<View>(R.id.app_info).visibility)
+        val text = hinweis.text.toString()
+        val antippen = text.indexOf("Trotzdem auf „Berechtigung erteilen“ tippen")
+        val ok = text.indexOf("„OK“")
+        val menue = text.indexOf("oben rechts ⋮ → „Eingeschränkte Einstellungen zulassen“")
+        assertTrue("erst den grauen Schalter antippen: $text", antippen >= 0)
+        assertTrue("den Hinweis mit OK schließen: $text", ok > antippen)
+        assertTrue("danach erst das Menü in der App-Info: $text", menue > ok)
+        assertTrue("„Gesteuert durch eingeschränkte Einstellung“ – so steht es auf dem Handy: $text", text.contains("Gesteuert durch eingeschränkte Einstellung"))
+    }
+
+    @Test
+    fun appEinrichtenHell() = aufnehmen("app-einrichten-hell", 0xFFF2F3F6.toInt(), ohneErlaubnis())
+
+    private fun ohneErlaubnis() = beispiel().copy(erlaubt = false, posten = emptyList(), web = WebDaten.LEER)
+
     @Test
     fun ohneVerbindungSagtEsDas() {
         val aktivitaet = Robolectric.buildActivity(MainActivity::class.java).setup().get()
@@ -158,10 +188,10 @@ class AppVorschauTest {
         }
     }
 
-    private fun aufnehmen(name: String, hintergrund: Int) {
+    private fun aufnehmen(name: String, hintergrund: Int, ergebnis: Ergebnis = beispiel()) {
         val aktivitaet = Robolectric.buildActivity(MainActivity::class.java).setup().get()
         warten()
-        aktivitaet.zeigen(beispiel())
+        aktivitaet.zeigen(ergebnis)
         // Feste Version statt BuildConfig (lokal 1.1, in Actions 1.<Laufnummer>):
         // Sonst änderte jeder Bau die Bilder in docs/, ohne dass sich etwas geändert hat.
         aktivitaet.versionZeigen(VORSCHAU_VERSION)
