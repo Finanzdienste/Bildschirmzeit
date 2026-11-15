@@ -40,7 +40,7 @@ Abschnitt lesen.
    test-sql nur die geänderten Teile als Migration über den
    Supabase-Connector einspielen (Projekt vjyohppohmvhhxgwouti).
 5. Push auf `main` baut Release `v<Laufnummer>` (der Link im README zeigt
-   immer auf das neueste). Reine Doku-Commits mit „[skip ci]“, sonst meldet
-   die App ohne Grund „Neue Version verfügbar“. Danach prüfen: Lauf „APK“
+   immer auf das neueste). Reine Doku-Commits mit „[skip ci]“, sonst
+   installiert die App das Release ohne Änderung von selbst. Danach prüfen: Lauf „APK“
    grün, Release mit `bildschirmzeit.apk`.
 6. Commit-Nachrichten deutsch; README „Stand“ nachziehen.
