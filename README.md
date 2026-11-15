@@ -46,8 +46,10 @@ Einmal, alles am Handy:
    „Einstellungen“ → „Diese Quelle zulassen“ für Chrome einschalten →
    zurück → „Installieren“.
 3. Lässt One UI gar nicht installieren („Automatische Sperre“): Einstellungen
-   → Sicherheit und Datenschutz → Automatische Sperre → aus, installieren,
-   danach wieder einschalten.
+   → Sicherheit und Datenschutz → Automatische Sperre → aus, installieren –
+   und erst nach Schritt 5 wieder einschalten (mit der Sperre an fehlt
+   vermutlich „Eingeschränkte Einstellungen zulassen“, siehe unten). Für ein
+   Update der App die Sperre wieder kurz aus.
 4. Warnt Play Protect („Unsichere App blockiert“ o. Ä.): „Weitere Details“ →
    „Trotzdem installieren“. Fragt es nach einem Scan, ist beides in Ordnung.
 5. „Bildschirmzeit“ öffnen. **Schritt 1** „Erlauben“ → es öffnet sich gleich
@@ -57,9 +59,14 @@ Einmal, alles am Handy:
    1. Trotzdem auf „Berechtigung erteilen“ tippen, den Hinweis „Eingeschränkte
       Einstellung“ mit „OK“ schließen. Erst danach hat die App-Info oben
       rechts ⋮ – vorher fehlt es ganz (Tobis Screenshot vom 15.11.).
-   2. In der App „App-Info öffnen“ → oben rechts ⋮ → „Eingeschränkte
+   2. Die App-Info frisch öffnen: Einstellungen → Apps → Bildschirmzeit (oder
+      in der App „App-Info öffnen“) → oben rechts ⋮ → „Eingeschränkte
       Einstellungen zulassen“ → mit PIN oder Fingerabdruck bestätigen.
    3. Noch einmal „Erlauben“ → Schalter ein.
+   4. Fehlt ⋮ auch nach 1.: die Automatische Sperre (Schritt 3) ausschalten,
+      1. und 2. wiederholen, danach die Sperre wieder ein. So der Stand am
+      15.11. um 08:24 – auch nach dem Antippen kein ⋮, die Sperre war nach
+      der Installation wieder an (wie Schritt 3 damals sagte).
 6. **Schritt 2** – dreimal: bei Boxenstopp „Verbinden“ → die Web-App öffnet
    sich in Chrome (als installierte App oder als Tab, beides teilt sich den
    Speicher) und meldet „Bildschirmzeit verbunden …“ → zurückwischen zur
@@ -302,7 +309,11 @@ spricht mit dem echten Supabase oder GitHub (`Netz.gesperrt`).
   zunächst kein ⋮ – Android zeigt „Eingeschränkte Einstellungen zulassen“
   erst, nachdem man den grauen Schalter einmal angetippt hat. Der Hinweis in
   der App nennt diesen Schritt zuerst (seit Release v2, AppVorschauTest
-  `ohneErlaubnisErstDenGrauenSchalterAntippen`).
+  `ohneErlaubnisErstDenGrauenSchalterAntippen`). Um 08:24 fehlte ⋮ trotzdem
+  noch; Verdacht: die Automatische Sperre, die laut Schritt 3 nach der
+  Installation wieder an war. Seit Release v3 nennt der Hinweis das, dazu den
+  Weg über Einstellungen → Apps (ob die App-Info, aus der App geöffnet, das
+  Menü zeigt, ist bei Samsung nicht sicher). Noch offen, ob es so geht.
 - Noch nicht auf dem S24 ausprobiert: Größen des Startbildschirms, Akku-
   Verhalten von One UI, ob Chrome den Verbinden-Link in der installierten
   Web-App oder als Tab öffnet (beides teilt sich den Speicher).

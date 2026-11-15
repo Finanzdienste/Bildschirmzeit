@@ -86,7 +86,8 @@ class AppVorschauTest {
      * Tobis S24 (15.11.): Der Schalter war grau, „Gesteuert durch eingeschränkte
      * Einstellung“, und in der App-Info fehlte ⋮. Das Menü gibt es erst, wenn man
      * den grauen Schalter einmal angetippt und den Hinweis geschlossen hat – der
-     * Hinweis sagt das als ersten Schritt, vor dem Weg über die App-Info.
+     * Hinweis sagt das als ersten Schritt, vor dem Weg über die App-Info; fehlt ⋮
+     * auch dann, die Automatische Sperre von Samsung kurz ausschalten.
      */
     @Test
     fun ohneErlaubnisErstDenGrauenSchalterAntippen() {
@@ -105,6 +106,10 @@ class AppVorschauTest {
         assertTrue("den Hinweis mit OK schließen: $text", ok > antippen)
         assertTrue("danach erst das Menü in der App-Info: $text", menue > ok)
         assertTrue("„Gesteuert durch eingeschränkte Einstellung“ – so steht es auf dem Handy: $text", text.contains("Gesteuert durch eingeschränkte Einstellung"))
+        // Tobis S24 (15.11., 08:24): auch danach kein ⋮ – Samsungs Automatische Sperre war wieder an.
+        val sperre = text.indexOf("Automatische Sperre aus")
+        assertTrue("Fehlt ⋮: die Automatische Sperre ausschalten, nach dem Weg über die App-Info: $text", sperre > menue)
+        assertTrue("App-Info auch über die Einstellungen: $text", text.contains("Einstellungen → Apps → Bildschirmzeit"))
     }
 
     @Test

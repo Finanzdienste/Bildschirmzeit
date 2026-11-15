@@ -14,7 +14,7 @@
     <string name="schritt1_text">Damit die App sieht, wie lange jede App heute offen war. „Erlauben“ öffnet „Zugriff auf Nutzungsdaten“ – dort den Schalter einschalten (steht eine Liste da, erst „Bildschirmzeit“ antippen).</string>
     <string name="schritt1_text_fertig">Erlaubt. Die App sieht, wie lange jede App heute offen war.</string>
     <string name="schritt1_knopf">Erlauben</string>
-    <string name="schritt1_hinweis">Ist der Schalter grau („Gesteuert durch eingeschränkte Einstellung“)?\n1. Trotzdem auf „Berechtigung erteilen“ tippen und den Hinweis mit „OK“ schließen – erst danach gibt es Schritt 2.\n2. Hier „App-Info öffnen“ → oben rechts ⋮ → „Eingeschränkte Einstellungen zulassen“ → mit PIN oder Fingerabdruck bestätigen.\n3. Noch einmal „Erlauben“ und den Schalter einschalten.</string>
+    <string name="schritt1_hinweis">Ist der Schalter grau („Gesteuert durch eingeschränkte Einstellung“)?\n1. Trotzdem auf „Berechtigung erteilen“ tippen und den Hinweis mit „OK“ schließen – erst danach gibt es Schritt 2.\n2. Einstellungen → Apps → Bildschirmzeit (oder hier „App-Info öffnen“) → oben rechts ⋮ → „Eingeschränkte Einstellungen zulassen“ → mit PIN oder Fingerabdruck bestätigen.\n3. Noch einmal „Erlauben“ und den Schalter einschalten.\nFehlt ⋮ auch dann: Einstellungen → Sicherheit und Datenschutz → Automatische Sperre aus, Schritt 1 und 2 wiederholen, danach die Sperre wieder ein.</string>
     <string name="app_info">App-Info öffnen</string>
 
     <string name="schritt2_titel">2  Web-Apps verbinden</string>
