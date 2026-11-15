@@ -1133,6 +1133,14 @@ spricht mit dem echten Supabase oder GitHub (`Netz.gesperrt`).
   (Schritt 3). v7 → nächstes Release läuft noch mit dem alten Code: Ist die
   Sperre an, einmal von Hand (Klickfolge unter „Zeigt sich erst auf dem
   S24“); erst das Update danach zeigt Androids Meldung.
+- 15.11.2026: Release **v8** (Fassung 1.8, aus cec9e8c) mit „Eine App allein“
+  und den neuen Update-Meldungen liegt unter dem APK-Link – auf `main`
+  zusammengeführt aus den Zweigen `app-allein` und `update-diagnose`, 195
+  JUnit-/Robolectric-Prüfungen grün, 47 SQL, 61 Web-Modul, Lint ohne Fehler;
+  Prüfsumme der Datei gleich dem `digest` bei GitHub, Zertifikat
+  `bc6f91b9…759e`, versionCode 8, targetSdk 36, dieselben 9 Rechte. v7
+  installiert v8 noch mit dem alten Update-Code; ist die Sperre an, braucht
+  es einmal die Klickfolge von Hand.
 - Noch nicht auf dem S24 ausprobiert: Größen des Startbildschirms, Akku-
   Verhalten von One UI (ob es die App trotz Widget schlafen legt), ob
   Chrome den Verbinden-Link in der installierten Web-App oder als Tab
