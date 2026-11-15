@@ -10,7 +10,7 @@ import android.util.Log
 
 /** Warum das Widget gerade neu gerechnet werden soll. */
 enum class Anlass {
-    /** Widget angetippt (oder neu auf dem Startbildschirm): sofort und mit Netz. */
+    /** Ein Widget kam neu auf den Startbildschirm: sofort und mit Netz. Antippen öffnet seit v7 die App (bis v6 hieß dieser Anlass genau das). */
     TIPPEN,
 
     /** Der nicht weckende Wecker – alle 2 Minuten, solange das Handy benutzt wird, und gleich nach dem Einschalten. */
@@ -33,11 +33,12 @@ enum class Anlass {
  *
  * - Rechnen ist billig (Androids Ereignisse seit Mitternacht, ein paar
  *   Millisekunden) – der Wecker rechnet bei jedem Klingeln, nur nicht zweimal
- *   in derselben Minute (wenn gerade angetippt wurde).
+ *   in derselben Minute (wenn gerade ein neues Widget oder die App gerechnet hat).
  * - Supabase höchstens alle 5 Minuten: Öfter melden die Web-Apps auch nicht.
  *   Dazwischen gilt der Zwischenspeicher. Bei dunklem Bildschirm (WorkManager
  *   nachts) höchstens einmal in der Stunde – dann schaut niemand hin.
- * - Antippen fragt immer: Wer tippt, will es genau wissen.
+ * - Ein neues Widget und das Öffnen der App (auch über das Widget) fragen
+ *   immer: Wer hinschaut, will es genau wissen.
  */
 object Takt {
     /** Abstand des Weckers. Android legt ungenaue Wecker zusammen: es klingelt nach 2 bis 3½ Minuten. */

@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Eine App in „Heute“: Farbpunkt (nur Top 3), Symbol, Name, Zeit. -->
+<!-- Eine App in der Statistik: Symbol, Name, Zeit, Anteil am Zeitraum. -->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
@@ -8,17 +8,9 @@
     android:paddingTop="12dp">
 
     <ImageView
-        android:id="@+id/punkt"
-        android:layout_width="8dp"
-        android:layout_height="8dp"
-        android:importantForAccessibility="no"
-        android:src="@drawable/punkt" />
-
-    <ImageView
         android:id="@+id/symbol"
         android:layout_width="30dp"
         android:layout_height="30dp"
-        android:layout_marginStart="10dp"
         android:importantForAccessibility="no" />
 
     <TextView
@@ -37,6 +29,16 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginStart="8dp"
-        android:textColor="@color/text_leise"
+        android:maxLines="1"
+        android:textColor="@color/text"
         android:textSize="14sp" />
+
+    <TextView
+        android:id="@+id/anteil"
+        android:layout_width="44dp"
+        android:layout_height="wrap_content"
+        android:gravity="end"
+        android:maxLines="1"
+        android:textColor="@color/text_leise"
+        android:textSize="13sp" />
 </LinearLayout>

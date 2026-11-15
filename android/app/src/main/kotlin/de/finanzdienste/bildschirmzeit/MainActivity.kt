@@ -6,7 +6,7 @@ import android.appwidget.AppWidgetManager
 import android.content.ActivityNotFoundException
 import android.content.ComponentName
 import android.content.Intent
-import android.content.res.Configuration
+import android.os.Build
 import android.os.Bundle
 import android.provider.Settings
 import android.view.LayoutInflater
@@ -14,24 +14,71 @@ import android.view.View
 import android.widget.Button
 import android.widget.ImageView
 import android.widget.LinearLayout
+import android.widget.ScrollView
 import android.widget.TextView
 import android.widget.Toast
+import android.window.OnBackInvokedCallback
+import android.window.OnBackInvokedDispatcher
 import androidx.core.net.toUri
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import java.io.IOException
+import java.time.Instant
+import java.time.LocalDate
+import java.time.ZoneId
+import java.time.format.DateTimeParseException
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
 import kotlin.math.roundToInt
 
-/** Der App-Bildschirm: einrichten, verbinden, heute ansehen, Update, löschen. */
+/**
+ * Der App-Bildschirm: oben die Statistik (Tag, Woche, Monat aus dem Verlauf),
+ * darunter einrichten, verbinden, Widget, Update, löschen. Das Widget öffnet
+ * die App mit einem Ziel (Ziel.kt): STATISTIK zeigt den zuletzt gewählten
+ * Reiter mit dem jetzigen Zeitraum, UPDATE stellt die Update-Karte nach oben.
+ */
 class MainActivity : Activity(), UpdateBeobachter {
     private lateinit var faeden: ExecutorService
     private lateinit var speicher: Speicher
+    private lateinit var verlauf: Verlauf
 
     /** Zwischen onResume und onPause: Nur dann darf Androids Rückfrage zum Update kommen. */
     private var vorn = false
+
+    /** Die Uhr der Statistik – nur Vorschau und Tests setzen eine feste (uhrStellen). */
+    private var jetzt: () -> Long = { System.currentTimeMillis() }
+
+    private var reiter = Reiter.WOCHE
+    private lateinit var zeitraum: Zeitraum
+
+    /** „Heute“, als der Zeitraum gewählt wurde – über Mitternacht offen, rückt der jetzige Zeitraum mit. */
+    private lateinit var gewaehltAm: LocalDate
+
+    /** Das Widget hat die App wegen eines Updates geöffnet: die Update-Karte steht oben. */
+    private var updateOben = false
+
+    /** Zuletzt bekannt: Nutzungsdatenzugriff erlaubt? Sonst steht dessen Karte vor der Statistik. */
+    private var erlaubt = true
+
+    /** Die letzte Rechnung – für „Stand 21:40“ unter der Statistik. */
+    private var letztes: Ergebnis? = null
+
+    /** Nur das Ergebnis des neuesten Auftrags zeigen (Reiter schnell hintereinander getippt). */
+    private var auftrag = 0
+
+    /** Ein Tag, per Tipp auf einen Balken geöffnet: Zurück führt in diesen Zeitraum (null: Zurück schließt die App). */
+    private var vomBalken: Zeitraum? = null
+
+    /**
+     * Zurück aus einem Tag vom Balken. Das Manifest setzt
+     * enableOnBackInvokedCallback="true": Ab Android 13 kommt Zurück nur über
+     * solche Rückrufe an, onBackPressed gar nicht (Lint GestureBackNavigation)
+     * – auf 13 bis 15 wie auf Android 16. Darunter gibt es den Rückruf nicht,
+     * dort schließt Zurück die App wie bisher.
+     */
+    internal val zurueckRuf: OnBackInvokedCallback? = if (Build.VERSION.SDK_INT >= 33) OnBackInvokedCallback { zurueckZumZeitraum() } else null
+    private var zurueckAngemeldet = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -39,6 +86,11 @@ class MainActivity : Activity(), UpdateBeobachter {
         setContentView(R.layout.activity_main)
         faeden = Executors.newCachedThreadPool()
         speicher = Speicher(this)
+        verlauf = Verlauf(this)
+        erlaubt = Nutzungsdaten.erlaubt(this)
+        reiter = Reiter.von(speicher.reiter)
+        gewaehltAm = heute()
+        zeitraum = Zeitraum.um(reiter, gewaehltAm)
 
         val wurzel = findViewById<View>(R.id.wurzel)
         ViewCompat.setOnApplyWindowInsetsListener(wurzel) { v, insets ->
@@ -56,12 +108,76 @@ class MainActivity : Activity(), UpdateBeobachter {
         findViewById<Button>(R.id.loeschen).setOnClickListener { loeschenFragen() }
         versionZeigen(BuildConfig.VERSION_NAME)
         webZeilenAnlegen()
+        statistikAnlegen()
+        // Neu gebaut (Drehen, Hell/Dunkel nach Zeitplan): der Zeitraum, den Tobi gerade ansah.
+        // Das Ziel gilt nur für eine neue Absicht des Widgets, nicht noch einmal beim Neubau.
+        if (savedInstanceState == null || !zustandLesen(savedInstanceState)) zielBehandeln(intent)
 
         Aktualisierung.einplanen(this)
         faeden.execute {
             Selbstupdate.pruefenFuerApp(applicationContext)
             imVordergrund { updateKarteNeu() }
         }
+    }
+
+    override fun onSaveInstanceState(outState: Bundle) {
+        super.onSaveInstanceState(outState)
+        outState.putString(ZUSTAND_REITER, reiter.name)
+        outState.putString(ZUSTAND_VON, zeitraum.von.toString())
+        outState.putString(ZUSTAND_AM, gewaehltAm.toString())
+        outState.putBoolean(ZUSTAND_UPDATE, updateOben)
+        vomBalken?.let {
+            outState.putString(ZUSTAND_BALKEN_REITER, it.reiter.name)
+            outState.putString(ZUSTAND_BALKEN_VON, it.von.toString())
+        }
+    }
+
+    /** Den gesicherten Zustand übernehmen; false, wenn er fehlt oder unlesbar ist. */
+    private fun zustandLesen(b: Bundle): Boolean {
+        val r = b.getString(ZUSTAND_REITER) ?: return false
+        val von = b.getString(ZUSTAND_VON) ?: return false
+        val am = b.getString(ZUSTAND_AM) ?: return false
+        return try {
+            reiter = Reiter.von(r)
+            zeitraum = Zeitraum.um(reiter, LocalDate.parse(von))
+            gewaehltAm = LocalDate.parse(am)
+            updateOben = b.getBoolean(ZUSTAND_UPDATE)
+            vomBalken = b.getString(ZUSTAND_BALKEN_VON)?.let { Zeitraum.um(Reiter.von(b.getString(ZUSTAND_BALKEN_REITER)), LocalDate.parse(it)) }
+            zurueckPflegen()
+            true
+        } catch (e: DateTimeParseException) {
+            false
+        }
+    }
+
+    /** Das Widget tippt, während die App schon offen ist (singleTop): dann kommt das Ziel hier an. */
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        zielBehandeln(intent)
+    }
+
+    /**
+     * STATISTIK: der zuletzt gewählte Reiter (beim ersten Mal Woche) mit dem
+     * Zeitraum von heute, ganz oben. UPDATE: die Update-Karte steht oben. Ohne
+     * Ziel (vom Startbildschirm) bleibt alles, wie es ist.
+     */
+    private fun zielBehandeln(intent: Intent?) {
+        when (intent?.getStringExtra(Ziel.EXTRA)) {
+            Ziel.STATISTIK -> {
+                updateOben = false
+                reiter = Reiter.von(speicher.reiter)
+                gewaehltAm = heute()
+                zeitraum = Zeitraum.um(reiter, gewaehltAm)
+                vomBalken = null
+                zurueckPflegen()
+            }
+            Ziel.UPDATE -> updateOben = true
+            else -> return
+        }
+        ordnen()
+        findViewById<ScrollView>(R.id.wurzel).scrollTo(0, 0)
+        statistikNeu()
     }
 
     override fun onResume() {
@@ -84,6 +200,31 @@ class MainActivity : Activity(), UpdateBeobachter {
         super.onDestroy()
     }
 
+    /** Zurück aus dem Tag in den Zeitraum, aus dem der Balken kam. false: nichts zu tun (die App schließt). */
+    internal fun zurueckZumZeitraum(): Boolean {
+        val z = vomBalken ?: return false
+        vomBalken = null
+        zurueckPflegen()
+        reiter = z.reiter
+        zeitraum = z
+        statistikNeu()
+        return true
+    }
+
+    /** Den Rückruf für Zurück nur anmelden, solange ein Tag vom Balken offen ist – sonst schließt Zurück die App wie gewohnt. */
+    private fun zurueckPflegen() {
+        if (Build.VERSION.SDK_INT < 33) return
+        val ruf = zurueckRuf ?: return
+        val soll = vomBalken != null
+        if (soll == zurueckAngemeldet) return
+        if (soll) {
+            onBackInvokedDispatcher.registerOnBackInvokedCallback(OnBackInvokedDispatcher.PRIORITY_DEFAULT, ruf)
+        } else {
+            onBackInvokedDispatcher.unregisterOnBackInvokedCallback(ruf)
+        }
+        zurueckAngemeldet = soll
+    }
+
     override fun updateGeaendert() {
         imVordergrund { updateKarteNeu() }
     }
@@ -101,10 +242,16 @@ class MainActivity : Activity(), UpdateBeobachter {
         }
     }
 
-    /** Erst was sofort geht (Erlaubnis, Widget), dann im Hintergrund rechnen. */
+    /** Erst was sofort geht (Erlaubnis, Widget, der Verlauf), dann im Hintergrund rechnen. */
     private fun neuLaden() {
-        schritt1Zeigen(Nutzungsdaten.erlaubt(this))
+        erlaubt = Nutzungsdaten.erlaubt(this)
+        schritt1Zeigen(erlaubt)
+        ordnen()
         schritt3Zeigen()
+        val heute = heute()
+        if (heute != gewaehltAm && zeitraum.enthaelt(gewaehltAm)) zeitraum = Zeitraum.um(reiter, heute)
+        gewaehltAm = heute
+        statistikNeu()
         faeden.execute {
             val ergebnis = try {
                 Aktualisierung.fuerApp(applicationContext)
@@ -116,39 +263,158 @@ class MainActivity : Activity(), UpdateBeobachter {
         }
     }
 
+    /** Nach einer Rechnung: Erlaubnis, Stand der Web-Apps – und die Statistik neu aus dem Verlauf. */
     internal fun zeigen(e: Ergebnis) {
+        letztes = e
+        erlaubt = e.erlaubt
         schritt1Zeigen(e.erlaubt)
-        val groesse = (104 * resources.displayMetrics.density).roundToInt()
-        findViewById<ImageView>(R.id.kopf_ring).setImageBitmap(ringBild(groesse, ringWerte(e.posten), ringFarben()))
-        findViewById<TextView>(R.id.kopf_gesamt).text = if (e.erlaubt) WidgetAnsicht.ringZeichen(e.gesamt) else getString(R.string.strich)
-        findViewById<TextView>(R.id.kopf_stand).text =
-            if (e.erlaubt) "Heute, ${WidgetAnsicht.standText(e)}" else getString(R.string.heute_ohne_erlaubnis)
-
+        ordnen()
         for (app in WebApp.entries) {
             val zeile = findViewById<LinearLayout>(R.id.web_liste).findViewWithTag<View>(app.schluessel) ?: continue
             zeile.findViewById<TextView>(R.id.stand).text = webStandText(e.web, app.schluessel, e.stand)
         }
+        statistikNeu()
+    }
+
+    /**
+     * Die Reihenfolge der Karten: Statistik oben, darunter die Einrichtung.
+     * Ohne Erlaubnis zuerst deren Karte (ohne sie gibt es keine Zahlen), wegen
+     * eines Updates geöffnet zuerst die Update-Karte.
+     */
+    private fun ordnen() {
+        val inhalt = findViewById<LinearLayout>(R.id.inhalt)
+        val update = findViewById<View>(R.id.update_karte)
+        val erlaubnis = findViewById<View>(R.id.erlaubnis_karte)
+        val reihe = buildList {
+            add(findViewById<View>(R.id.kopf_titel))
+            if (updateOben) add(update)
+            if (!erlaubt) add(erlaubnis)
+            add(findViewById<View>(R.id.statistik_karte))
+            if (erlaubt) add(erlaubnis)
+            add(findViewById<View>(R.id.web_karte))
+            add(findViewById<View>(R.id.widget_karte))
+            if (!updateOben) add(update)
+            add(findViewById<View>(R.id.loeschen))
+            add(findViewById<View>(R.id.version))
+        }
+        if ((0 until inhalt.childCount).map { inhalt.getChildAt(it) } == reihe) return
+        inhalt.removeAllViews()
+        for (v in reihe) inhalt.addView(v)
+    }
+
+    /** Vorschau und Tests: eine feste Uhr – der Zeitraum beginnt dann bei deren „heute“. */
+    internal fun uhrStellen(uhr: () -> Long) {
+        jetzt = uhr
+        gewaehltAm = heute()
+        zeitraum = Zeitraum.um(reiter, gewaehltAm)
+        statistikNeu()
+    }
+
+    private fun heute(): LocalDate = Instant.ofEpochMilli(jetzt()).atZone(ZoneId.systemDefault()).toLocalDate()
+
+    private fun statistikAnlegen() {
+        for ((id, r) in listOf(R.id.reiter_tag to Reiter.TAG, R.id.reiter_woche to Reiter.WOCHE, R.id.reiter_monat to Reiter.MONAT)) {
+            findViewById<View>(id).setOnClickListener { reiterWaehlen(r) }
+        }
+        findViewById<View>(R.id.zurueck).setOnClickListener {
+            zeitraum = zeitraum.vorher()
+            statistikNeu()
+        }
+        findViewById<View>(R.id.weiter).setOnClickListener {
+            if (zeitraum.hatNachher(heute())) zeitraum = zeitraum.nachher()
+            statistikNeu()
+        }
+        findViewById<Balken>(R.id.balken).beiTipp = { tag -> tagZeigen(tag) }
+    }
+
+    /** Ein Reiter von Hand gewählt: gemerkt, und der Zeitraum um den letzten gezeigten Tag (nie nach heute). */
+    private fun reiterWaehlen(r: Reiter) {
+        speicher.reiter = r.name
+        val tag = minOf(zeitraum.bis, heute())
+        reiter = r
+        zeitraum = Zeitraum.um(r, tag)
+        vomBalken = null
+        zurueckPflegen()
+        statistikNeu()
+    }
+
+    /**
+     * Ein Balken angetippt: dieser Tag im Reiter Tag (gemerkt wird nur ein von
+     * Hand gewählter Reiter). Zurück führt in die Woche bzw. den Monat davor.
+     */
+    internal fun tagZeigen(tag: LocalDate) {
+        if (reiter != Reiter.TAG) vomBalken = zeitraum
+        reiter = Reiter.TAG
+        zeitraum = Zeitraum.um(Reiter.TAG, tag)
+        zurueckPflegen()
+        statistikNeu()
+    }
+
+    /** Den Zeitraum aus dem Verlauf lesen (im Hintergrund: bis zu 31 kleine Dateien) und zeigen. */
+    internal fun statistikNeu() {
+        if (faeden.isShutdown) return
+        val z = zeitraum
+        val heute = heute()
+        val nr = ++auftrag
+        faeden.execute {
+            val tage = verlauf.lesen(z.von, minOf(z.bis, heute))
+            val a = auswerten(z, tage, heute, verlauf.erster())
+            imVordergrund { if (nr == auftrag) statistikZeigen(a) }
+        }
+    }
+
+    internal fun statistikZeigen(a: Auswertung) {
+        val z = a.zeitraum
+        findViewById<View>(R.id.reiter_tag).isSelected = z.reiter == Reiter.TAG
+        findViewById<View>(R.id.reiter_woche).isSelected = z.reiter == Reiter.WOCHE
+        findViewById<View>(R.id.reiter_monat).isSelected = z.reiter == Reiter.MONAT
+        findViewById<TextView>(R.id.zeitraum_titel).text = zeitraumTitel(z, a.heute)
+        findViewById<View>(R.id.zurueck).isEnabled = z.hatVorher(a.datenSeit)
+        findViewById<View>(R.id.weiter).isEnabled = z.hatNachher(a.heute)
+
+        val ohneAlles = a.datenSeit == null
+        findViewById<TextView>(R.id.gesamt).text = if (ohneAlles && !erlaubt) getString(R.string.strich) else gesamtText(a)
+        textSetzen(R.id.schnitt, schnittText(a))
+        val balken = findViewById<Balken>(R.id.balken)
+        if (z.reiter != Reiter.TAG && !ohneAlles) {
+            balken.visibility = View.VISIBLE
+            balken.setzen(a.tage, a.heute)
+        } else {
+            balken.visibility = View.GONE
+        }
+        textSetzen(R.id.luecken, lueckenText(a))
 
         val liste = findViewById<LinearLayout>(R.id.app_liste)
         liste.removeAllViews()
-        val hinweis = findViewById<TextView>(R.id.heute_hinweis)
-        hinweis.text = when {
-            !e.erlaubt -> getString(R.string.heute_ohne_erlaubnis)
-            e.posten.isEmpty() -> getString(R.string.heute_leer)
-            e.web.verbunden -> "Chrome ohne Boxenstopp, Freizeit und Workout. ${WidgetAnsicht.standText(e)}."
-            else -> "${WidgetAnsicht.standText(e)}."
-        }
-        val farben = ringFarben()
         val symbolPx = (30 * resources.displayMetrics.density).roundToInt()
-        for ((i, p) in e.posten.withIndex()) {
-            val z = LayoutInflater.from(this).inflate(R.layout.zeile_app, liste, false)
-            val punkt = z.findViewById<ImageView>(R.id.punkt)
-            if (i < 3) punkt.setColorFilter(farben.top[i]) else punkt.visibility = View.INVISIBLE
-            z.findViewById<ImageView>(R.id.symbol).setImageBitmap(Symbole.bild(this, p, symbolPx))
-            z.findViewById<TextView>(R.id.name).text = p.name
-            z.findViewById<TextView>(R.id.zeit).text = dauerText(p.sekunden)
-            liste.addView(z)
+        for (p in a.apps) {
+            val zeile = LayoutInflater.from(this).inflate(R.layout.zeile_app, liste, false)
+            zeile.findViewById<ImageView>(R.id.symbol).setImageBitmap(Symbole.bild(this, p, symbolPx))
+            zeile.findViewById<TextView>(R.id.name).text = p.name
+            zeile.findViewById<TextView>(R.id.zeit).text = dauerText(p.sekunden)
+            zeile.findViewById<TextView>(R.id.anteil).text = anteilText(p.sekunden, a.gesamt)
+            liste.addView(zeile)
         }
+        textSetzen(R.id.statistik_hinweis, hinweis(a))
+    }
+
+    /** Der leise Satz unten in der Statistik. */
+    private fun hinweis(a: Auswertung): String? {
+        val e = letztes
+        return when {
+            !erlaubt -> getString(R.string.statistik_ohne_erlaubnis)
+            a.zeitraum.reiter == Reiter.TAG && a.belegt == 1 && a.apps.isEmpty() ->
+                getString(if (a.zeitraum.von == a.heute) R.string.heute_leer else R.string.tag_leer)
+            e == null || !a.zeitraum.enthaelt(a.heute) -> null
+            e.web.verbunden -> "Chrome ohne Boxenstopp, Freizeit und Workout. ${statistikStand(e)}."
+            else -> "${statistikStand(e)}."
+        }
+    }
+
+    private fun textSetzen(id: Int, text: String?) {
+        val v = findViewById<TextView>(id)
+        v.text = text.orEmpty()
+        v.visibility = if (text.isNullOrEmpty()) View.GONE else View.VISIBLE
     }
 
     private fun schritt1Zeigen(erlaubt: Boolean) {
@@ -254,6 +520,7 @@ class MainActivity : Activity(), UpdateBeobachter {
         knopf.visibility = if (a.knopf == null) View.GONE else View.VISIBLE
         knopf.text = a.knopf?.text.orEmpty()
         knopf.isEnabled = a.knopf != UpdateKnopf.WARTEN
+        if (updateOben) findViewById<ScrollView>(R.id.wurzel).scrollTo(0, 0)
     }
 
     private fun updateKnopf(knopf: UpdateKnopf?) {
@@ -277,28 +544,17 @@ class MainActivity : Activity(), UpdateBeobachter {
             .show()
     }
 
-    /** Supabase löscht Anmeldung und Zahlen; danach eine neue Kennung. Die Web-Apps trennen sich von selbst. */
+    /** Supabase löscht Anmeldung und Zahlen, der Verlauf ist leer; danach eine neue Kennung. Die Web-Apps trennen sich von selbst. */
     private fun loeschen() {
         faeden.execute {
-            val geloescht = Aktualisierung.allein {
-                val ok = try {
-                    Supabase.loeschen(speicher.kennung)
-                    true
-                } catch (e: IOException) {
-                    false
-                }
-                if (ok) {
-                    val neu = speicher.neueKennungSetzen()
-                    try {
-                        if (Supabase.anmelden(neu)) speicher.angemeldet = true
-                    } catch (e: IOException) {
-                        // holt der nächste Lauf nach
-                    }
-                }
-                ok
-            }
+            val geloescht = Rechner.allesLoeschen(applicationContext)
             imVordergrund {
                 Toast.makeText(this, if (geloescht) R.string.geloescht else R.string.loeschen_ohne_netz, Toast.LENGTH_LONG).show()
+                if (geloescht) {
+                    zeitraum = Zeitraum.um(reiter, heute())
+                    vomBalken = null
+                    zurueckPflegen()
+                }
                 neuLaden()
             }
         }
@@ -319,11 +575,17 @@ class MainActivity : Activity(), UpdateBeobachter {
         Toast.makeText(this, R.string.kein_browser, Toast.LENGTH_LONG).show()
     }
 
-    private fun ringFarben(): RingFarben =
-        if (resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK == Configuration.UI_MODE_NIGHT_YES) RingFarben.DUNKEL else RingFarben.HELL
-
     private fun imVordergrund(arbeit: () -> Unit) {
         runOnUiThread { if (!isFinishing && !isDestroyed) arbeit() }
+    }
+
+    private companion object {
+        const val ZUSTAND_REITER = "reiter"
+        const val ZUSTAND_VON = "von"
+        const val ZUSTAND_AM = "gewaehltAm"
+        const val ZUSTAND_UPDATE = "updateOben"
+        const val ZUSTAND_BALKEN_REITER = "balkenReiter"
+        const val ZUSTAND_BALKEN_VON = "balkenVon"
     }
 }
 

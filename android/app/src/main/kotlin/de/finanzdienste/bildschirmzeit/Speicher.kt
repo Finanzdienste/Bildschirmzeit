@@ -6,6 +6,10 @@ import androidx.core.content.edit
 import org.json.JSONArray
 import org.json.JSONException
 import org.json.JSONObject
+import java.time.Instant
+import java.time.LocalDate
+import java.time.ZoneId
+import java.time.format.DateTimeParseException
 
 /**
  * SharedPreferences der App. Die Kennung ist geheim: Wer sie kennt, kann
@@ -64,11 +68,37 @@ class Speicher(context: Context) {
             p.edit { putBoolean(NETZ_FEHLT, wert) }
         }
 
-    /** Was zuletzt von Supabase kam – für die Zeit ohne Netz. */
-    fun zwischenspeichern(gelesen: Long, zeilen: List<Zeile>) {
+    /** Was zuletzt von Supabase kam – für die Zeit ohne Netz. `von`: der erste gelesene Tag. */
+    fun zwischenspeichern(gelesen: Long, zeilen: List<Zeile>, von: LocalDate? = null) {
         val o = JSONObject().put("gelesen", gelesen).put("zeilen", zeilenAlsJson(zeilen))
+        if (von != null) o.put("von", tagText(von))
         p.edit { putString(ZWISCHENSPEICHER, o.toString()) }
     }
+
+    /** Ab welchem Tag der Zwischenspeicher gelesen ist; ohne Angabe (Fassung 1.6) die acht Tage bis zum Lesen. */
+    fun zwischenspeicherVon(zone: ZoneId = ZoneId.systemDefault()): LocalDate? {
+        val text = p.getString(ZWISCHENSPEICHER, null) ?: return null
+        return try {
+            val o = JSONObject(text)
+            val von = o.optString("von")
+            if (von.isNotEmpty()) {
+                LocalDate.parse(von)
+            } else {
+                Instant.ofEpochMilli(o.getLong("gelesen")).atZone(zone).toLocalDate().minusDays(Verlauf.WEB_TAGE - 1)
+            }
+        } catch (e: JSONException) {
+            null
+        } catch (e: DateTimeParseException) {
+            null
+        }
+    }
+
+    /** Der zuletzt gewählte Reiter der Statistik (Tag, Woche, Monat); beim ersten Mal null. */
+    var reiter: String?
+        get() = p.getString(REITER, null)
+        set(wert) {
+            p.edit { putString(REITER, wert) }
+        }
 
     /** (gelesen, zeilen) oder null. */
     fun zwischengespeichert(): Pair<Long, List<Zeile>>? {
@@ -88,6 +118,7 @@ class Speicher(context: Context) {
         const val GERECHNET = "gerechnet"
         const val NETZ_VERSUCH = "netz_versuch"
         const val NETZ_FEHLT = "netz_fehlt"
+        const val REITER = "reiter"
         val SPERRE = Any()
     }
 }

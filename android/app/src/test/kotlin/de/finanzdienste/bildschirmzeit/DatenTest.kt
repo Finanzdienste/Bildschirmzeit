@@ -153,10 +153,11 @@ class DatenTest {
     }
 
     @Test
-    fun ringZeichenGrosseZahlenKleineEinheiten() {
-        val text = WidgetAnsicht.ringZeichen(3 * 3600 + 12 * 60)
-        assertEquals("3 Std.\n12 Min.", text.toString())
+    fun gesamtZeichenGrosseZahlenKleineEinheiten() {
+        val text = WidgetAnsicht.gesamtZeichen(3 * 3600 + 12 * 60)
+        assertEquals("3 Std. 12 Min.", text.toString())
         val spans = (text as android.text.Spanned).getSpans(0, text.length, android.text.style.RelativeSizeSpan::class.java)
-        assertEquals(listOf(" Std.", " Min."), spans.map { text.subSequence(text.getSpanStart(it), text.getSpanEnd(it)).toString() })
+        assertEquals(listOf(" Std. ", " Min."), spans.map { text.subSequence(text.getSpanStart(it), text.getSpanEnd(it)).toString() })
+        assertEquals("0 Min.", WidgetAnsicht.gesamtZeichen(0).toString())
     }
 }

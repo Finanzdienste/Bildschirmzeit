@@ -17,6 +17,9 @@ fun dauerText(sekunden: Long): String {
     return if (rest != 0L) "$std Std. $rest Min." else "$std Std."
 }
 
+/** Eine Summe (Tag, Woche, Widget-Kopf): wie dauerText, nur ganz ohne Nutzung „0 Min.“ statt „unter 1 Min.“. */
+fun summeText(sekunden: Long): String = if (sekunden <= 0L) "0 Min." else dauerText(sekunden)
+
 /**
  * Kurz für die Zeilen im Widget, wo neben dem Namen wenig Platz ist:
  * „54 Min.“, ab einer Stunde „2:41 Std.“.
@@ -26,9 +29,6 @@ fun kurzText(sekunden: Long): String {
     if (min < 60) return dauerText(sekunden)
     return "${min / 60}:${(min % 60).toString().padStart(2, '0')} Std."
 }
-
-/** Für die Mitte des Rings: Stunden und Minuten untereinander. */
-fun ringText(sekunden: Long): String = dauerText(sekunden).replace(" Std. ", " Std.\n")
 
 private val UHR = DateTimeFormatter.ofPattern("HH:mm")
 private val DATUM_UHR = DateTimeFormatter.ofPattern("d.M., HH:mm")

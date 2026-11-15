@@ -7,43 +7,59 @@
 > „Push, Daten und alles andere in den drei Apps müssen weiter funktionieren
 > wie bisher.“ – Tobi
 
-Eine kleine Android-App mit Widget: Ring mit der Bildschirmzeit von heute,
-daneben die Top 3 und „Andere Apps“ – und Boxenstopp, Freizeit und Workout stehen dort unter
-eigenem Namen und mit eigenem Symbol statt als „Chrome“.
+Eine kleine Android-App mit Widget: oben die Bildschirmzeit aller Apps von
+heute, darunter die Top-Apps (so viele hineinpassen, bis zu 8) – und
+Boxenstopp, Freizeit und Workout stehen dort unter eigenem Namen und mit
+eigenem Symbol statt als „Chrome“. Antippen öffnet die App mit der Statistik.
 
 ![Widget 4×2, hell](docs/vorschau-gross-hell.png)
 ![Widget 4×2, dunkel](docs/vorschau-gross-dunkel.png)
 
 Weitere Vorschauen (mit erfundenen Zahlen, von `VorschauTest` und
-`AppVorschauTest` gezeichnet): `docs/vorschau-klein-*.png` (2×2, nur der
-Ring), `vorschau-lang-hell.png` (3×2, lange Zeiten, ohne Netz – unter
-320 dp Breite kleinerer Ring und Zeilen ohne App-Symbol, damit die Namen
-ganz bleiben),
-`vorschau-flach-hell.png`, `vorschau-einrichten-hell.png` (ohne Erlaubnis),
+`AppVorschauTest` gezeichnet, in den Größen von Tobis S24):
+`docs/vorschau-klein-*.png` (2×2, vier Apps untereinander),
+`vorschau-lang-hell.png` (3×2, lange Namen und Zeiten, ohne Netz),
+`vorschau-flach-hell.png` (4×1: Kopf links, drei Apps rechts),
+`vorschau-einrichten-hell.png` (ohne Erlaubnis),
 `vorschau-update-hell.png` (ein Update wartet auf Tobi: oben „Update: antippen“),
-`vorschau-app-hell.png` / `-dunkel.png` (der App-Bildschirm; unten die
-Update-Karte – hell noch nicht eingerichtet, dunkel eingerichtet),
-`vorschau-app-einrichten-hell.png` (die App ohne Erlaubnis, mit dem Weg
-über die eingeschränkte Einstellung).
+`vorschau-app-hell.png` / `-dunkel.png` (der App-Bildschirm: oben die
+Statistik einer Woche, darunter die Einrichtung und die Update-Karte – hell
+noch nicht eingerichtet, dunkel eingerichtet), `vorschau-app-monat-*.png`
+(ein Monat mit Lücken), `vorschau-app-tag-hell.png` (der Reiter Tag),
+`vorschau-app-einrichten-hell.png` (die App ohne Erlaubnis: deren Karte vor
+der Statistik, mit dem Weg über die eingeschränkte Einstellung).
 
 ## Tobis Entscheidungen
 
 - Repo öffentlich, deshalb liegt auch der Signaturschlüssel offen im Repo
   (Risiko ist erklärt, unten „Signaturschlüssel“).
-- Der Ring zeigt die Anteile der Apps: voller Ring = Gesamtzeit heute, Top 3
-  farbig (blau, grün, orange), der Rest grau.
+- „"Andere Apps" ist ja scheiße wir brauchen diesen Kreis links nicht. Was
+  ich will ist die gesamtzzeit alles Apps zu sehen und Vllt so die top 8 oder
+  so mit der größten nutzungszeit. Je nachdem wieviel hin passt.“ (15.11.,
+  10:40) – das Widget hat keinen Ring und kein „Andere Apps“ mehr: oben die
+  Gesamtzeit, darunter bis zu acht Apps, so viele ganz hineinpassen; Antippen
+  öffnet die App mit der Statistik (unten „Das Widget: Gesamtzeit und
+  Top-Apps“). Gilt ab v7.
+- Bis v6: Der Ring zeigte die Anteile der Apps (voller Ring = Gesamtzeit
+  heute, Top 3 farbig, der Rest grau).
 - „Hab ich wirklich nur diese drei Apps heute verwendet?“ (15.11., Widget mit
-  Claude 16, Boxenstopp 6, Chrome 5 von 36 Min.) – seit Release v5 steht der
+  Claude 16, Boxenstopp 6, Chrome 5 von 36 Min.) – in Release v5 und v6 stand der
   graue Rest als vierte Zeile „Andere Apps“ da (unter 290 dp Breite „Andere“).
   Vorher: nur die Top 3, der Rest war nur grau im Ring. Ist das Widget flacher
   als 172 dp, steht er vorn im Stand („1:09 Std. andere · Stand 21:40“); ganz
   flach (unter 125 dp) fällt der Stand samt Rest weg. Dafür sind die Abstände
-  der Zeilen etwas enger (5 statt 7 dp). Geprüft in VorschauTest
+  der Zeilen etwas enger (5 statt 7 dp). Geprüft bis v6 in VorschauTest
   `andereAppsAlsVierteZeile` (auch, dass der Stand nie abgeschnitten wird –
   bei 352 × 176 dp war er es im ersten Versuch). Tobis Widget meldet laut
-  Screenshot etwa 400 × 201 dp.
+  Screenshot etwa 400 × 201 dp. Am 15.11. um 10:40 von Tobi verworfen (oben).
 - Verbunden wird aus der Widget-App (je App ein Knopf „Verbinden“); die
   Web-Apps zeigen nur „verbunden · Trennen“.
+- „Wenn ich auf das widget tippe soll ich mir auch die Wochen und
+  Monatsnutzung nach App aufgeteilt und so anzeigen lassen können“ (15.11.,
+  10:40) – seit v7 öffnet Antippen die App, und ganz oben steht die Statistik:
+  Tag, Woche, Monat, je mit allen Apps (unten „Statistik und Verlauf in der
+  App“). Offen gelassen, also entschieden: Woche Montag bis Sonntag, beim
+  ersten Mal der Reiter Woche, danach der zuletzt gewählte.
 - „Alter stand? Keinen bock immer zu aktualisieren“ (15.11., 08:49, das
   Widget zeigte „Stand 08:43“) – gemeint war beides, und beides ist gebaut:
   Das Widget bleibt von selbst frisch, solange das Handy benutzt wird
@@ -97,10 +113,11 @@ Einmal, alles am Handy:
 7. **Schritt 3** „Widget hinzufügen“ → „Hinzufügen“. Von Hand:
    Startbildschirm lange drücken → „Widgets“ → „Bildschirmzeit“ → antippen →
    „Hinzufügen“. Größe ändern: Widget lange drücken, an den Rändern ziehen
-   (2×2 zeigt nur den Ring).
+   (ab 2×1; 4×2 zeigt acht Apps, 2×2 vier, 4×1 drei).
 8. Empfohlen, damit Samsung die App nicht schlafen legt (dann stünden
    Wecker und 15-Minuten-Lauf still): Einstellungen → Apps → Bildschirmzeit
-   → Akku → „Nicht eingeschränkt“. Antippen des Widgets rechnet immer sofort.
+   → Akku → „Nicht eingeschränkt“. Antippen des Widgets öffnet die App, und
+   die rechnet sofort.
 9. **Automatische Updates – einmal einrichten:** In der App unten
    „Automatische Updates einrichten“ → es öffnet sich „Unbekannte Apps
    installieren“ für Bildschirmzeit → Schalter („Diese Quelle zulassen“,
@@ -113,8 +130,8 @@ Einmal, alles am Handy:
    Karte warum und was zu tun ist (z. B. bei „blockiert“: Einstellungen →
    Sicherheit und Datenschutz → Automatische Sperre → aus, dann „Noch einmal
    versuchen“). Steht im Widget oben „Update: antippen“, wartet ein Update
-   auf Tobi: Widget antippen → die App öffnet sich → ganz nach unten → der
-   Knopf auf der Karte.
+   auf Tobi: Widget antippen → die App öffnet sich mit der Update-Karte ganz
+   oben → der Knopf auf der Karte.
 
    **Einmal noch von Hand:** Wer eine Fassung ohne diese Karte hat (Tobi:
    1.1), installiert die nächste wie in Schritt 1–4 (Automatische Sperre
@@ -152,11 +169,12 @@ von lokaler Mitternacht bis jetzt, aus `UsageStatsManager.queryEvents`.
   Startknopf für Chrome; ihre Sekunden zählen zu Chrome.
 
 **Chrome kürzen** (`Aufteilung.kt`, `AufteilungTest`): Die Widget-App liest
-mit `bildschirmzeit_lesen` die letzten acht Tage und nimmt für heute, was jede
-Web-App gemeldet hat. Das wird von Chrome abgezogen und als „Boxenstopp“,
-„Freizeit“, „Workout“ gezeigt. Haben die drei zusammen mehr gemeldet, als
-Chrome lief, werden sie anteilig auf Chromes Zeit gekürzt (Rest nach größtem
-Bruchteil) – die Gesamtzeit ist also immer die von Android. Was von Chrome
+mit `bildschirmzeit_lesen` die letzten acht Tage (einmal nach dem ersten
+Nachtragen des Verlaufs weiter zurück, unten „Statistik und Verlauf“) und
+nimmt für heute, was jede Web-App gemeldet hat. Das wird von Chrome
+abgezogen und als „Boxenstopp“, „Freizeit“, „Workout“ gezeigt. Haben die
+drei zusammen mehr gemeldet, als Chrome lief, werden sie anteilig auf
+Chromes Zeit gekürzt (Rest nach größtem Bruchteil) – die Gesamtzeit ist also immer die von Android. Was von Chrome
 übrig bleibt, steht als „Chrome“ da.
 
 **Ohne Netz:** Es gilt, was zuletzt von Supabase kam (SharedPreferences), und
@@ -173,20 +191,156 @@ WorkManager selbst neu, den Wecker plant `Hintergrund` nach Neustart und
 Update neu). Supabase höchstens alle 5 Minuten, bei dunklem Bildschirm
 höchstens stündlich, sonst gilt der Zwischenspeicher. `updatePeriodMillis`
 ist 0: Androids eigener 30-Minuten-Takt weckte das Handy auch nachts und
-rechnete und funkte doppelt. Antippen schickt einen Broadcast an das
-Widget, das gleich dort rechnet (`goAsync`, eigener Faden): erst ohne Netz
-zeichnen, dann mit – Antippen fragt Supabase immer. Eine Sperre verhindert
-zwei Rechnungen zugleich; „Alle Daten löschen“ läuft unter derselben Sperre.
+rechnete und funkte doppelt. Antippen öffnet die App; die rechnet beim
+Öffnen sofort mit Netz und zeichnet das Widget mit (`Aktualisierung.fuerApp`).
+Kommt ein Widget neu auf den Startbildschirm, rechnet es gleich im Empfänger
+(`goAsync`, eigener Faden): erst ohne Netz zeichnen, dann mit. Eine Sperre
+verhindert zwei Rechnungen zugleich; „Alle Daten löschen“ läuft unter
+derselben Sperre.
 
 **Warum Samsungs Zahl um Minuten abweichen kann:** Samsungs Digital Wellbeing
 rechnet selbst und anders (eigene Zusammenfassung der Nutzungsdaten, zählt
 z. B. Telefonate oder Apps ohne Symbol im App-Drawer, die hier fehlen, und
 lässt dafür anderes weg; geteilter Bildschirm und Bild-im-Bild werden anders
 gewertet). Das Widget zeigt den Stand seiner letzten Rechnung (während
-der Benutzung höchstens gut 3 Minuten alt, Antippen holt nach). Die
+der Benutzung höchstens gut 3 Minuten alt, Antippen öffnet die App und holt
+nach). Die
 Web-Apps messen nur, solange sie sichtbar sind, und melden alle 5 Minuten
 und beim Wegschalten – was seit der letzten Meldung dazukam, steht bis
 dahin noch bei Chrome.
+
+## Das Widget: Gesamtzeit und Top-Apps (v7)
+
+> „"Andere Apps" ist ja scheiße wir brauchen diesen Kreis links nicht. Was
+> ich will ist die gesamtzzeit alles Apps zu sehen und Vllt so die top 8
+> oder so mit der größten nutzungszeit. Je nachdem wieviel hin passt. Wenn
+> ich auf das widget tippe soll ich mir auch die Wochen und Monatsnutzung
+> nach App aufgeteilt und so anzeigen lassen können“ – Tobi, 15.11., 10:40
+> (Screenshot: links der Ring mit der Gesamtzeit, rechts drei Apps, darunter
+> „Andere Apps …“ und „Stand 10:40“).
+
+**Vorher (bis v6):** Links der Ring mit der Gesamtzeit, rechts
+„Bildschirmzeit“, die Top 3 mit Farbpunkt (der Legende des Rings) und „Andere
+Apps“ als vierte Zeile; 2×2 zeigte nur den Ring. Antippen schickte einen
+Broadcast ans Widget, das neu rechnete; nur beim Update-Hinweis öffnete es
+die App.
+
+**Jetzt** (`WidgetAnsicht.kt`; „Je nachdem“ hieß: wir entscheiden):
+
+- Oben klein „Heute“ (wartet ein Update: „Update: antippen“ in der
+  Akzentfarbe), rechts daneben „Stand 10:40“, darunter groß die Gesamtzeit
+  aller Apps (in den Bildern erfunden „4 Std. 7 Min.“ – dieselbe Summe wie
+  vorher in der Ringmitte).
+- Darunter die Top-Apps nach Zeit mit Symbol, Name und Zeit – so viele, wie
+  ganz hineinpassen, höchstens 8; nie eine halbe Zeile. Kein Ring, keine
+  Farbpunkte (die waren nur seine Legende), kein „Andere Apps“, auch nicht im
+  Stand.
+- Zwei Spalten, wenn beide breit genug sind: links Platz 1–4, rechts 5–8.
+- Lange Namen werden mit „…“ gekürzt, die Zeit nie. Ganz ohne Nutzung
+  „0 Min.“ und „Heute noch nichts“.
+- Hell und dunkel wie bisher aus `values-night`.
+
+**Wie viele passen** (`WidgetRaster`, rein, in dp): Rand 16 dp seitlich, 14
+oben und unten, dazu 4 dp Reserve, falls Samsungs Schrift höher läuft als
+Roboto. Kopf 47 dp („Heute“ 16, Gesamtzeit 31), Zeile 20 dp (Symbol 20,
+Text 13 sp), kompakt 18 dp (12 sp), Abstand 6–12 dp, 10 dp unter dem Kopf.
+Zwei Spalten nur, wenn jede mindestens 168 dp (kompakt 140) breit ist – so
+viel brauchen Symbol, „Boxenstopp“ und „1:09 Std.“ mit etwas Luft. Unter
+262 dp Innenbreite steht der Stand unter der Gesamtzeit (sonst passten
+„Update: antippen“ und „Stand 21:40 · ohne Netz“ nicht nebeneinander). In
+flachen Widgets steht der Kopf links (140 dp) und die Liste rechts. Es gewinnt
+die Möglichkeit mit den meisten Apps; bei Gleichstand die größere Schrift,
+dann der Kopf oben, dann eine Spalte (ein hohes 4×3 zeigt die acht
+untereinander, statt unten leer zu bleiben). Androids Schriftgröße zählt mit:
+größere Schrift, weniger Zeilen, nichts abgeschnitten. Flacher als jede Zelle
+fällt erst der Stand weg, dann „Heute“; die Gesamtzeit bleibt.
+
+**Der Kopf in der Breite** (`WidgetAnsicht.Kopf`, nach der Prüfung des
+Umbaus): Die Texte werden in der Schrift des Widgets gemessen (mit Androids
+Schriftgröße, auch der nichtlinearen ab Android 14, und einem Zwanzigstel
+Luft). Passt „Stand 21:40 · ohne Netz“ nicht, fällt erst „· ohne Netz“ weg,
+dann „Stand“; „Update: antippen“ wird „Update“ (erst ab etwa 200 %); die
+Gesamtzeit wird kleiner (26 sp abwärts, höchstens bis 12 sp) statt
+abgeschnitten. Vorher stand bei 130 % Schrift in einem 2×2 auf engem Raster
+(170 dp) „18 Std. 49“ ohne „Min.“ und „Stand 21:40 · ohne“ da, bei 110 dp
+Breite schon bei 100 % „4 Std. 7“. Wo alles passt, bleibt es, wie es war;
+die Bilder sind byte-gleich. In Tobis 400 × 201 steht auch bei 130 % alles
+ganz da („Update: antippen“, „Stand 21:40 · ohne Netz“, die Gesamtzeit in
+26 sp). Im 2×2 mit 200 × 201 fällt bei 130 % „· ohne Netz“ weg: Der Stand
+ist dort gut 161 dp breit, mit der Luft 169, Platz sind 168 dp; bei 100 und
+110 % bleibt es. Die Luft bleibt trotzdem: Läuft die Schrift auf dem S24 nur
+etwas breiter, stünde ohne sie wieder „Stand 21:40 · ohne“ da (eine Zeile,
+Android bricht am Wort ab) – lieber ganz ohne den Zusatz als halb.
+
+| Größe (dp) | Was das Widget zeigt |
+|---|---|
+| 400 × 201 (Tobis 4×2) | acht Apps in zwei Spalten |
+| 352 × 176 (4×2 auf einem 4×5-Raster) | sechs in zwei Spalten, kompakt |
+| 300 × 176, 264 × 176 (3×2) | drei |
+| 400 × 100 (4×1) | Kopf links, drei Apps rechts |
+| 200 × 201 (2×2 bei Tobi) | vier untereinander, kompakt |
+| 170 × 170 (2×2, enges Raster) | drei, „Boxenstopp“ gekürzt |
+| 352 × 290, 400 × 300 (4×3) | acht untereinander |
+| 170 × 290 (2×3) | acht untereinander, kompakt |
+| 170 × 100 (2×1) | nur der Kopf |
+
+`widget_info.xml`: Standard 4×2, verkleinerbar jetzt bis 2×1
+(`minResizeHeight` 40 statt 110 dp) – auch 4×1 zeigt Apps.
+
+**Antippen öffnet die App** (`WidgetAnsicht.oeffnen`): `MainActivity` mit dem
+Extra `ziel` (`Ziel.kt`, der Vertrag mit der App): `statistik`, beim
+Update-Hinweis `update` (auch ohne Erlaubnis: `statistik`, die App zeigt dann
+Schritt 1). Je Ziel ein eigener requestCode – sonst wäre es für Android
+derselbe PendingIntent, und das zuletzt gesetzte Ziel gälte für beide.
+`FLAG_IMMUTABLE`, dazu `NEW_TASK | CLEAR_TOP | SINGLE_TOP`: Läuft die App
+schon (auch mit Androids Einstellungen darüber), bekommt sie das neue Ziel
+über `onNewIntent`. Ausnahme, solange eine Installation läuft
+(`UpdateSpeicher.sitzung`): Androids Rückfrage „Möchtest du diese App
+aktualisieren?“ liegt dann im Task der App über ihr, und `CLEAR_TOP` räumte
+sie ohne Antwort weg – die Sitzung hinge bis zu 10 Minuten
+(`UpdateRegeln.SITZUNG_MS`), nachgelesen in AOSP (PackageInstallerActivity
+meldet nur in `finish()`). Dann nur `NEW_TASK`, und Android holt den Task so
+nach vorn, wie er ist, samt Rückfrage. Damit das auch klappt, wenn die App
+vom Symbol gestartet wurde, ist die Absicht dieselbe wie die des Symbols
+(`MAIN`/`LAUNCHER` an MainActivity, nur mit dem Extra); eigene requestCodes
+(12, 13), weil `FLAG_UPDATE_CURRENT` nur Extras ersetzt, keine Flags. Der
+Selbstupdate-Ablauf selbst ist unverändert; v6 → v7 läuft noch mit dem Code
+von v6. Die App zeigt dann ganz oben die Statistik (den zuletzt
+gewählten Reiter mit dem jetzigen Zeitraum, beim ersten Mal die Woche) bzw.
+die Update-Karte direkt unter dem Titel – unten „Statistik und Verlauf in der
+App“. Sie rechnet beim Öffnen sofort mit Netz und zeichnet
+das Widget neu, so bringt Antippen weiter frische Zahlen. Den Broadcast
+`AKTUALISIEREN` gibt es nicht mehr; `Anlass.TIPPEN` bleibt nur für ein Widget,
+das neu auf den Startbildschirm kommt (`onUpdate`).
+
+**Geprüft:** `WidgetRasterTest` (die Größen oben; über alle Größen von
+110 × 40 bis 800 × 460 dp bei 100, 115 und 130 % Schrift: höchstens 8, nie
+mehr Zeilen, als ganz passen, keine zu wenig, zwei Spalten nur, wenn breit
+genug; größer zeigt nie weniger), `VorschauTest` (an den echten Views über die
+gemessene Lage, nicht measuredHeight: jede Zeile, Stand und Gesamtzeit ganz im
+Widget, nichts gekürzt außer Namen; Tobis 400 × 201 mit acht Apps und
+„Boxenstopp“, „WhatsApp“, „LinkedIn“, „Instagram“, „1:09 Std.“, „54 Min.“ ganz;
+kein Ring, kein „Andere“; drei Apps, keine; 130 % Schrift; der Hinweis;
+`widget_info`; `kopfBeiGroesserSchriftGanz`: elf Größen bis 110 × 40 dp bei
+100, 110 und 130 % mit „18 Std. 49 Min.“, ohne Netz und mit Hinweis; im
+200 × 201 bei 130 % „Stand 21:40“, bei 100 und 110 % mit „· ohne Netz“),
+`WidgetTippenTest` (Antippen startet genau MainActivity mit dem
+Ziel, in jeder Form; je Ziel ein eigener PendingIntent; eine neue Zeichnung
+über die alte; während einer Installation ohne `CLEAR_TOP`, mit der Absicht
+des App-Symbols), `SelbstupdateTest` (über den Wecker gezeichnet: Update →
+`update`, danach `statistik`), `WidgetOeffnetAppTest` (beide Teile zusammen:
+genau die Absicht, die das Antippen startet, öffnet MainActivity – Statistik
+oben, Woche, ganz oben gescrollt, die App rechnet und zeichnet das Widget;
+auch, wenn die App schon offen war; mit Hinweis die Update-Karte auf dem
+ersten Bildschirm). Mutationen (Kopf zu niedrig geschätzt, Spalten
+zu schmal, derselbe requestCode) machen je mindestens einen Test rot. Ein
+Gegenprobe-Test nur mit Schnittstellen beider Fassungen war gegen ff04888
+(v6) 7-mal rot (acht Apps, kein „Andere Apps“, „Heute“, kein Ring, Antippen →
+Statistik, Update → Update, 2×1 erlaubt) und ist jetzt grün.
+
+**Zeigt sich erst auf dem S24:** welche Größen One UI für 4×1, 2×2 und 4×3
+meldet (hier aus Tobis 400 × 201 abgeleitet) und ob Samsungs Schrift mit den
+4 dp Reserve auskommt.
 
 ## Von selbst frisch (Release nach v5)
 
@@ -227,7 +381,7 @@ es (die Zahlen sind höchstens ein paar Minuten alt), ging er schief, bleibt
 es bei jeder Rechnung stehen, bis Supabase wieder antwortet. Im ersten
 Versuch fiel es zwischen zwei Versuchen weg, obwohl die Zahlen der Web-Apps
 Stunden alt sein konnten (Prüfer, 15.11.; in v5 fragte jeder Lauf Supabase).
-Antippen fragt immer.
+Das Öffnen der App (auch über das Widget) fragt immer.
 
 **Was es kostet, ehrlich:** Akku: Der Wecker läuft nur, wenn das Handy
 ohnehin wach ist – bei angeschaltetem Bildschirm höchstens 30-mal in der
@@ -324,15 +478,17 @@ zurück.
 **Wenn es Tobi braucht, sagt es das Widget:** Benachrichtigungen hat die App
 nicht, und wer sie nicht öffnet, sieht die Karte nie. Kommt ein neueres
 Release ohne Tobi nicht an, steht im Widget oben „Update: antippen“ statt
-„Bildschirmzeit“, und Antippen öffnet die App (die dabei auch neu rechnet);
-unten wartet die Karte mit Grund und Knopf. Das gilt, wenn Schritt 9 fehlt,
+„Heute“ (in der Akzentfarbe), und Antippen öffnet die App mit `Ziel.UPDATE`
+(die App rechnet dabei auch neu); ganz oben, direkt unter dem Titel, wartet
+die Karte mit Grund und Knopf. Das gilt, wenn Schritt 9 fehlt,
 GitHub keine Prüfsumme nennt, Android bestätigt haben will, Tobi abgebrochen
 hat, Android blockiert (Automatische Sperre), bei falscher Datei, Konflikt,
 inkompatibel – und nach drei Fehlschlägen hintereinander, auch wenn Warten
 sonst hilft (`UpdateRegeln.widgetHinweis`). Nicht, solange installiert wird
-oder der Hintergrund es noch von selbst schafft. Ist das Widget so flach,
-dass der Titel wegfällt (unter 150 dp), oder ist es 2×2 (nur der Ring), gibt
-es keinen Hinweis, und Antippen rechnet wie immer. Was es kostet: beim
+oder der Hintergrund es noch von selbst schafft. Der Hinweis steht in jeder
+Größe des Startbildschirms (auch 2×1 und 4×1); nur flacher als jede Zelle
+fällt „Heute“ samt Hinweis weg, Antippen öffnet dann trotzdem die
+Update-Karte. Bis v6 gab es ihn unter 150 dp Höhe und im 2×2 nicht. Was es kostet: beim
 Zeichnen ein Blick in den eigenen Speicher, nichts übers Netz. Vorher stand
 das nur auf der Karte (Prüfer, 15.11.).
 
@@ -349,8 +505,9 @@ Wartezeit nach Fehlern, Rückfrage im Hintergrund verworfen und im
 Vordergrund nur nach dem Knopf gezeigt, Androids „abgebrochen“ nach dem
 eigenen Verwerfen zählt nicht, Tobis „Abbrechen“ im Dialog schon, Karte →
 Einstellungen → Installieren, das Widget sagt „Update: antippen“ und öffnet
-die App), `VorschauTest` (`updateHinweisImTitel`: der Titel ganz, auch bei
-3×2), `DatenTest` (die Antwort von GitHub, nur Adressen dieses
+die App bei der Update-Karte), `VorschauTest` (`updateHinweisImKopf`: ganz,
+auch bei 2×2 und 4×1), `WidgetTippenTest` (Antippen → `Ziel.UPDATE`),
+`DatenTest` (die Antwort von GitHub, nur Adressen dieses
 Repos), `WeckerTest` (Rechte im Manifest). Mutationen (Prüfsumme weg,
 Rückfrage auch ohne Knopf, Wartezeit weg, zweite Sitzung erlaubt, Wecker
 weckend) machen je mindestens einen Test rot. Nie das echte GitHub
@@ -362,6 +519,179 @@ installierte Fassung einen Update-Owner hat (dann kommt beim ersten Mal
 die Rückfrage über den Knopf), ob die Automatische Sperre Updates der App
 blockiert oder den Schalter in Schritt 9 sperrt, ob Play Protect warnt,
 und wie genau der Schalter heißt.
+
+## Statistik und Verlauf in der App (v7)
+
+> „Wenn ich auf das widget tippe soll ich mir auch die Wochen und
+> Monatsnutzung nach App aufgeteilt und so anzeigen lassen können“ – Tobi,
+> 15.11., 10:40 (Screenshot seines Widgets).
+
+![Statistik, Monat, dunkel](docs/vorschau-app-monat-dunkel.png)
+
+**Vorher:** Die App zeigte oben den Ring von heute und weiter unten „Heute“
+mit den Apps von heute. Woche und Monat gab es nicht – Android hebt seine
+Ereignisse ohnehin nur rund zehn Tage auf (unten). Antippen des Widgets
+rechnete nur neu.
+
+**Jetzt** (`Statistik.kt`, `Balken.kt`, `MainActivity.kt`): Antippen öffnet
+die App mit einem Ziel (`Ziel.kt`, Extra `ziel`): `statistik`, mit
+Update-Hinweis `update`. Ganz oben steht die Statistik, darunter die
+Einrichtung (Nutzungsdaten, Web-Apps, Widget, Update-Karte, Löschen). Fehlt
+die Erlaubnis, steht deren Karte vor der Statistik (ohne sie gibt es keine
+Zahlen); kommt die App wegen eines Updates, steht die Update-Karte oben. Die
+App rechnet beim Öffnen wie bisher sofort mit Netz und zeichnet die Widgets
+neu – Antippen bringt also weiter frische Zahlen.
+
+- Reiter Tag | Woche | Monat, je mit ‹ › – nicht über heute hinaus und nicht
+  vor den Beginn des Verlaufs. Woche Montag bis Sonntag („9.–15. Nov.“, über
+  den Monatswechsel „26. Okt. – 1. Nov.“, übers Jahr „28. Dez. – 3. Jan.
+  2027“ – die Jahreszahl einmal, hinten; mit beiden passte der Titel bei
+  größerer Schrift nicht zwischen ‹ und ›, und passt er trotzdem nicht, wird
+  er kleiner statt umbrochen), Monat der Kalendermonat („November 2026“), Tag
+  „Heute“, „Gestern“, „Sa., 14. Nov.“. Gemerkt wird der zuletzt von Hand
+  gewählte Reiter; das Widget öffnet ihn mit dem jetzigen Zeitraum, beim
+  ersten Mal „Woche“.
+- Drehen und der Wechsel hell/dunkel nach Zeitplan bauen die Activity neu:
+  Der Zeitraum, den Tobi gerade ansieht, bleibt (`onSaveInstanceState`); das
+  Ziel des Widgets gilt nur für ein neues Antippen. Zurück aus einem Tag, den
+  ein Tipp auf einen Balken geöffnet hat, führt in die Woche bzw. den Monat
+  davor, statt die App zu schließen – über `OnBackInvokedCallback`, angemeldet
+  nur, solange so ein Tag offen ist. Das Manifest setzt seit der ersten
+  Fassung `enableOnBackInvokedCallback="true"`: Ab Android 13 kommt Zurück
+  deshalb nur über solche Rückrufe an, `onBackPressed` gar nicht (Lint
+  `GestureBackNavigation`) – auf 13 bis 15 genauso wie auf Tobis Android 16.
+  Darunter (Android 10 bis 12) gibt es den Rückruf nicht; dort schließt
+  Zurück die App wie bisher, auch aus dem Tag vom Balken.
+- Je Zeitraum die Gesamtzeit, bei Woche und Monat „Ø je Tag“ nur über die
+  Tage mit Daten (fehlen welche: „· 5 von 7 Tagen mit Daten“), dazu Balken der
+  Tagessummen: eigene View mit Canvas, keine Bibliothek, Farben aus dem Thema
+  (hell und dunkel), heute im vollen Akzent, höchstens drei leise Linien mit
+  runden Stunden. Ein Tipp auf einen Balken zeigt diesen Tag im Reiter Tag.
+- Darunter alle Apps des Zeitraums nach Zeit, mit Symbol, Zeit und Anteil in
+  %. Boxenstopp, Freizeit und Workout stehen unter eigenem Namen, Chrome nur
+  mit dem Rest; „Stand 21:40“, solange der Zeitraum heute enthält.
+- Tage ohne Daten: im Diagramm ein kleiner leerer Kreis statt eines Balkens,
+  darunter „Keine Daten: 7.–8. Nov.“, im Reiter Tag „keine Daten“ – nie 0.
+  Beginnt der Verlauf erst im Zeitraum: „Daten seit 3. Nov.“. Ein Tag mit
+  Daten, aber ganz ohne Nutzung, heißt „0 Min.“ wie im Widget (vorher „unter
+  1 Min.“ über „Heute noch nichts.“) und hat im Diagramm einen flachen Strich
+  – sonst sähe er aus wie ein Tag, der erst kommt.
+
+**Warum ein eigener Verlauf – nachgelesen in AOSP (main,
+`UsageStatsDatabase.prune`):** Bei jedem Tageswechsel
+(`UserUsageStatsService.rolloverStats`) löscht Android die Tagesdateien, die
+älter als 10 Tage sind („prune all files older than 10 days“,
+`mCal.addDays(-10)`; dazu höchstens 100 Dateien,
+`MAX_FILES_PER_INTERVAL_TYPE`). `queryEvents` liest nur diese Tagesdateien
+(`queryStats(INTERVAL_DAILY, …)`); Wochen-, Monats- und Jahresdateien halten
+nur Summen je App, nach Androids eigener Zählung und nicht je Tag – dafür
+taugen sie nicht. Samsung kann länger aufheben. Deshalb führt die App einen
+eigenen Tagesverlauf, nur auf dem Handy.
+
+**Der Verlauf** (`Verlauf.kt`): je Kalendertag eine kleine Datei
+(`noBackupFilesDir/verlauf/2026-11-15.json`, rund 1 KB): Sekunden je App nach
+dem Abzug der Web-Apps von Chrome, mit Namen (so bleiben auch deinstallierte
+Apps lesbar), die gemeldeten Web-Minuten und ob Androids Teil fertig ist.
+Aufbewahrt 400 Tage. `noBackupFilesDir` geht nie in die Android-Sicherung;
+`datenregeln.xml` schließt dazu sicherheitshalber Dateien und Datenbanken aus.
+Geschrieben wird über eine Zwischendatei und nur bei Änderungen. Gefüllt:
+
+1. **Heute** bei jeder Rechnung (Wecker, WorkManager, neues Widget, App –
+   auch über das Widget) – mit dem, was ohnehin gerechnet ist.
+2. **Vergangene Tage** nur, wenn sie fehlen (`stand.json`: bis wann
+   nachgetragen ist): nach Mitternacht einmal der Vortag ganz (Androids
+   Ereignisse ab 8 Stunden vor seiner Mitternacht bis zur nächsten), am
+   ersten Start rückwirkend bis zu 62 Tage, so weit Android Ereignisse hat.
+   Ein Tag zählt nur, wenn Android ihn ganz hat – Ereignisse schon vor seiner
+   Mitternacht, oder Android hat den Vortag im selben Lauf hergegeben, oder
+   der Tag bzw. der Vortag steht im Verlauf und ist höchstens 9 Tage alt
+   (`Verlauf.ANDROID_SICHER_TAGE`: älter kann Android ihn inzwischen
+   weggeräumt haben – etwa wenn zehn Tage nichts gerechnet hat). Die älteste
+   Tagesdatei beginnt mitten am Tag; dieser Tag bliebe sonst zu kurz und steht
+   deshalb als „keine Daten“ da – oder, steht er schon im Verlauf, wie er ist.
+3. **Nie weniger** (`Rechner.nieWeniger`, nach der Prüfung des Umbaus): Was
+   ein Tag im Verlauf schon hat, geht nicht verloren – je App zählt das
+   Größere aus dem Verlauf und aus Androids neuer Rechnung, heute wie beim
+   Nachtragen. Eine App, die Tobi deinstalliert, kennt Android danach nicht
+   mehr (AOSP `UsageStatsDatabase.onPackageRemoved` nimmt ihr Token weg,
+   `IntervalStats.deobfuscateEvents` wirft ihre Ereignisse beim Lesen weg);
+   vorher fiel ihre Zeit spätestens beim nächsten Wecker aus dem Tag, und
+   nach Mitternacht stand er so als fertig da. Jetzt bleibt sie, mit dem
+   Namen, unter dem sie stand. Sonst wächst ein Tag ohnehin nur.
+4. **Nachtragen wiederholt:** Vorgerückt wird nur bis zum letzten Tag, den
+   Android ganz hergab – nach jedem Tag gespeichert, so geht ein
+   abgebrochener erster Lauf dort weiter. Gab Android die letzten Tage nicht
+   her (eine leere Antwort, etwa kurz nach einem Neustart, bevor Android den
+   Nutzer geladen hat, oder das Handy war aus), versucht es die Rechnung
+   höchstens einmal je Stunde noch einmal (`Rechner.NOCHMAL_MS`); vorher blieb
+   der Vortag dann für immer beim Stand vor Mitternacht. Älter als 10 Tage
+   wird nichts neu versucht.
+5. **Die Web-Apps:** Die gewöhnliche Abfrage liest weiter heute − 7 … heute;
+   die vergangenen Tage darin werden bei jedem Netz aufgefrischt (die
+   Web-Apps melden auch verspätet, `p_tage` mit mehreren Tagen) – kein Byte
+   mehr übers Netz, geschrieben nur bei Änderung. Ältere Tage gelten als
+   fertig – außer ihre Web-Werte wurden noch vor dem Ende des Tages gelesen
+   (die App hatte danach über eine Woche kein Netz, die Web-Apps meldeten
+   weiter): Dann holt die nächste Netzabfrage sie einmal mit (vorher blieb
+   der Abend dann für immer in Chrome). Fehlen nach dem Nachtragen Web-Werte
+   älterer Tage, liest die nächste Abfrage einmal weiter zurück: dieselbe eine Anfrage
+   `bildschirmzeit_lesen(p_kennung, p_von, p_bis)`, höchstens die 62 Tage,
+   die Supabase hält (was älter ist, sucht sie danach nicht weiter – sonst
+   läse nach langer Zeit ohne Netz jede Abfrage 62 Tage). Je Tag wird wie heute aufgeteilt (`aufteilen`), die
+   Summe bleibt die von Android. „verbunden“ heißt weiter: in den letzten
+   acht Tagen gemeldet. Das SQL bleibt, wie es ist.
+6. **Tagesgrenzen** über `ZoneId`: Der 29.3. hat 23 Stunden, der 25.10. 25;
+   wechselt die Zeitzone, gilt der Kalendertag auf dem Handy.
+
+**Was es kostet:** Der Wecker liest weiter nur heute (eine Abfrage ab 8
+Stunden vor Mitternacht), dazu `stand.json` und die Datei von heute (je
+wenige hundert Byte) und schreibt höchstens die Datei von heute. Nach
+Mitternacht einmal der Vortag; gab Android ihn nicht her, höchstens stündlich
+noch einmal. Nur der erste Start
+nach dem Update liest bis zu 62 Tage, einmal (Android hat meist zehn).
+Supabase wie bisher höchstens alle 5 Minuten acht Tage, einmal weiter zurück.
+Platz: 400 Tage zu je 1–2 KB, unter 1 MB.
+
+**„Alle Daten löschen“** löscht jetzt auch den Verlauf; die Statistik beginnt
+mit heute neu – nicht gleich wieder rückwirkend aus Androids Ereignissen,
+sonst stünde nach dem Löschen alles wieder da. Ohne Netz ist nichts gelöscht,
+auch der Verlauf nicht (`Rechner.allesLoeschen`, unter derselben Sperre).
+
+**Geprüft:** `StatistikTest` (Woche Mo–So, über Monats- und Jahreswechsel,
+Sommerzeitwochen, Monat, Titel, ‹ › und die Grenze heute, Summen und Ø nur
+über Tage mit Daten, „keine Daten“ nie 0, ein Tag ohne Nutzung „0 Min.“,
+„Daten seit“, Anteile),
+`VerlaufTest` (speichern, laden, kaputte Datei, verspätete Web-Meldungen neu
+aufgeteilt, nur Änderungen geschrieben, nichts sucht ewig nach Tagen, die
+Supabase nicht mehr hat, 400 Tage, löschen, Tagesgrenzen am
+29.3. und 25.10. in Europe/Berlin und zum Jahreswechsel, angeschnittene Tage,
+nicht in der Sicherung), `VerlaufRechnerTest` (nachgebautes Gerät: erster
+Start rückwirkend ohne den angeschnittenen ältesten Tag, eine Supabase-Anfrage
+für den Bereich, **der Wecker liest nur heute** und nach Mitternacht einmal
+den Vortag, dabei Supabase weiter acht Tage, verspätete Meldungen, ohne Netz
+später nachgetragen, deinstallierte App bleibt im Tag, auch wenn Android ihre
+Ereignisse vergisst und der Wecker gleich danach rechnet, ein nach zehn Tagen
+angeschnittener Tag ersetzt nicht den bekannten und wird nicht aus dem
+bekannten Vortag erfunden, eine leere Antwort nach Mitternacht wird nach
+einer Stunde wiederholt, vor Tagesende gelesene Web-Werte werden nach neun
+Tagen ohne Netz noch geholt, Löschen; diese fünf Fälle waren gegen den Stand
+vor der ersten Nachbesserung rot), `AppStatistikTest` (Statistik
+oben, Woche beim ersten Mal, gemerkter Reiter, ‹ ›, Tipp auf einen Balken →
+Tag, Tag ohne Daten, ohne Erlaubnis deren Karte zuerst, Ziel `update` →
+Update-Karte oben, der Löschen-Dialog nennt den Verlauf, neu gebaut bleibt
+der Zeitraum, Zurück aus dem Tag vom Balken über den Rückruf wie auf
+dem S24; `TitelBreiteTest`: „28. Dez. – 3. Jan. 2027“ bei 360 dp und 100,
+110, 130 % ganz in einer Zeile), `AppVorschauTest`
+(die Bilder), `WidgetOeffnetAppTest` (vom Antippen des Widgets bis zur
+Statistik bzw. Update-Karte; gegen `verlauf-statistik` allein 2-mal rot: das
+alte Widget mit „Bildschirmzeit“ statt „Heute“, beim Update ohne Ziel). Gegen ff04888 bauen die neuen Tests nicht (die Klassen fehlen);
+ein Test nur mit Schnittstellen beider Fassungen war dort 4-mal rot (kein
+Reiter „Woche“, Update-Karte nicht oben, kein Verlauf, Dateien in der
+Sicherung) und ist jetzt grün.
+
+**Zeigt sich erst auf dem S24:** wie lange One UI die Ereignisse wirklich
+aufhebt (AOSP: zehn Tage – „Daten seit“ sagt es nach dem ersten Start), wie
+die Statistik in Tobis Hand aussieht.
 
 ## Der Vertrag zwischen Widget-App, Supabase und Web-Apps
 
@@ -411,7 +741,8 @@ sich selbst („Bildschirmzeit getrennt: …“). API: `bildschirmzeitStarten(na
 `dauerText(sek)` (wortgleich mit `dauerText` in `Texte.kt`), `BZ_EREIGNIS`.
 
 **„Alle Daten löschen“** (unten in der App, mit Rückfrage):
-`bildschirmzeit_loeschen`, dann eine neue Kennung (gleich angemeldet). Die
+`bildschirmzeit_loeschen`, dann eine neue Kennung (gleich angemeldet) und
+der Verlauf in der App ist leer (seit v7). Die
 Web-Apps bekommen beim nächsten Melden `false` und trennen sich von selbst;
 danach kann man sie neu verbinden. „verbunden“ heißt in der App: in den
 letzten acht Tagen gemeldet – wer in einer Web-App „Trennen“ drückt, steht
@@ -455,17 +786,20 @@ android/                     Gradle-Projekt (Kotlin DSL)
     Nutzung.kt               die Rechnung über Androids Ereignisse (rein)
     Aufteilung.kt            Chrome kürzen, die drei Web-Apps (rein)
     Texte.kt                 Zeiten, Kennung (rein)
-    Ring.kt                  Ring-Geometrie und -Bild
     Nutzungsdaten.kt         UsageStatsManager, Launcher, HOME, Erlaubnis
     Netz.kt                  HttpURLConnection + org.json, Supabase, Zeilen
-    Speicher.kt              SharedPreferences: Kennung, Zwischenspeicher
-    Rechner.kt               setzt alles zu einem Ergebnis zusammen
-    WidgetAnsicht.kt         RemoteViews: 4×2, 2×2, „Tippen zum Einrichten“
+    Speicher.kt              SharedPreferences: Kennung, Zwischenspeicher, gemerkter Reiter
+    Rechner.kt               setzt alles zu einem Ergebnis zusammen, füllt den Verlauf
+    Verlauf.kt               der eigene Tagesverlauf (noBackupFilesDir/verlauf), welche Tage fehlen (rein)
+    Statistik.kt             Tag, Woche, Monat: Zeiträume, Titel, Summen (rein)
+    Balken.kt                das Balkendiagramm der Statistik (Canvas)
+    Ziel.kt                  wohin das Widget die App öffnet (Extra an MainActivity: statistik, update)
+    WidgetAnsicht.kt         WidgetRaster (wie viele Apps in welche Größe, rein), RemoteViews
     Aktualisierung.kt        WorkManager, Widget-Empfänger, Sperre
     Takt.kt                  wann gerechnet und gefunkt wird (rein), Wecker, Neustart/Update
     NeueVersion.kt           GitHub releases/latest: Laufnummer, APK, Prüfsumme
     Selbstupdate.kt          Updates von selbst: Regeln (rein), Laden, Installer-Sitzung, Status
-    MainActivity.kt          der App-Bildschirm
+    MainActivity.kt          der App-Bildschirm: oben die Statistik, darunter die Einrichtung
   app/src/test/…             JUnit + Robolectric (Vorschau mit nativer Grafik)
 docs/vorschau-*.png          gezeichnet von den Tests
 supabase/bildschirmzeit.sql  die vier Funktionen
@@ -568,6 +902,55 @@ spricht mit dem echten Supabase oder GitHub (`Netz.gesperrt`).
   Lauf „APK“ dann von Hand gestartet (workflow_dispatch). Tobi installiert
   v6 einmal von Hand und richtet Schritt 9 ein; erst das nächste Release
   zeigt, ob die App sich auf dem S24 wirklich selbst aktualisiert.
+- 15.11.2026, nach Tobis „"Andere Apps" ist ja scheiße …“ und „… die
+  Wochen und Monatsnutzung nach App aufgeteilt …“ (10:40): das Widget ohne
+  Ring – oben die Gesamtzeit, darunter bis zu acht Apps, Antippen öffnet die
+  App (Abschnitt „Das Widget: Gesamtzeit und Top-Apps“) – und in der App oben
+  die Statistik mit Tag, Woche, Monat und dem eigenen Verlauf (Abschnitt
+  „Statistik und Verlauf in der App“). Gebaut nebeneinander auf den Zweigen
+  `widget-liste` (129 Prüfungen) und `verlauf-statistik` (153), dann
+  nacheinander auf `main` übernommen. Weg, weil nichts sie mehr nutzte:
+  `Ring.kt`, `ringText`, `ringZeichen`, `drawable/punkt.xml` und die Ring-Maße
+  in `dimens.xml` (das App-Symbol bleibt der Ring). Auf `main` 165
+  JUnit-/Robolectric-Prüfungen grün (114 in v6; `WidgetOeffnetAppTest` prüft
+  beide Teile zusammen), 47 SQL, 61 Web-Modul, Lint ohne Fehler (7
+  Warnungen, alle UnusedAttribute wie vorher); die APK trägt das Zertifikat
+  `bc6f91b9…759e`, Paket und Rechte sind dieselben wie in v6 (`aapt2 dump
+  badging` gleich). Alle Bilder in `docs/` und für die Widget-Auswahl neu
+  gezeichnet und angesehen. Noch nicht im Release: kommt als v7 – das erste,
+  das v6 von selbst installieren soll.
+- 15.11.2026, nach der unabhängigen Prüfung dieses Umbaus (drei Sichten:
+  Daten, Ansicht, Rückschritte; noch vor dem Release) nachgebessert: Eine
+  deinstallierte App bleibt mit ihrer Zeit im Tag, heute wie im Verlauf (vorher
+  fiel sie spätestens beim nächsten Wecker heraus – Android liefert ihre
+  Ereignisse nicht mehr); ein nach zehn Tagen ohne Rechnung angeschnittener
+  Tag ersetzt nicht mehr den bekannten und wird nicht aus dem bekannten
+  Vortag erfunden; gab Android den Vortag nach Mitternacht nicht her, versucht
+  die Rechnung es stündlich noch einmal (und merkt sich den Fortschritt nach
+  jedem Tag); vor Tagesende gelesene Web-Werte holt die nächste Netzabfrage
+  noch (Abschnitt „Statistik und Verlauf“, Punkte 2–5). In der App: Drehen und
+  hell/dunkel nach Zeitplan behalten den Zeitraum, Zurück aus dem Tag vom
+  Balken führt in die Woche, „28. Dez. – 3. Jan. 2027“ passt auch bei 130 %
+  Schrift, ein Tag ohne Nutzung heißt „0 Min.“ (flacher Strich im Diagramm),
+  Schritt 1 nennt Woche und Monat. Im Widget: Der Kopf wird gemessen und
+  bleibt bei größerer Schrift ganz; während einer Installation räumt Antippen
+  Androids Rückfrage nicht mehr weg (kein `CLEAR_TOP`). README, Kommentare,
+  Tests und Bilder nennen nur erfundene Zahlen. Das SQL bleibt, wie es ist. 174 JUnit-/Robolectric-Prüfungen grün (165 vorher;
+  die neuen waren gegen den Stand davor rot: 5 im Verlauf, 7 in App und Widget per
+  Test nur mit Schnittstellen beider Fassungen), 47 SQL, 61 Web-Modul, Lint
+  ohne Fehler (7 Warnungen UnusedAttribute wie vorher). Die Widget-Bilder und
+  die für die Widget-Auswahl sind byte-gleich, die drei App-Bilder mit der
+  Karte von Schritt 1 neu.
+- 15.11.2026, nach der zweiten Prüfung: nur Beschreibung, kein neues
+  Verhalten. Zurück kommt ab Android 13 über den Rückruf an, nicht erst ab
+  16 – das Manifest setzt `enableOnBackInvokedCallback` seit der ersten
+  Fassung (Abschnitt „Statistik und Verlauf“, Kommentar in `MainActivity`).
+  Im 2×2 mit 200 × 201 fällt bei 130 % Schrift „· ohne Netz“ weg; das steht
+  jetzt so im Abschnitt „Der Kopf in der Breite“, und `VorschauTest` hält es
+  fest – die Luft im Kopf bleibt, damit nie wieder „· ohne“ halb dasteht.
+  Das README verweist nicht mehr auf Commits, die noch nicht gepusht sind.
+  174 JUnit-/Robolectric-Prüfungen grün, 47 SQL, 61 Web-Modul, Lint ohne
+  Fehler (7 Warnungen wie vorher); alle Bilder byte-gleich.
 - Noch nicht auf dem S24 ausprobiert: Größen des Startbildschirms, Akku-
   Verhalten von One UI (ob es die App trotz Widget schlafen legt), ob
   Chrome den Verbinden-Link in der installierten Web-App oder als Tab

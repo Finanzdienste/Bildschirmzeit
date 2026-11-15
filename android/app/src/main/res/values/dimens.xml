@@ -2,9 +2,4 @@
 <resources>
     <dimen name="widget_radius">24dp</dimen>
     <dimen name="widget_rand">14dp</dimen>
-    <dimen name="widget_abstand">14dp</dimen>
-    <!-- Bis Android 11 (ohne genaue Größen vom Startbildschirm) -->
-    <dimen name="ring_gross">112dp</dimen>
-    <dimen name="ring_klein">104dp</dimen>
-    <dimen name="ring_innen">18dp</dimen>
 </resources>

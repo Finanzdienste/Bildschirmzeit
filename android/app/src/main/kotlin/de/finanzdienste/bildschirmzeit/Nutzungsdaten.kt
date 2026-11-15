@@ -27,14 +27,34 @@ object Nutzungsdaten {
         }
     }
 
+    /**
+     * Nur für Tests: Wenn gesetzt, steht hier jede Abfrage (von, bis) – so
+     * prüft RechnerTest, dass der Wecker nur heute liest.
+     */
+    @Volatile
+    internal var mitschrift: MutableList<Pair<Long, Long>>? = null
+
     /** Die Ereignisse von `von` bis `bis`, nur die Arten, die Nutzung.kt braucht. */
-    fun ereignisse(context: Context, von: Long, bis: Long): List<Ereignis> {
-        val usm = context.getSystemService(UsageStatsManager::class.java) ?: return emptyList()
-        val roh = usm.queryEvents(von, bis) ?: return emptyList()
+    fun ereignisse(context: Context, von: Long, bis: Long): List<Ereignis> = abfragen(context, von, bis).ereignisse
+
+    /**
+     * Was Android von `von` bis `bis` hat: die zählbaren Ereignisse und wann
+     * das erste und das letzte Ereignis irgendeiner Art war (null: gar keins) –
+     * daran sieht der Verlauf, ob Android einen Tag überhaupt noch kennt.
+     */
+    fun abfragen(context: Context, von: Long, bis: Long): Abfrage {
+        mitschrift?.add(von to bis)
+        val usm = context.getSystemService(UsageStatsManager::class.java) ?: return Abfrage(emptyList(), null, null)
+        val roh = usm.queryEvents(von, bis) ?: return Abfrage(emptyList(), null, null)
         val e = UsageEvents.Event()
         val aus = ArrayList<Ereignis>()
+        var erstes: Long? = null
+        var letztes: Long? = null
         while (roh.hasNextEvent()) {
             roh.getNextEvent(e)
+            val t = e.timeStamp
+            if (erstes == null || t < erstes) erstes = t
+            if (letztes == null || t > letztes) letztes = t
             val art = when (e.eventType) {
                 UsageEvents.Event.ACTIVITY_RESUMED -> Art.VORN
                 UsageEvents.Event.ACTIVITY_PAUSED -> Art.PAUSIERT
@@ -45,10 +65,13 @@ object Nutzungsdaten {
                 UsageEvents.Event.DEVICE_STARTUP -> Art.GESTARTET
                 else -> null
             } ?: continue
-            aus += Ereignis(e.timeStamp, art, e.packageName.orEmpty(), e.className.orEmpty())
+            aus += Ereignis(t, art, e.packageName.orEmpty(), e.className.orEmpty())
         }
-        return aus
+        return Abfrage(aus, erstes, letztes)
     }
+
+    /** Das Ergebnis von `abfragen`. */
+    class Abfrage(val ereignisse: List<Ereignis>, val erstes: Long?, val letztes: Long?)
 
     /** Pakete mit Eintrag im App-Drawer (sichtbar über <queries> im Manifest). */
     fun launcherPakete(pm: PackageManager): Set<String> =

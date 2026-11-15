@@ -1,10 +1,18 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Die Kennung bleibt auf diesem Gerät: weder in die Cloud-Sicherung noch beim Umzug aufs neue Handy. -->
+<!--
+    Die Kennung und der Verlauf bleiben auf diesem Gerät: weder in die Cloud-Sicherung
+    noch beim Umzug aufs neue Handy. Der Verlauf (Verlauf.kt) liegt in noBackupFilesDir,
+    das Android nie sichert; sicherheitshalber sind auch Dateien und Datenbanken ausgenommen.
+-->
 <data-extraction-rules>
     <cloud-backup>
         <exclude domain="sharedpref" path="." />
+        <exclude domain="file" path="." />
+        <exclude domain="database" path="." />
     </cloud-backup>
     <device-transfer>
         <exclude domain="sharedpref" path="." />
+        <exclude domain="file" path="." />
+        <exclude domain="database" path="." />
     </device-transfer>
 </data-extraction-rules>

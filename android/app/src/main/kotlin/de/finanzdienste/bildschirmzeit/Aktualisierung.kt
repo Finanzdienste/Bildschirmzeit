@@ -4,7 +4,6 @@ import android.appwidget.AppWidgetManager
 import android.appwidget.AppWidgetProvider
 import android.content.ComponentName
 import android.content.Context
-import android.content.Intent
 import android.os.Bundle
 import android.os.PowerManager
 import android.util.Log
@@ -20,8 +19,9 @@ import java.util.concurrent.locks.ReentrantLock
  * Wann das Widget neu gerechnet wird: der nicht weckende Wecker (alle 2
  * Minuten, solange das Handy benutzt wird, und gleich nach dem Einschalten –
  * Takt.kt), WorkManager alle 15 Minuten (auch nach einem Neustart; prüft dabei
- * auch auf Updates), beim Antippen, beim Hinzufügen, wenn der Startbildschirm
- * die Größe ändert und wenn die App offen ist. Nie zwei Rechnungen zugleich.
+ * auch auf Updates), beim Hinzufügen, wenn der Startbildschirm die Größe ändert
+ * und wenn die App offen ist – Antippen öffnet die App (WidgetAnsicht.oeffnen),
+ * die beim Öffnen sofort mit Netz rechnet. Nie zwei Rechnungen zugleich.
  */
 object Aktualisierung {
     private const val ARBEIT = "widget-aktualisieren"
@@ -44,9 +44,10 @@ object Aktualisierung {
 
     /**
      * Rechnet die Widgets neu, so oft und mit so viel Netz, wie `Takt.plan` für
-     * den `anlass` sagt. Beim Antippen erst ohne Netz zeichnen (sofort etwas
-     * Neues zu sehen), dann mit. Rechnet gerade schon jemand, bleibt es bei
-     * dessen Ergebnis. true: gerechnet.
+     * den `anlass` sagt. Bei Anlass.TIPPEN (ein Widget kam gerade auf den
+     * Startbildschirm) erst ohne Netz zeichnen (sofort etwas zu sehen), dann
+     * mit. Rechnet gerade schon jemand, bleibt es bei dessen Ergebnis. true:
+     * gerechnet.
      */
     fun imTakt(context: Context, anlass: Anlass, jetzt: Long = System.currentTimeMillis()): Boolean {
         if (!sperre.tryLock()) return false
@@ -123,20 +124,15 @@ class WidgetArbeit(context: Context, parameter: WorkerParameters) : Worker(conte
 }
 
 /**
- * Das Widget. Antippen schickt AKTUALISIEREN an diesen Empfänger; gerechnet
- * wird gleich hier (goAsync, eigener Faden) – das kommt sofort an, auch wenn
- * Samsungs Akku-Optimierung WorkManager bremst.
+ * Das Widget. Gerechnet wird gleich hier (goAsync, eigener Faden) – das kommt
+ * sofort an, auch wenn Samsungs Akku-Optimierung WorkManager bremst. Antippen
+ * kommt hier nicht an: Es öffnet die App (Tobi, 15.11.: „Wenn ich auf das
+ * widget tippe soll ich mir auch die Wochen und Monatsnutzung nach App
+ * aufgeteilt und so anzeigen lassen können“), und die rechnet beim Öffnen.
  */
 class BildschirmzeitWidget : AppWidgetProvider() {
 
-    override fun onReceive(context: Context, intent: Intent) {
-        if (intent.action == WidgetAnsicht.AKTUALISIEREN) {
-            imHintergrund { Aktualisierung.imTakt(context.applicationContext, Anlass.TIPPEN) }
-            return
-        }
-        super.onReceive(context, intent)
-    }
-
+    /** Neu auf dem Startbildschirm (oder nach Neustart und Update): sofort und mit Netz. */
     override fun onUpdate(context: Context, appWidgetManager: AppWidgetManager, appWidgetIds: IntArray) {
         val app = context.applicationContext
         imHintergrund {

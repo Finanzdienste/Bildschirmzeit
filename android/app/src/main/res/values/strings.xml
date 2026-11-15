@@ -1,13 +1,15 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">Bildschirmzeit</string>
-    <string name="widget_beschreibung">Heutige Bildschirmzeit mit Boxenstopp, Freizeit und Workout als eigene Apps</string>
+    <string name="widget_beschreibung">Heutige Bildschirmzeit und deine Top-Apps, mit Boxenstopp, Freizeit und Workout als eigene Apps</string>
     <string name="widget_einrichten">Tippen zum Einrichten</string>
-    <string name="widget_andere">Andere Apps</string>
-    <string name="widget_andere_kurz">Andere</string>
+    <!-- Klein über der Gesamtzeit im Widget. -->
+    <string name="widget_heute">Heute</string>
     <string name="widget_leer">Heute noch nichts</string>
-    <!-- Titel des Widgets, wenn ein Update auf Tobi wartet (UpdateRegeln.widgetHinweis); Antippen öffnet die App. -->
+    <!-- Statt „Heute“, wenn ein Update auf Tobi wartet (UpdateRegeln.widgetHinweis); Antippen öffnet die App bei der Update-Karte. -->
     <string name="widget_update">Update: antippen</string>
+    <!-- Passt „Update: antippen“ nicht in die Breite (erst ab etwa 200 % Schrift, WidgetAnsicht.Kopf). -->
+    <string name="widget_update_kurz">Update</string>
 
     <string name="kopf_titel">Bildschirmzeit</string>
     <string name="strich">–</string>
@@ -15,8 +17,8 @@
 
     <string name="schritt1_titel">1  Nutzungsdatenzugriff erlauben</string>
     <string name="schritt1_fertig">1  Nutzungsdatenzugriff ✓</string>
-    <string name="schritt1_text">Damit die App sieht, wie lange jede App heute offen war. „Erlauben“ öffnet „Zugriff auf Nutzungsdaten“ – dort den Schalter einschalten (steht eine Liste da, erst „Bildschirmzeit“ antippen).</string>
-    <string name="schritt1_text_fertig">Erlaubt. Die App sieht, wie lange jede App heute offen war.</string>
+    <string name="schritt1_text">Damit die App sieht, wie lange jede App offen war\u00A0– heute, in der Woche, im Monat. „Erlauben“ öffnet „Zugriff auf Nutzungsdaten“ – dort den Schalter einschalten (steht eine Liste da, erst „Bildschirmzeit“ antippen).</string>
+    <string name="schritt1_text_fertig">Erlaubt. Die App sieht, wie lange jede App offen war\u00A0– heute, in der Woche, im Monat.</string>
     <string name="schritt1_knopf">Erlauben</string>
     <string name="schritt1_hinweis">Ist der Schalter grau („Gesteuert durch eingeschränkte Einstellung“)?\n1. Trotzdem auf „Berechtigung erteilen“ tippen. Es kommt „App wurde Zugriff verweigert“ – mit „Schließen“ (oder „OK“) zumachen. Erst danach gibt es Schritt 2.\n2. Einstellungen → Apps → Bildschirmzeit neu öffnen (oder hier „App-Info öffnen“) → oben rechts ⋮ → „Eingeschränkte Einstellungen zulassen“ → mit PIN oder Fingerabdruck bestätigen.\n3. Noch einmal „Erlauben“ und den Schalter einschalten.\nFehlt ⋮ auch dann: Einstellungen → Sicherheit und Datenschutz → Automatische Sperre aus, Schritt 1 und 2 wiederholen, danach die Sperre wieder ein.</string>
     <string name="app_info">App-Info öffnen</string>
@@ -27,21 +29,29 @@
 
     <string name="schritt3_titel">3  Widget hinzufügen</string>
     <string name="schritt3_fertig">3  Widget ✓</string>
-    <string name="schritt3_text">Ring mit der Zeit von heute und deinen Top 3. Es bleibt von selbst aktuell, solange du das Handy benutzt (alle 2 Minuten und gleich nach dem Einschalten); Antippen rechnet sofort.</string>
-    <string name="schritt3_text_fertig">Das Widget ist auf dem Startbildschirm. Antippen rechnet sofort neu.</string>
+    <string name="schritt3_text">Die Zeit von heute und deine Top-Apps, so viele hineinpassen (bis zu 8). Es bleibt von selbst aktuell, solange du das Handy benutzt (alle 2 Minuten und gleich nach dem Einschalten); Antippen öffnet die Statistik.</string>
+    <string name="schritt3_text_fertig">Das Widget ist auf dem Startbildschirm. Antippen öffnet die Statistik und rechnet sofort neu.</string>
     <string name="schritt3_knopf">Widget hinzufügen</string>
     <string name="schritt3_anleitung">So geht es von Hand: Startbildschirm lange gedrückt halten → „Widgets“ → „Bildschirmzeit“ → antippen → „Hinzufügen“.</string>
 
-    <string name="heute_titel">Heute</string>
-    <string name="heute_ohne_erlaubnis">Erst Schritt 1 – dann steht hier jede App von heute.</string>
+    <!-- Die Statistik oben in der App; Titel, Ø und Lücken stehen in Statistik.kt (StatistikTest). -->
+    <string name="reiter_tag">Tag</string>
+    <string name="reiter_woche">Woche</string>
+    <string name="reiter_monat">Monat</string>
+    <string name="pfeil_zurueck">‹</string>
+    <string name="pfeil_weiter">›</string>
+    <string name="zurueck">Voriger Zeitraum</string>
+    <string name="weiter">Nächster Zeitraum</string>
+    <string name="statistik_ohne_erlaubnis">Erst den Nutzungsdatenzugriff erlauben (Schritt 1) – dann stehen hier deine Zahlen.</string>
     <string name="heute_leer">Heute noch nichts.</string>
+    <string name="tag_leer">An diesem Tag nichts.</string>
 
     <!-- Die Texte der Update-Karte stehen in UpdateRegeln.anzeige (Selbstupdate.kt), getestet in UpdateRegelnTest. -->
     <string name="update_titel">Automatische Updates</string>
 
     <string name="loeschen">Alle Daten löschen</string>
     <string name="loeschen_titel">Alle Daten löschen?</string>
-    <string name="loeschen_text">Die Minuten von Boxenstopp, Freizeit und Workout werden bei Supabase gelöscht. Die drei trennen sich beim nächsten Melden von selbst; danach kannst du sie neu verbinden. Androids eigene Nutzungsdaten bleiben, wie sie sind.</string>
+    <string name="loeschen_text">Die Minuten von Boxenstopp, Freizeit und Workout werden bei Supabase gelöscht, dazu der Verlauf hier in der App – die Statistik beginnt mit heute neu. Die drei Web-Apps trennen sich beim nächsten Melden von selbst; danach kannst du sie neu verbinden. Androids eigene Nutzungsdaten bleiben, wie sie sind.</string>
     <string name="loeschen_ja">Löschen</string>
     <string name="abbrechen">Abbrechen</string>
     <string name="geloescht">Gelöscht. Verbinde die Web-Apps neu, wenn du magst.</string>

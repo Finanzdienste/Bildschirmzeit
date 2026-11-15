@@ -1,250 +1,94 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Widget ab 3×2: Ring links, rechts „Bildschirmzeit“, Top 3, „Andere Apps“ (der graue Rest) und Stand. Gefüllt von WidgetAnsicht.kt. -->
+<!--
+  Widget, Kopf oben (WidgetRaster.Form.BREIT): „Heute“ und rechts „Stand 21:40“,
+  darunter groß die Gesamtzeit, dann die Top-Apps in einer oder zwei Spalten.
+  Gefüllt von WidgetAnsicht.kt; wie viele Zeilen passen, sagt WidgetRaster.
+  Ränder und Höhen hängen an den Zahlen dort – beides zusammen ändern.
+-->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:id="@android:id/background"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:background="@drawable/widget_hintergrund"
-    android:baselineAligned="false"
     android:clipToOutline="true"
-    android:gravity="center_vertical"
-    android:orientation="horizontal"
-    android:padding="@dimen/widget_rand">
-
-    <FrameLayout
-        android:id="@+id/ring_rahmen"
-        android:layout_width="@dimen/ring_gross"
-        android:layout_height="@dimen/ring_gross">
-
-        <ImageView
-            android:id="@+id/ring"
-            android:layout_width="match_parent"
-            android:layout_height="match_parent"
-            android:importantForAccessibility="no"
-            android:scaleType="fitCenter" />
-
-        <TextView
-            android:id="@+id/gesamt"
-            android:layout_width="match_parent"
-            android:layout_height="match_parent"
-            android:fontFamily="sans-serif-medium"
-            android:gravity="center"
-            android:importantForAccessibility="no"
-            android:includeFontPadding="false"
-            android:lineSpacingMultiplier="0.92"
-            android:maxLines="3"
-            android:padding="@dimen/ring_innen"
-            android:text="@string/strich"
-            android:textColor="@color/widget_text"
-            android:textSize="20sp" />
-    </FrameLayout>
+    android:orientation="vertical"
+    android:paddingStart="16dp"
+    android:paddingTop="14dp"
+    android:paddingEnd="16dp"
+    android:paddingBottom="14dp">
 
     <LinearLayout
-        android:layout_width="0dp"
+        android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginStart="@dimen/widget_abstand"
-        android:layout_weight="1"
-        android:orientation="vertical">
+        android:orientation="horizontal">
 
         <TextView
             android:id="@+id/titel"
-            android:layout_width="match_parent"
+            android:layout_width="0dp"
             android:layout_height="wrap_content"
+            android:layout_weight="1"
             android:ellipsize="end"
             android:fontFamily="sans-serif-medium"
+            android:includeFontPadding="false"
             android:maxLines="1"
-            android:text="@string/app_name"
-            android:textColor="@color/widget_text"
-            android:textSize="15sp" />
-
-        <LinearLayout
-            android:id="@+id/zeile1"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="8dp"
-            android:gravity="center_vertical"
-            android:orientation="horizontal">
-
-            <ImageView
-                android:id="@+id/punkt1"
-                android:layout_width="8dp"
-                android:layout_height="8dp"
-                android:importantForAccessibility="no"
-                android:src="@drawable/punkt" />
-
-            <ImageView
-                android:id="@+id/symbol1"
-                android:layout_width="20dp"
-                android:layout_height="20dp"
-                android:layout_marginStart="8dp"
-                android:importantForAccessibility="no"
-                android:scaleType="fitCenter" />
-
-            <TextView
-                android:id="@+id/name1"
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_marginStart="8dp"
-                android:layout_weight="1"
-                android:ellipsize="end"
-                android:maxLines="1"
-                android:textColor="@color/widget_text"
-                android:textSize="13sp" />
-
-            <TextView
-                android:id="@+id/zeit1"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginStart="6dp"
-                android:maxLines="1"
-                android:textColor="@color/widget_text_leise"
-                android:textSize="13sp" />
-        </LinearLayout>
-
-        <LinearLayout
-            android:id="@+id/zeile2"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="5dp"
-            android:gravity="center_vertical"
-            android:orientation="horizontal">
-
-            <ImageView
-                android:id="@+id/punkt2"
-                android:layout_width="8dp"
-                android:layout_height="8dp"
-                android:importantForAccessibility="no"
-                android:src="@drawable/punkt" />
-
-            <ImageView
-                android:id="@+id/symbol2"
-                android:layout_width="20dp"
-                android:layout_height="20dp"
-                android:layout_marginStart="8dp"
-                android:importantForAccessibility="no"
-                android:scaleType="fitCenter" />
-
-            <TextView
-                android:id="@+id/name2"
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_marginStart="8dp"
-                android:layout_weight="1"
-                android:ellipsize="end"
-                android:maxLines="1"
-                android:textColor="@color/widget_text"
-                android:textSize="13sp" />
-
-            <TextView
-                android:id="@+id/zeit2"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginStart="6dp"
-                android:maxLines="1"
-                android:textColor="@color/widget_text_leise"
-                android:textSize="13sp" />
-        </LinearLayout>
-
-        <LinearLayout
-            android:id="@+id/zeile3"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="5dp"
-            android:gravity="center_vertical"
-            android:orientation="horizontal">
-
-            <ImageView
-                android:id="@+id/punkt3"
-                android:layout_width="8dp"
-                android:layout_height="8dp"
-                android:importantForAccessibility="no"
-                android:src="@drawable/punkt" />
-
-            <ImageView
-                android:id="@+id/symbol3"
-                android:layout_width="20dp"
-                android:layout_height="20dp"
-                android:layout_marginStart="8dp"
-                android:importantForAccessibility="no"
-                android:scaleType="fitCenter" />
-
-            <TextView
-                android:id="@+id/name3"
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_marginStart="8dp"
-                android:layout_weight="1"
-                android:ellipsize="end"
-                android:maxLines="1"
-                android:textColor="@color/widget_text"
-                android:textSize="13sp" />
-
-            <TextView
-                android:id="@+id/zeit3"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginStart="6dp"
-                android:maxLines="1"
-                android:textColor="@color/widget_text_leise"
-                android:textSize="13sp" />
-        </LinearLayout>
-
-        <!-- Alle übrigen Apps zusammen: der graue Teil des Rings. Ohne Symbol – so bleibt „Andere Apps“ auch bei 4×2 mit langen Zeiten ganz. -->
-        <LinearLayout
-            android:id="@+id/zeile4"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="5dp"
-            android:gravity="center_vertical"
-            android:orientation="horizontal"
-            android:visibility="gone">
-
-            <ImageView
-                android:id="@+id/punkt4"
-                android:layout_width="8dp"
-                android:layout_height="8dp"
-                android:importantForAccessibility="no"
-                android:src="@drawable/punkt" />
-
-            <TextView
-                android:id="@+id/name4"
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_marginStart="8dp"
-                android:layout_weight="1"
-                android:ellipsize="end"
-                android:maxLines="1"
-                android:text="@string/widget_andere"
-                android:textColor="@color/widget_text_leise"
-                android:textSize="13sp" />
-
-            <TextView
-                android:id="@+id/zeit4"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginStart="6dp"
-                android:maxLines="1"
-                android:textColor="@color/widget_text_leise"
-                android:textSize="13sp" />
-        </LinearLayout>
-
-        <TextView
-            android:id="@+id/leer"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="8dp"
-            android:text="@string/widget_leer"
+            android:text="@string/widget_heute"
             android:textColor="@color/widget_text_leise"
-            android:textSize="13sp"
-            android:visibility="gone" />
+            android:textSize="13sp" />
 
         <TextView
             android:id="@+id/stand"
-            android:layout_width="match_parent"
+            android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginTop="7dp"
+            android:layout_marginStart="12dp"
+            android:fontFeatureSettings="tnum"
+            android:includeFontPadding="false"
             android:maxLines="1"
             android:textColor="@color/widget_text_leise"
-            android:textSize="11sp" />
+            android:textSize="12sp" />
+    </LinearLayout>
+
+    <TextView
+        android:id="@+id/gesamt"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:fontFamily="sans-serif-medium"
+        android:includeFontPadding="false"
+        android:maxLines="1"
+        android:text="@string/strich"
+        android:textColor="@color/widget_text"
+        android:textSize="26sp" />
+
+    <TextView
+        android:id="@+id/leer"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="10dp"
+        android:text="@string/widget_leer"
+        android:textColor="@color/widget_text_leise"
+        android:textSize="13sp"
+        android:visibility="gone" />
+
+    <LinearLayout
+        android:id="@+id/liste"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="10dp"
+        android:baselineAligned="false"
+        android:orientation="horizontal">
+
+        <LinearLayout
+            android:id="@+id/spalte1"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:orientation="vertical" />
+
+        <LinearLayout
+            android:id="@+id/spalte2"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="16dp"
+            android:layout_weight="1"
+            android:orientation="vertical" />
     </LinearLayout>
 </LinearLayout>

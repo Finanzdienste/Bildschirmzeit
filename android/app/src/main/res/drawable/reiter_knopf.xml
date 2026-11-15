@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Ein Reiter der Statistik (Tag, Woche, Monat): gewählt im leisen Akzent, sonst ein Hauch der Textfarbe. -->
+<ripple xmlns:android="http://schemas.android.com/apk/res/android" android:color="#22808080">
+    <item>
+        <selector>
+            <item android:state_selected="true">
+                <shape android:shape="rectangle">
+                    <solid android:color="@color/akzent_leise" />
+                    <corners android:radius="20dp" />
+                </shape>
+            </item>
+            <item>
+                <shape android:shape="rectangle">
+                    <solid android:color="@color/reiter_flaeche" />
+                    <corners android:radius="20dp" />
+                </shape>
+            </item>
+        </selector>
+    </item>
+</ripple>

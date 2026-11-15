@@ -377,7 +377,7 @@ class SelbstupdateTest {
         )
         assertTrue("Android will es bestätigt haben", Selbstupdate.widgetHinweis(kontext, t + 2 * minute))
 
-        // Gezeichnet über den Wecker, in Tobis Größe (400 × 201 dp): der Titel sagt es, Antippen öffnet die App.
+        // Gezeichnet über den Wecker, in Tobis Größe (400 × 201 dp): der Kopf sagt es, Antippen öffnet die App bei der Update-Karte.
         val awm = AppWidgetManager.getInstance(kontext)
         shadowOf(awm).bindAppWidgetId(7, ComponentName(kontext, BildschirmzeitWidget::class.java))
         awm.updateAppWidgetOptions(
@@ -393,12 +393,18 @@ class SelbstupdateTest {
         assertEquals("Update: antippen", widget.findViewById<TextView>(R.id.titel).text.toString())
         widget.findViewById<View>(android.R.id.background).performClick()
         warten()
-        assertEquals(ComponentName(kontext, MainActivity::class.java), shadowOf(kontext).nextStartedActivity?.component)
+        val gestartet = shadowOf(kontext).nextStartedActivity
+        assertEquals(ComponentName(kontext, MainActivity::class.java), gestartet?.component)
+        assertEquals(Ziel.UPDATE, gestartet?.getStringExtra(Ziel.EXTRA))
 
-        // Installiert (MY_PACKAGE_REPLACED in der neuen Fassung): wieder „Bildschirmzeit“, Antippen rechnet.
+        // Installiert (MY_PACKAGE_REPLACED in der neuen Fassung): wieder „Heute“, Antippen öffnet die Statistik.
         UpdateSpeicher(kontext).freigabe = NeueVersion.freigabeAus(antwort(eigene))
         assertTrue(Aktualisierung.imTakt(kontext, Anlass.WECKER, t + 6 * minute))
-        assertEquals("Bildschirmzeit", shadowOf(awm).getViewFor(7).findViewById<TextView>(R.id.titel).text.toString())
+        val danach = shadowOf(awm).getViewFor(7)
+        assertEquals("Heute", danach.findViewById<TextView>(R.id.titel).text.toString())
+        danach.findViewById<View>(android.R.id.background).performClick()
+        warten()
+        assertEquals(Ziel.STATISTIK, shadowOf(kontext).nextStartedActivity?.getStringExtra(Ziel.EXTRA))
     }
 
     @Test
