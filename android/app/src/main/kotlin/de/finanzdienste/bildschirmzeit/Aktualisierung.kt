@@ -84,6 +84,22 @@ object Aktualisierung {
         }
     }
 
+    /**
+     * Nach einem Schritt des Updates (Sitzung gemerkt, Androids Status da): die
+     * Widgets ohne Netz neu zeichnen, damit Hinweis und Antippen (mit oder ohne
+     * CLEAR_TOP) gleich passen, nicht erst beim nächsten Wecker. Wartet, falls
+     * gerade gerechnet wird – nie auf dem Hauptfaden aufrufen.
+     */
+    fun neuZeichnen(context: Context) {
+        sperre.lock()
+        try {
+            val ids = widgetIds(context)
+            if (ids.isNotEmpty()) WidgetAnsicht.zeigen(context, Rechner.berechnen(context, netz = false), ids)
+        } finally {
+            sperre.unlock()
+        }
+    }
+
     /** Für die App: wartet, falls gerade gerechnet wird, und zeichnet die Widgets mit. */
     fun fuerApp(context: Context): Ergebnis {
         sperre.lock()

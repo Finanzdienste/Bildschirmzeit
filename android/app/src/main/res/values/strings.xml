@@ -8,7 +8,9 @@
     <string name="widget_leer">Heute noch nichts</string>
     <!-- Statt „Heute“, wenn ein Update auf Tobi wartet (UpdateRegeln.widgetHinweis); Antippen öffnet die App bei der Update-Karte. -->
     <string name="widget_update">Update: antippen</string>
-    <!-- Passt „Update: antippen“ nicht in die Breite (erst ab etwa 200 % Schrift, WidgetAnsicht.Kopf). -->
+    <!-- Statt „Update: antippen“, wenn Samsungs Automatische Sperre das Update verhindert hat (UpdateRegeln.widgetGesperrt). -->
+    <string name="widget_update_gesperrt">Update blockiert</string>
+    <!-- Passt „Update: antippen“ oder „Update blockiert“ nicht in die Breite (erst ab etwa 200 % Schrift, WidgetAnsicht.Kopf). -->
     <string name="widget_update_kurz">Update</string>
 
     <string name="kopf_titel">Bildschirmzeit</string>

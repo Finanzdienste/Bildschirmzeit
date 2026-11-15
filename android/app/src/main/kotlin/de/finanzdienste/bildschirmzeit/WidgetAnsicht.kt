@@ -174,7 +174,8 @@ object WidgetRaster {
  * Zeichnet das Widget nach dem WidgetRaster: Kopf mit „Heute“, Gesamtzeit und
  * Stand, darunter die Top-Apps mit Symbol, Name und Zeit. Antippen öffnet die
  * App mit der Statistik (Ziel.STATISTIK); wartet ein Update auf Tobi, steht im
- * Kopf „Update: antippen“ statt „Heute“, und Antippen öffnet die Update-Karte
+ * Kopf „Update: antippen“ statt „Heute“ (hat Samsungs Automatische Sperre es
+ * verhindert: „Update blockiert“), und Antippen öffnet die Update-Karte
  * (Ziel.UPDATE). Die App rechnet beim Öffnen sofort mit Netz und zeichnet
  * dabei auch das Widget neu.
  *
@@ -191,7 +192,11 @@ object WidgetAnsicht {
 
     fun zeigen(context: Context, ergebnis: Ergebnis, ids: IntArray) {
         val awm = AppWidgetManager.getInstance(context)
-        val mitHinweis = ergebnis.copy(updateHinweis = updateHinweis(context))
+        val lage = updateLage(context)
+        val mitHinweis = ergebnis.copy(
+            updateHinweis = lage != null && UpdateRegeln.widgetHinweis(lage),
+            updateGesperrt = lage != null && UpdateRegeln.widgetGesperrt(lage),
+        )
         val symbole = HashMap<String, Bitmap>()
         for (id in ids) {
             try {
@@ -263,7 +268,11 @@ object WidgetAnsicht {
         v.setOnClickPendingIntent(android.R.id.background, oeffnen(context, ziel))
         v.setContentDescription(
             android.R.id.background,
-            "Bildschirmzeit heute: ${dauerText(ergebnis.gesamt)}. " + if (ergebnis.updateHinweis) "Antippen öffnet das Update." else "Antippen öffnet die Statistik.",
+            "Bildschirmzeit heute: ${dauerText(ergebnis.gesamt)}. " + when {
+                ergebnis.updateHinweis && ergebnis.updateGesperrt -> "Update blockiert – antippen öffnet das Update."
+                ergebnis.updateHinweis -> "Antippen öffnet das Update."
+                else -> "Antippen öffnet die Statistik."
+            },
         )
         return v
     }
@@ -308,7 +317,9 @@ object WidgetAnsicht {
      * Androids Rückfrage „Möchtest du diese App aktualisieren?“ liegt dann im
      * Task der App über ihr, und CLEAR_TOP räumte sie ohne Antwort weg – die
      * Sitzung hinge bis zu 10 Minuten. Dann nur NEW_TASK: Android holt den Task
-     * so nach vorn, wie er ist, samt Rückfrage. Dafür ist die Absicht dieselbe
+     * so nach vorn, wie er ist, samt Rückfrage. Die Flags stehen fest, wenn
+     * gezeichnet wird; deshalb zeichnet Selbstupdate die Widgets gleich nach dem
+     * Merken der Sitzung (vor commit) und nach jedem Status neu. Dafür ist die Absicht dieselbe
      * wie die des App-Symbols (MAIN/LAUNCHER) – sonst legte Android über eine
      * vom Symbol gestartete App eine zweite Activity. Eigene requestCodes, denn
      * FLAG_UPDATE_CURRENT ersetzt nur die Extras, nicht die Flags.
@@ -348,10 +359,10 @@ object WidgetAnsicht {
     }
 
     /** Fehlt etwas (kein Speicher, kein PackageManager), dann eben kein Hinweis – das Widget zeichnet trotzdem. */
-    private fun updateHinweis(context: Context): Boolean = try {
-        Selbstupdate.widgetHinweis(context)
+    private fun updateLage(context: Context): UpdateLage? = try {
+        Selbstupdate.widgetLage(context)
     } catch (e: RuntimeException) {
-        false
+        null
     }
 
     /** „Stand 21:40“, leise „· ohne Netz“, wenn die Web-Apps aus dem Zwischenspeicher kommen. */
@@ -363,7 +374,7 @@ object WidgetAnsicht {
      * Schrift des Widgets, mit Androids Schriftgröße und einem Zwanzigstel
      * Luft (falls die Schrift auf dem Handy breiter läuft). Passt
      * „Stand 21:40 · ohne Netz“ nicht, fällt erst „· ohne Netz“ weg, dann
-     * „Stand“; „Update: antippen“ wird „Update“; die Gesamtzeit wird kleiner
+     * „Stand“; „Update: antippen“ und „Update blockiert“ werden „Update“; die Gesamtzeit wird kleiner
      * statt abgeschnitten („18 Std. 49“ ohne „Min.“ läse man falsch).
      */
     internal class Kopf(val titel: String, val stand: String, val gesamtSp: Float) {
@@ -381,7 +392,13 @@ object WidgetAnsicht {
                 val schrift = context.resources.configuration.fontScale.takeIf { it > 0f } ?: 1f
                 val innen = breite - 2 * WidgetRaster.RAND_SEITE
                 val platz = if (raster.form == WidgetRaster.Form.FLACH) minOf(innen, WidgetRaster.KOPF_SEITE * schrift) else innen
-                val titelLang = context.getString(if (hinweis) R.string.widget_update else R.string.widget_heute)
+                val titelLang = context.getString(
+                    when {
+                        hinweis && ergebnis.updateGesperrt -> R.string.widget_update_gesperrt
+                        hinweis -> R.string.widget_update
+                        else -> R.string.widget_heute
+                    },
+                )
                 val titel = if (!hinweis || passt(context, titelLang, TITEL_SP, mittel = true, platz)) titelLang else context.getString(R.string.widget_update_kurz)
                 // Breit: Der Stand steht rechts neben „Heute“ (bzw. „Update: antippen“).
                 val standPlatz = if (raster.form == WidgetRaster.Form.BREIT && raster.titel) {

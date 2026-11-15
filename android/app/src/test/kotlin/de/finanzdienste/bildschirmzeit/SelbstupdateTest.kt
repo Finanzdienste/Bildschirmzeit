@@ -441,10 +441,15 @@ class SelbstupdateTest {
         assertNotNull(installer.getSessionInfo(id))
         assertEquals(UpdateKnopf.WARTEN, aktivitaet.findViewById<Button>(R.id.update_knopf).tag)
 
-        // Tobi tippt in Androids Dialog „Abbrechen“: Das zählt (es ist die laufende Sitzung).
-        Selbstupdate.statusErhalten(kontext, status(id, PackageInstaller.STATUS_FAILURE_ABORTED, vorn = true), t)
+        // Tobi tippt in Androids Dialog „Abbrechen“: Das zählt (es ist die laufende Sitzung), und die Meldung weiß, dass gefragt wurde.
+        Selbstupdate.statusErhalten(
+            kontext,
+            status(id, PackageInstaller.STATUS_FAILURE_ABORTED, vorn = true).putExtra(PackageInstaller.EXTRA_STATUS_MESSAGE, "INSTALL_FAILED_ABORTED: User rejected permissions"),
+            t,
+        )
         assertEquals(UpdateFehler.ABGEBROCHEN, UpdateSpeicher(kontext).fehler)
         assertEquals(-1, UpdateSpeicher(kontext).sitzung)
+        assertEquals(UpdateDiagnose("INSTALL_FAILED_ABORTED: User rejected permissions", 0, null, vordergrund = true, rueckfrage = true), UpdateSpeicher(kontext).diagnose)
 
         // Nicht mehr vorn: dann auch keine Rückfrage.
         Robolectric.buildActivity(MainActivity::class.java).setup().pause()
@@ -469,7 +474,9 @@ class SelbstupdateTest {
         Selbstupdate.statusErhalten(kontext, status(id, PackageInstaller.STATUS_FAILURE_BLOCKED), t + minute)
         val a = anzeige()
         assertEquals("Update hat nicht geklappt", a.titel)
-        assertTrue(a.text, a.text.contains("Automatische Sperre"))
+        // „blockiert“ ist nicht die Automatische Sperre (die kommt als „abgebrochen“ mit eigener Meldung).
+        assertTrue(a.text, a.text.contains("blockiert (Status 2)"))
+        assertFalse(a.text, a.text.contains("Automatische Sperre"))
         assertEquals(UpdateKnopf.NOCHMAL, a.knopf)
 
         // MY_PACKAGE_REPLACED in der neuen Fassung (hier: die laufende ist das Ziel): Erfolg, aufgeräumt.

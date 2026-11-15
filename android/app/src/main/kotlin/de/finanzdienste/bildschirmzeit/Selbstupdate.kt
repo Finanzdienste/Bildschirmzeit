@@ -5,8 +5,10 @@ import android.app.PendingIntent
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
+import android.content.SharedPreferences
 import android.content.pm.PackageInstaller
 import android.os.Build
+import android.os.SystemClock
 import android.provider.Settings
 import android.util.Log
 import androidx.core.content.IntentCompat
@@ -52,18 +54,57 @@ enum class UpdateFehler(
     SPEICHER("speicher"),
     ZEIT("zeit"),
     FEHLER("fehler"),
+
+    /** Samsungs Automatische Sperre („… unknown source package“, kommt als ABORTED). */
+    SPERRE("sperre"),
+
+    /** Ein Paket-Prüfer, meist Play Protect (Legacy -22/-21, kommt als ABORTED). */
+    PRUEFUNG("pruefung"),
+
+    /** Android hat die Sitzung selbst verworfen („Session was abandoned“, kommt als ABORTED). */
+    VERWORFEN("verworfen"),
+
+    /** Androids Rückfrage war gezeigt und blieb länger als SITZUNG_MS offen – die App hat verworfen. */
+    ZU_LANGE("zu_lange"),
 }
 
-/** Was der Knopf der Update-Karte tut. */
+/** Was ein Knopf der Update-Karte tut. */
 enum class UpdateKnopf(val text: String) {
     EINRICHTEN("Automatische Updates einrichten"),
     INSTALLIEREN("Neue Version installieren"),
     NOCHMAL("Noch einmal versuchen"),
     BROWSER("Im Browser herunterladen"),
     WARTEN("Wird installiert …"),
+
+    /** Samsungs Seite der Automatischen Sperre (sonst Sicherheit, sonst Einstellungen – sperreAbsichten). */
+    SPERRE("Automatische Sperre öffnen"),
 }
 
-data class UpdateAnzeige(val titel: String, val text: String, val knopf: UpdateKnopf?)
+/**
+ * Die Karte: `knopf` vorn, `zweiter` leise darunter; `diagnose` ist die kleine
+ * Zeile mit Androids Meldung (nur bei Fehlschlägen, die Android gemeldet hat).
+ */
+data class UpdateAnzeige(
+    val titel: String,
+    val text: String,
+    val knopf: UpdateKnopf?,
+    val zweiter: UpdateKnopf? = null,
+    val diagnose: String? = null,
+)
+
+/**
+ * Was Android zu einem Fehlschlag gemeldet hat, gesäubert (UpdateRegeln.meldungSaeubern):
+ * EXTRA_STATUS_MESSAGE, EXTRA_LEGACY_STATUS, EXTRA_OTHER_PACKAGE_NAME; dazu, ob der
+ * Versuch vom Knopf kam und ob Androids Rückfrage gezeigt wurde. Bis v7 ging das verloren.
+ */
+data class UpdateDiagnose(
+    val meldung: String?,
+    /** PackageManager.INSTALL_FAILED_… (0: keiner gemeldet). */
+    val legacy: Int,
+    val paket: String?,
+    val vordergrund: Boolean,
+    val rueckfrage: Boolean,
+)
 
 /** Alles, was die Update-Karte zeigt – gesammelt, damit `UpdateRegeln.anzeige` rein bleibt. */
 data class UpdateLage(
@@ -79,6 +120,8 @@ data class UpdateLage(
     val fehlerStatus: Int,
     /** Fehlschläge hintereinander (für den Hinweis im Widget). */
     val fehlversuche: Int = 0,
+    val fehlerZeit: Long = 0L,
+    val diagnose: UpdateDiagnose? = null,
     val erfolg: Int,
     val erfolgUm: Long,
     val geprueft: Long,
@@ -96,20 +139,44 @@ object UpdateRegeln {
 
     /**
      * Länger läuft keine Installation (0,75 MB in Sekunden); eine ältere Sitzung
-     * wird verworfen – etwa, wenn Tobi Androids Rückfrage offen liegen ließ.
+     * wird verworfen. Gezählt ab commit, und wurde Androids Rückfrage gezeigt,
+     * ab da – bis v7 ab dem Start des Laufs, vor dem Laden.
      */
     const val SITZUNG_MS = 10 * 60_000L
 
     private const val STUNDE = 3_600_000L
 
+    /** So lang höchstens Androids Meldung auf der Karte (gesäubert, eine Zeile). */
+    const val MELDUNG_ZEICHEN = 120
+
     /** Hier hilft Warten nicht – erst ein neues Release (oder Tobis Knopf). */
     private val ENDGUELTIG = setOf(UpdateFehler.FALSCHE_DATEI, UpdateFehler.KONFLIKT, UpdateFehler.INKOMPATIBEL)
 
     /**
-     * Hier kommt das Update ohne Tobi nicht an: Rückfrage, abgebrochen, blockiert – und das Endgültige.
-     * (Fehlt die Erlaubnis, sagt es `darf`; ein altes „nicht erlaubt“ bei erteilter Erlaubnis holt der Hintergrund nach.)
+     * Nicht noch einmal aus dem Hintergrund bis zum nächsten Release: das Endgültige und
+     * Samsungs Sperre (deren Fenster „Unbekannte App gesperrt“ käme sonst ungefragt).
      */
-    private val BRAUCHT_TOBI = ENDGUELTIG + setOf(UpdateFehler.BESTAETIGEN, UpdateFehler.ABGEBROCHEN, UpdateFehler.BLOCKIERT)
+    private val NICHT_IM_HINTERGRUND = ENDGUELTIG + UpdateFehler.SPERRE
+
+    /**
+     * Hier kommt das Update ohne Tobi nicht an: Rückfrage, abgebrochen, blockiert, Sperre,
+     * Prüfer, Fenster zu lange offen – und das Endgültige. (Fehlt die Erlaubnis, sagt es
+     * `darf`; ein altes „nicht erlaubt“ bei erteilter Erlaubnis holt der Hintergrund nach.)
+     */
+    private val BRAUCHT_TOBI = ENDGUELTIG + setOf(
+        UpdateFehler.BESTAETIGEN,
+        UpdateFehler.ABGEBROCHEN,
+        UpdateFehler.BLOCKIERT,
+        UpdateFehler.SPERRE,
+        UpdateFehler.PRUEFUNG,
+        UpdateFehler.ZU_LANGE,
+    )
+
+    private const val LEGACY_PRUEFER_ABGELEHNT = -22 // PackageManager.INSTALL_FAILED_VERIFICATION_FAILURE
+    private const val LEGACY_PRUEFER_ZEIT = -21 // PackageManager.INSTALL_FAILED_VERIFICATION_TIMEOUT
+
+    /** AOSP, wenn Androids Rückfrage ohne „Aktualisieren“ endet (PackageInstallerSession.setPermissionsResult). */
+    private const val ANDROID_ABGELEHNT = "User rejected permissions"
 
     /** So oft hintereinander gescheitert (auch an etwas, das Warten sonst behebt): dann doch Bescheid sagen. */
     const val HINWEIS_NACH_FEHLVERSUCHEN = 3
@@ -136,31 +203,102 @@ object UpdateRegeln {
 
     /** Darf es der Hintergrund (wieder) versuchen? Der Knopf in der App darf immer. */
     fun hintergrundDarf(fehler: UpdateFehler?, fehlversuche: Int, fehlerZeit: Long, jetzt: Long): Boolean =
-        fehler !in ENDGUELTIG && Takt.seit(fehlerZeit, jetzt) >= wartezeit(fehlversuche)
+        fehler !in NICHT_IM_HINTERGRUND && Takt.seit(fehlerZeit, jetzt) >= wartezeit(fehlversuche)
 
-    /** Androids Status aus der Installer-Sitzung. */
+    /**
+     * Androids Status aus der Installer-Sitzung, mit Androids Meldung und dem
+     * Legacy-Code. ABORTED (3) heißt nicht nur „Tobi hat abgebrochen“: So kommen
+     * auch Samsungs Automatische Sperre (-115, „Self update is blocked by unknown
+     * source package“ ohne Fenster, „User rejected installing unknown source
+     * package“ nach dessen Fenster „Unbekannte App gesperrt“), Paket-Prüfer wie
+     * Play Protect (-22/-21) und eine von Android verworfene Sitzung. BLOCKED (2)
+     * gibt es bei Installationen in AOSP nur für PRE_APPROVAL_NOT_AVAILABLE – mit
+     * der Sperre hat es nichts zu tun (bis v7 stand das so auf der Karte).
+     */
     @SuppressLint("InlinedApi") // STATUS_FAILURE_TIMEOUT gibt es ab Android 14; vorher kommt der Wert nie.
-    fun fehlerAusStatus(status: Int): UpdateFehler = when (status) {
-        PackageInstaller.STATUS_PENDING_USER_ACTION -> UpdateFehler.BESTAETIGEN
-        PackageInstaller.STATUS_FAILURE_ABORTED -> UpdateFehler.ABGEBROCHEN
-        PackageInstaller.STATUS_FAILURE_BLOCKED -> UpdateFehler.BLOCKIERT
-        PackageInstaller.STATUS_FAILURE_CONFLICT -> UpdateFehler.KONFLIKT
-        PackageInstaller.STATUS_FAILURE_INCOMPATIBLE -> UpdateFehler.INKOMPATIBEL
-        PackageInstaller.STATUS_FAILURE_INVALID -> UpdateFehler.UNGUELTIG
-        PackageInstaller.STATUS_FAILURE_STORAGE -> UpdateFehler.SPEICHER
-        PackageInstaller.STATUS_FAILURE_TIMEOUT -> UpdateFehler.ZEIT
-        else -> UpdateFehler.FEHLER
+    fun fehlerAus(status: Int, legacy: Int = 0, meldung: String? = null): UpdateFehler {
+        val m = meldung.orEmpty()
+        if (status != PackageInstaller.STATUS_PENDING_USER_ACTION) {
+            if (m.contains("unknown source", ignoreCase = true)) return UpdateFehler.SPERRE
+            if (legacy == LEGACY_PRUEFER_ABGELEHNT || legacy == LEGACY_PRUEFER_ZEIT || m.contains("INSTALL_FAILED_VERIFICATION")) return UpdateFehler.PRUEFUNG
+        }
+        return when (status) {
+            PackageInstaller.STATUS_PENDING_USER_ACTION -> UpdateFehler.BESTAETIGEN
+            PackageInstaller.STATUS_FAILURE_ABORTED -> if (m.contains("Session was abandoned")) UpdateFehler.VERWORFEN else UpdateFehler.ABGEBROCHEN
+            PackageInstaller.STATUS_FAILURE_BLOCKED -> UpdateFehler.BLOCKIERT
+            PackageInstaller.STATUS_FAILURE_CONFLICT -> UpdateFehler.KONFLIKT
+            PackageInstaller.STATUS_FAILURE_INCOMPATIBLE -> UpdateFehler.INKOMPATIBEL
+            PackageInstaller.STATUS_FAILURE_INVALID -> UpdateFehler.UNGUELTIG
+            PackageInstaller.STATUS_FAILURE_STORAGE -> UpdateFehler.SPEICHER
+            PackageInstaller.STATUS_FAILURE_TIMEOUT -> UpdateFehler.ZEIT
+            else -> UpdateFehler.FEHLER
+        }
     }
 
-    /** Was schiefging und was Tobi tun kann. */
-    fun fehlerText(f: UpdateFehler, status: Int): String = when (f) {
+    private val PFAD = Regex("""(?:file|content):[^\s)\]"']*|(?<![\w.:])/[^\s)\]"']+""")
+    private val LEER = Regex("""\s+""")
+
+    /**
+     * Androids Meldung für Karte und Log: ohne Pfade und Adressen (file:…,
+     * content://…, /data/… und jeder andere absolute Pfad werden „…“), ohne
+     * Steuerzeichen, eine Zeile, höchstens MELDUNG_ZEICHEN Zeichen. null, wenn
+     * nichts bleibt.
+     */
+    fun meldungSaeubern(roh: String?): String? {
+        if (roh.isNullOrBlank()) return null
+        val ohnePfad = PFAD.replace(roh, "…")
+        val zeile = LEER.replace(ohnePfad.map { if (it.isISOControl()) ' ' else it }.joinToString(""), " ").trim()
+        if (zeile.isEmpty()) return null
+        return if (zeile.length <= MELDUNG_ZEICHEN) zeile else zeile.take(MELDUNG_ZEICHEN - 1).trimEnd() + "…"
+    }
+
+    /** Ein Paketname (EXTRA_OTHER_PACKAGE_NAME) – nur, was wie einer aussieht. */
+    fun paketSaeubern(roh: String?): String? =
+        roh?.trim()?.takeIf { it.length in 1..100 && it.all { c -> c.isLetterOrDigit() || c == '.' || c == '_' } }
+
+    /**
+     * Die kleine Zeile auf der Fehler-Karte (und im Log), etwa „Android:
+     * INSTALL_FAILED_ABORTED: Self update is blocked by unknown source package ·
+     * 15:12 · Hintergrund · ohne Rückfrage“. Ohne Meldung Status und Legacy-Code.
+     */
+    fun diagnoseText(d: UpdateDiagnose, status: Int, um: Long, jetzt: Long, zone: ZoneId = ZoneId.systemDefault()): String {
+        val was = d.meldung ?: ("Status $status" + (if (d.legacy != 0) " (${d.legacy})" else "") + ", ohne Meldung")
+        val teile = mutableListOf("Android: $was")
+        d.paket?.let { teile += "Paket $it" }
+        if (um > 0) teile += zeitpunktText(um, jetzt, zone)
+        teile += if (d.vordergrund) "Knopf" else "Hintergrund"
+        teile += if (d.rueckfrage) "mit Rückfrage" else "ohne Rückfrage"
+        return teile.joinToString(" · ")
+    }
+
+    private fun diagnoseZeile(l: UpdateLage): String? = l.diagnose?.let { diagnoseText(it, l.fehlerStatus, l.fehlerZeit, l.jetzt, l.zone) }
+
+    /**
+     * Was schiefging und was Tobi tun kann. `meldung`: Androids Meldung – bei
+     * ABGEBROCHEN sagt „User rejected permissions“, dass Androids Fenster ohne
+     * „Aktualisieren“ zuging; ohne sie nennt der Text beide Wege.
+     */
+    fun fehlerText(f: UpdateFehler, status: Int, meldung: String? = null): String = when (f) {
         UpdateFehler.KEIN_NETZ -> "Kein Netz (oder GitHub nicht erreicht). Die App versucht es später von selbst noch einmal."
         UpdateFehler.PRUEFSUMME -> "Die geladene Datei passt nicht zur Prüfsumme bei GitHub – nichts installiert. Die App lädt sie später neu."
         UpdateFehler.FALSCHE_DATEI -> "Die geladene Datei ist keine neuere Bildschirmzeit – nichts installiert. Bitte einen Screenshot an Claude."
         UpdateFehler.NICHT_ERLAUBT -> "Bildschirmzeit darf keine Apps installieren: „Automatische Updates einrichten“ → Schalter „Diese Quelle zulassen“ ein → zurück."
         UpdateFehler.BESTAETIGEN -> "Android will dieses Update einmal bestätigt haben: „Neue Version installieren“ → „Aktualisieren“."
-        UpdateFehler.ABGEBROCHEN -> "Abgebrochen – nichts installiert. „Noch einmal versuchen“, dann „Aktualisieren“ antippen."
-        UpdateFehler.BLOCKIERT -> "Android hat die Installation blockiert – meist ist es Samsungs Automatische Sperre: Einstellungen → Sicherheit und Datenschutz → Automatische Sperre → aus, dann hier „Noch einmal versuchen“."
+        UpdateFehler.ABGEBROCHEN -> if (meldung?.contains(ANDROID_ABGELEHNT) == true) {
+            "Androids Fenster ging ohne „Aktualisieren“ zu – nichts installiert. „Noch einmal versuchen“ → „Aktualisieren“."
+        } else {
+            "Abgebrochen – nichts installiert. Hast du ein Android-Fenster geschlossen: „Noch einmal versuchen“ → „Aktualisieren“. " +
+                "Kam keins oder „Unbekannte App gesperrt“: Automatische Sperre kurz aus (Einstellungen → Sicherheit und Datenschutz → " +
+                "Automatische Sperre), dann „Noch einmal versuchen“, danach wieder an."
+        }
+        UpdateFehler.BLOCKIERT -> "Android hat die Installation blockiert (Status $status) – nichts installiert. „Noch einmal versuchen“; bleibt es dabei, bitte einen Screenshot an Claude."
+        UpdateFehler.SPERRE -> "Samsungs Automatische Sperre hat das Update verhindert – sie lässt nur Apps aus Play Store und Galaxy Store zu. " +
+            "„Automatische Sperre öffnen“ (Einstellungen → Sicherheit und Datenschutz → Automatische Sperre) → aus → zurück → " +
+            "„Noch einmal versuchen“ (kommt ein Android-Fenster: „Aktualisieren“). Danach kann die Sperre wieder an."
+        UpdateFehler.PRUEFUNG -> "Ein Paket-Prüfer (meist Google Play Protect) hat das Update abgelehnt oder nicht rechtzeitig geprüft – nichts installiert. " +
+            "„Noch einmal versuchen“; kam eine Warnung von Play Protect oder bleibt es dabei, bitte einen Screenshot an Claude."
+        UpdateFehler.VERWORFEN -> "Android hat die Installation verworfen, bevor sie fertig war – nichts installiert. Die App versucht es später von selbst noch einmal (oder jetzt „Noch einmal versuchen“)."
+        UpdateFehler.ZU_LANGE -> "Android-Fenster zu lange offen – noch einmal versuchen. Nichts installiert; nach „Noch einmal versuchen“ im Android-Fenster „Aktualisieren“ antippen."
         UpdateFehler.KONFLIKT -> "Android lehnt die neue Fassung ab (sie passt nicht zur installierten, etwa eine andere Signatur; Status $status). Nichts geändert – bitte einen Screenshot an Claude."
         UpdateFehler.INKOMPATIBEL -> "Die neue Fassung passt nicht zu diesem Handy (Status $status). Nichts geändert – bitte einen Screenshot an Claude."
         UpdateFehler.UNGUELTIG -> "Die geladene Datei ist beschädigt. Die App lädt sie später neu."
@@ -187,6 +325,13 @@ object UpdateRegeln {
         return !l.darf || !neu.installierbar || !l.still || l.fehler in BRAUCHT_TOBI || l.fehlversuche >= HINWEIS_NACH_FEHLVERSUCHEN
     }
 
+    /**
+     * Zeigt die Karte gerade Samsungs Sperre (siehe `anzeige`), sagt das Widget
+     * „Update blockiert“ statt „Update: antippen“.
+     */
+    fun widgetGesperrt(l: UpdateLage): Boolean =
+        l.fehler == UpdateFehler.SPERRE && !l.laeuft && l.darf && l.freigabe?.takeIf { neuer(it, l.eigene) }?.installierbar == true
+
     /** Die Update-Karte der App. */
     fun anzeige(l: UpdateLage): UpdateAnzeige {
         val neu = l.freigabe?.takeIf { neuer(it, l.eigene) }
@@ -210,7 +355,20 @@ object UpdateRegeln {
                 ist + "Android will dieses Update einmal bestätigt haben: „Neue Version installieren“ → „Aktualisieren“. Die App schließt sich dabei kurz.",
                 UpdateKnopf.INSTALLIEREN,
             )
-            l.fehler != null -> UpdateAnzeige("Update hat nicht geklappt", "Version 1.${neu.laufnummer}: " + fehlerText(l.fehler, l.fehlerStatus), UpdateKnopf.NOCHMAL)
+            // Erst die Seite der Sperre, „Noch einmal versuchen“ bleibt darunter.
+            l.fehler == UpdateFehler.SPERRE -> UpdateAnzeige(
+                "Update blockiert",
+                "Version 1.${neu.laufnummer}: " + fehlerText(l.fehler, l.fehlerStatus),
+                UpdateKnopf.SPERRE,
+                zweiter = UpdateKnopf.NOCHMAL,
+                diagnose = diagnoseZeile(l),
+            )
+            l.fehler != null -> UpdateAnzeige(
+                "Update hat nicht geklappt",
+                "Version 1.${neu.laufnummer}: " + fehlerText(l.fehler, l.fehlerStatus, l.diagnose?.meldung),
+                UpdateKnopf.NOCHMAL,
+                diagnose = diagnoseZeile(l),
+            )
             !l.still -> UpdateAnzeige("Neue Version verfügbar", ist + "„Neue Version installieren“, dann „Aktualisieren“ – deine Einstellungen bleiben.", UpdateKnopf.INSTALLIEREN)
             else -> UpdateAnzeige(
                 "Neue Version verfügbar",
@@ -244,31 +402,80 @@ internal class UpdateSpeicher(context: Context) {
         set(wert) = p.edit(commit = true) { if (wert == null) remove("freigabe") else putString("freigabe", NeueVersion.alsJson(wert)) }
 
     val sitzung: Int get() = p.getInt("sitzung", -1)
+
+    /** Ab hier zählt SITZUNG_MS: commit (vorher createSession). */
     val sitzungSeit: Long get() = p.getLong("sitzung_seit", 0L)
     val ziel: Int get() = p.getInt("ziel", 0)
 
-    fun sitzungMerken(id: Int, seit: Long, ziel: Int) =
-        p.edit(commit = true) { putInt("sitzung", id).putLong("sitzung_seit", seit).putInt("ziel", ziel) }
+    /** Wann Androids Rückfrage zu dieser Sitzung gezeigt wurde (0: nicht). */
+    val rueckfrageUm: Long get() = p.getLong("sitzung_rueckfrage", 0L)
 
-    fun sitzungVergessen() = p.edit(commit = true) { remove("sitzung").remove("sitzung_seit") }
+    fun sitzungMerken(id: Int, seit: Long, ziel: Int) =
+        p.edit(commit = true) { putInt("sitzung", id).putLong("sitzung_seit", seit).putInt("ziel", ziel).remove("sitzung_rueckfrage") }
+
+    /** commit ist durch: Die Frist zählt ab jetzt (nur, wenn es noch dieselbe Sitzung ist – Androids Antwort kann schneller sein). */
+    fun commitMerken(id: Int, um: Long) {
+        if (sitzung == id) p.edit(commit = true) { putLong("sitzung_seit", um) }
+    }
+
+    fun rueckfrageMerken(id: Int, um: Long) {
+        if (sitzung == id) p.edit(commit = true) { putLong("sitzung_rueckfrage", um) }
+    }
+
+    fun sitzungVergessen() = p.edit(commit = true) { remove("sitzung").remove("sitzung_seit").remove("sitzung_rueckfrage") }
 
     val fehler: UpdateFehler? get() = p.getString("fehler", null)?.let { c -> UpdateFehler.entries.firstOrNull { it.code == c } }
     val fehlerStatus: Int get() = p.getInt("fehler_status", 0)
     val fehlerZeit: Long get() = p.getLong("fehler_zeit", 0L)
     val fehlversuche: Int get() = p.getInt("fehlversuche", 0)
 
-    fun fehlerMerken(f: UpdateFehler, status: Int, jetzt: Long) = p.edit(commit = true) {
+    /** Androids Meldung zum gemerkten Fehler (nur, wenn er aus Androids Status kam). */
+    val diagnose: UpdateDiagnose?
+        get() = if (!p.contains("fehler_quelle")) {
+            null
+        } else {
+            UpdateDiagnose(
+                meldung = p.getString("fehler_meldung", null),
+                legacy = p.getInt("fehler_legacy", 0),
+                paket = p.getString("fehler_paket", null),
+                vordergrund = p.getString("fehler_quelle", null) == QUELLE_KNOPF,
+                rueckfrage = p.getBoolean("fehler_rueckfrage", false),
+            )
+        }
+
+    fun fehlerMerken(f: UpdateFehler, status: Int, jetzt: Long, diagnose: UpdateDiagnose? = null) = p.edit(commit = true) {
         putString("fehler", f.code).putInt("fehler_status", status).putLong("fehler_zeit", jetzt).putInt("fehlversuche", fehlversuche + 1)
+        diagnoseWeg(this)
+        if (diagnose != null) {
+            putString("fehler_quelle", if (diagnose.vordergrund) QUELLE_KNOPF else QUELLE_HINTERGRUND)
+            putInt("fehler_legacy", diagnose.legacy)
+            putBoolean("fehler_rueckfrage", diagnose.rueckfrage)
+            diagnose.meldung?.let { putString("fehler_meldung", it) }
+            diagnose.paket?.let { putString("fehler_paket", it) }
+        }
     }
 
-    fun fehlerVergessen() = p.edit(commit = true) { remove("fehler").remove("fehler_status").remove("fehler_zeit").remove("fehlversuche") }
+    fun fehlerVergessen() = p.edit(commit = true) {
+        remove("fehler").remove("fehler_status").remove("fehler_zeit").remove("fehlversuche")
+        diagnoseWeg(this)
+    }
 
     val erfolg: Int get() = p.getInt("erfolg", 0)
     val erfolgUm: Long get() = p.getLong("erfolg_um", 0L)
 
     fun erfolgMerken(fassung: Int, um: Long) = p.edit(commit = true) {
-        putInt("erfolg", fassung).putLong("erfolg_um", um).remove("ziel").remove("sitzung").remove("sitzung_seit")
+        putInt("erfolg", fassung).putLong("erfolg_um", um).remove("ziel").remove("sitzung").remove("sitzung_seit").remove("sitzung_rueckfrage")
             .remove("fehler").remove("fehler_status").remove("fehler_zeit").remove("fehlversuche")
+        diagnoseWeg(this)
+    }
+
+    private fun diagnoseWeg(e: SharedPreferences.Editor) {
+        e.remove("fehler_quelle").remove("fehler_meldung").remove("fehler_legacy").remove("fehler_paket").remove("fehler_rueckfrage")
+    }
+
+    private companion object {
+        const val QUELLE_KNOPF = "knopf"
+        const val QUELLE_HINTERGRUND = "hintergrund"
     }
 }
 
@@ -282,6 +489,9 @@ interface UpdateBeobachter {
 
 object Selbstupdate {
     private const val CONFIRM_INSTALL = "android.content.pm.action.CONFIRM_INSTALL"
+
+    /** PackageInstaller.EXTRA_LEGACY_STATUS – @SystemApi, deshalb als Text; Android legt es jedem Status bei. */
+    internal const val EXTRA_LEGACY_STATUS = "android.content.pm.extra.LEGACY_STATUS"
     private const val ORDNER = "update"
     private val laeuft = AtomicBoolean(false)
 
@@ -314,6 +524,8 @@ object Selbstupdate {
         fehler = s.fehler,
         fehlerStatus = s.fehlerStatus,
         fehlversuche = s.fehlversuche,
+        fehlerZeit = s.fehlerZeit,
+        diagnose = s.diagnose,
         erfolg = s.erfolg,
         erfolgUm = s.erfolgUm,
         geprueft = s.geprueft,
@@ -324,10 +536,14 @@ object Selbstupdate {
      * Fürs Widget (bei jedem Zeichnen): wartet ein Update auf Tobi? Nur lesen –
      * hier wird keine Sitzung verworfen und nichts gefragt.
      */
-    fun widgetHinweis(context: Context, jetzt: Long = System.currentTimeMillis()): Boolean {
+    fun widgetHinweis(context: Context, jetzt: Long = System.currentTimeMillis()): Boolean =
+        widgetLage(context, jetzt)?.let { UpdateRegeln.widgetHinweis(it) } ?: false
+
+    /** Wie widgetHinweis, für beides auf einmal (WidgetAnsicht): null, wenn keine neuere Fassung bekannt ist. */
+    fun widgetLage(context: Context, jetzt: Long = System.currentTimeMillis()): UpdateLage? {
         val s = UpdateSpeicher(context)
-        if (!UpdateRegeln.neuer(s.freigabe, BuildConfig.VERSION_CODE)) return false
-        return UpdateRegeln.widgetHinweis(lageAus(context, s, jetzt, installiertGerade = laeuft.get() || s.sitzung >= 0))
+        if (!UpdateRegeln.neuer(s.freigabe, BuildConfig.VERSION_CODE)) return null
+        return lageAus(context, s, jetzt, installiertGerade = laeuft.get() || s.sitzung >= 0)
     }
 
     /** Beim Öffnen der App: GitHub höchstens alle 10 Minuten. */
@@ -383,7 +599,12 @@ object Selbstupdate {
         s.freigabe = f
     }
 
-    /** Läuft gerade ein Update (hier oder eine Sitzung bei Android)? Alte Sitzungen werden verworfen. */
+    /**
+     * Läuft gerade ein Update (hier oder eine Sitzung bei Android)? Alte Sitzungen
+     * werden verworfen: SITZUNG_MS nach commit, und war Androids Rückfrage gezeigt,
+     * nach deren Zeigen – dann sagt die Karte „Android-Fenster zu lange offen“
+     * (bis v7 hieß es danach nur „kommt von selbst“).
+     */
     private fun laeuftGerade(context: Context, s: UpdateSpeicher, jetzt: Long): Boolean {
         if (laeuft.get()) return true
         val id = s.sitzung
@@ -394,15 +615,25 @@ object Selbstupdate {
         } catch (e: SecurityException) {
             null
         }
-        if (info != null && Takt.seit(s.sitzungSeit, jetzt) <= UpdateRegeln.SITZUNG_MS) return true
+        val rueckfrage = s.rueckfrageUm
+        if (info != null && Takt.seit(maxOf(s.sitzungSeit, rueckfrage), jetzt) <= UpdateRegeln.SITZUNG_MS) return true
         // Erst vergessen, dann verwerfen: Androids „abgebrochen“ zu dieser Sitzung zählt dann nicht.
         s.sitzungVergessen()
-        if (info != null) verwerfen(context, id)
+        if (info != null) {
+            verwerfen(context, id)
+            if (rueckfrage > 0) {
+                Log.i(LOG, "Update: Android-Fenster zu lange offen, Sitzung verworfen")
+                s.fehlerMerken(UpdateFehler.ZU_LANGE, 0, jetzt)
+            }
+        }
         return false
     }
 
     private fun installieren(context: Context, s: UpdateSpeicher, f: Freigabe, vordergrund: Boolean, jetzt: Long) {
         if (!laeuft.compareAndSet(false, true)) return
+        // Die Uhr dieses Laufs: `jetzt` plus die Zeit seither (Laden kann dauern) – für die Frist ab commit.
+        val beginn = SystemClock.elapsedRealtime()
+        val uhr = { jetzt + (SystemClock.elapsedRealtime() - beginn) }
         try {
             melden()
             val datei = geladen(context, s, f, jetzt) ?: return
@@ -414,7 +645,7 @@ object Selbstupdate {
                 return
             }
             try {
-                sitzungStarten(context, s, datei, f.laufnummer, vordergrund, jetzt)
+                sitzungStarten(context, s, datei, f.laufnummer, vordergrund, uhr)
             } catch (e: IOException) {
                 s.fehlerMerken(UpdateFehler.SPEICHER, 0, jetzt)
                 return
@@ -479,13 +710,18 @@ object Selbstupdate {
      * Die Sitzung wird gleich nach createSession gemerkt, vor commit: Androids
      * Antwort (Rückfrage, blockiert …) kann kommen, bevor commit zurückkehrt,
      * und statusErhalten nimmt nur Meldungen zur gemerkten Sitzung an.
+     *
+     * Gleich danach, noch vor commit, die Widgets neu zeichnen: Ihr Antippen
+     * öffnet die App dann ohne CLEAR_TOP (WidgetAnsicht.oeffnen) – ein vorher
+     * gezeichnetes Widget behielte es und räumte Androids Rückfrage weg.
      */
-    private fun sitzungStarten(context: Context, s: UpdateSpeicher, datei: File, ziel: Int, vordergrund: Boolean, jetzt: Long) {
+    private fun sitzungStarten(context: Context, s: UpdateSpeicher, datei: File, ziel: Int, vordergrund: Boolean, uhr: () -> Long) {
         val installer = context.packageManager.packageInstaller
         // Reste früherer Versuche (Prozess beendet, bevor die Sitzung fertig war). Ihr „abgebrochen“ zählt nicht (andere Nummer).
         for (alt in installer.mySessions) if (alt.appPackageName == context.packageName) verwerfen(context, alt.sessionId)
         val id = installer.createSession(sitzungsParameter(context.packageName))
-        s.sitzungMerken(id, jetzt, ziel)
+        s.sitzungMerken(id, uhr(), ziel)
+        widgetsNeu(context)
         try {
             installer.openSession(id).use { sitzung ->
                 sitzung.openWrite("bildschirmzeit.apk", 0, datei.length()).use { aus ->
@@ -494,6 +730,7 @@ object Selbstupdate {
                 }
                 sitzung.commit(statusAbsender(context, id, vordergrund).intentSender)
             }
+            s.commitMerken(id, uhr())
         } catch (e: IOException) {
             s.sitzungVergessen()
             verwerfen(context, id)
@@ -519,17 +756,32 @@ object Selbstupdate {
         return PendingIntent.getBroadcast(context, id, absicht, PendingIntent.FLAG_UPDATE_CURRENT or veraenderbar)
     }
 
-    /** Was Android über die Sitzung meldet. */
+    /**
+     * Was Android über die Sitzung meldet – mit Androids Meldung, dem
+     * Legacy-Code und einem anderen Paket (gesäubert; bis v7 nur der Status).
+     * Gemerkt mit dem Fehler, gezeigt als kleine Zeile auf der Karte, dieselbe
+     * Zeile im Log.
+     */
     internal fun statusErhalten(context: Context, intent: Intent, jetzt: Long = System.currentTimeMillis()) {
         val s = UpdateSpeicher(context)
         val id = intent.getIntExtra(PackageInstaller.EXTRA_SESSION_ID, -1)
         val status = intent.getIntExtra(PackageInstaller.EXTRA_STATUS, PackageInstaller.STATUS_FAILURE)
-        Log.i(LOG, "Update: Status $status")
+        val gemerkt = id >= 0 && id == s.sitzung
+        // Eingeordnet wird nach der ganzen Meldung; gemerkt, gezeigt und geloggt nur die gesäuberte.
+        val meldung = intent.getStringExtra(PackageInstaller.EXTRA_STATUS_MESSAGE)
+        val diagnose = UpdateDiagnose(
+            meldung = UpdateRegeln.meldungSaeubern(meldung),
+            legacy = intent.getIntExtra(EXTRA_LEGACY_STATUS, 0),
+            paket = UpdateRegeln.paketSaeubern(intent.getStringExtra(PackageInstaller.EXTRA_OTHER_PACKAGE_NAME)),
+            vordergrund = intent.getBooleanExtra(UpdateStatus.VORDERGRUND, false),
+            rueckfrage = gemerkt && s.rueckfrageUm > 0,
+        )
+        Log.i(LOG, "Update: Status $status${if (gemerkt) "" else " (nicht die gemerkte Sitzung)"} – ${UpdateRegeln.diagnoseText(diagnose, status, jetzt, jetzt)}")
         // Nur die gemerkte Sitzung zählt (sonst nur ein Erfolg). Verwirft die App eine Sitzung selbst
         // (Rückfrage im Hintergrund, zu alt, Reste), schickt Android dazu noch „abgebrochen“
         // (AOSP PackageInstallerSession.abandon → dispatchSessionFinished(INSTALL_FAILED_ABORTED)) –
         // sie ist dann schon vergessen, und die Meldung überschreibt nicht den wahren Grund.
-        if (status != PackageInstaller.STATUS_SUCCESS && (id < 0 || id != s.sitzung)) return
+        if (status != PackageInstaller.STATUS_SUCCESS && !gemerkt) return
         when (status) {
             PackageInstaller.STATUS_SUCCESS -> {
                 s.erfolgMerken(s.ziel.takeIf { it > 0 } ?: BuildConfig.VERSION_CODE, jetzt)
@@ -540,20 +792,32 @@ object Selbstupdate {
                 val rueckfrage = bestaetigungSicher(IntentCompat.getParcelableExtra(intent, Intent.EXTRA_INTENT, Intent::class.java))
                 val vorn = intent.getBooleanExtra(UpdateStatus.VORDERGRUND, false)
                 val gezeigt = vorn && rueckfrage != null && beobachter?.bestaetigen(rueckfrage) == true
-                if (!gezeigt) {
+                if (gezeigt) {
+                    // Die Frist zählt ab jetzt (Tobi liest und tippt), und der Ausgang weiß, dass gefragt wurde.
+                    s.rueckfrageMerken(id, jetzt)
+                } else {
                     s.sitzungVergessen()
                     verwerfen(context, id)
-                    s.fehlerMerken(UpdateFehler.BESTAETIGEN, status, jetzt)
+                    s.fehlerMerken(UpdateFehler.BESTAETIGEN, status, jetzt, diagnose)
                 }
             }
             else -> {
-                val fehler = UpdateRegeln.fehlerAusStatus(status)
+                val fehler = UpdateRegeln.fehlerAus(status, diagnose.legacy, meldung)
                 s.sitzungVergessen()
-                s.fehlerMerken(fehler, status, jetzt)
+                s.fehlerMerken(fehler, status, jetzt, diagnose)
                 if (fehler == UpdateFehler.UNGUELTIG) aufraeumen(context)
             }
         }
         melden()
+    }
+
+    /** Die Widgets ohne Netz neu zeichnen (Hinweis, Antippen); scheitert das, geht das Update trotzdem weiter. */
+    internal fun widgetsNeu(context: Context) {
+        try {
+            Aktualisierung.neuZeichnen(context)
+        } catch (e: RuntimeException) {
+            Log.w(LOG, "Widget nach dem Update-Schritt nicht gezeichnet: ${e.javaClass.simpleName}")
+        }
     }
 
     /**
@@ -614,10 +878,25 @@ class UpdateStatus : BroadcastReceiver() {
         const val VORDERGRUND = "vordergrund"
     }
 
+    /** Erst merken (schnell, hier), dann die Widgets im Hintergrund neu – Hinweis und Antippen passen gleich. */
     override fun onReceive(context: Context, intent: Intent) {
-        if (intent.action == STATUS) Selbstupdate.statusErhalten(context.applicationContext, intent)
+        if (intent.action != STATUS) return
+        val app = context.applicationContext
+        Selbstupdate.statusErhalten(app, intent)
+        imHintergrund { Selbstupdate.widgetsNeu(app) }
     }
 }
+
+/**
+ * Samsungs Automatische Sperre (One UI 7 und 8: eigene App „rampart“; ob die
+ * Aktion auf Tobis S24 die Seite öffnet, ist nicht geprüft) – sonst
+ * „Sicherheit und Datenschutz“, sonst die Einstellungen.
+ */
+fun sperreAbsichten(): List<Intent> = listOf(
+    Intent("com.samsung.android.rampart.action.MAIN_SETTING_ACTIVITY"),
+    Intent(Settings.ACTION_SECURITY_SETTINGS),
+    Intent(Settings.ACTION_SETTINGS),
+)
 
 /** „Unbekannte Apps installieren“ für diese App – sonst die Liste, sonst die App-Info. */
 fun installQuelleAbsichten(paket: String): List<Intent> = listOf(

@@ -115,6 +115,7 @@ class MainActivity : Activity(), UpdateBeobachter {
         }
         findViewById<Button>(R.id.schritt3_knopf).setOnClickListener { widgetHinzufuegen() }
         findViewById<Button>(R.id.update_knopf).setOnClickListener { updateKnopf(it.tag as? UpdateKnopf) }
+        findViewById<Button>(R.id.update_knopf2).setOnClickListener { updateKnopf(it.tag as? UpdateKnopf) }
         findViewById<Button>(R.id.loeschen).setOnClickListener { loeschenFragen() }
         versionZeigen(BuildConfig.VERSION_NAME)
         webZeilenAnlegen()
@@ -580,19 +581,26 @@ class MainActivity : Activity(), UpdateBeobachter {
         findViewById<View>(R.id.update_karte).visibility = View.VISIBLE
         findViewById<TextView>(R.id.update_titel).text = a.titel
         findViewById<TextView>(R.id.update_text).text = a.text
-        val knopf = findViewById<Button>(R.id.update_knopf)
-        knopf.tag = a.knopf
-        knopf.visibility = if (a.knopf == null) View.GONE else View.VISIBLE
-        knopf.text = a.knopf?.text.orEmpty()
-        knopf.isEnabled = a.knopf != UpdateKnopf.WARTEN
+        knopfZeigen(findViewById(R.id.update_knopf), a.knopf)
+        knopfZeigen(findViewById(R.id.update_knopf2), a.zweiter)
+        textSetzen(R.id.update_diagnose, a.diagnose)
         if (updateOben) findViewById<ScrollView>(R.id.wurzel).scrollTo(0, 0)
+    }
+
+    private fun knopfZeigen(knopf: Button, was: UpdateKnopf?) {
+        knopf.tag = was
+        knopf.visibility = if (was == null) View.GONE else View.VISIBLE
+        knopf.text = was?.text.orEmpty()
+        knopf.isEnabled = was != UpdateKnopf.WARTEN
     }
 
     private fun updateKnopf(knopf: UpdateKnopf?) {
         when (knopf) {
             UpdateKnopf.EINRICHTEN -> einstellungOeffnen(installQuelleAbsichten(packageName))
+            UpdateKnopf.SPERRE -> einstellungOeffnen(sperreAbsichten())
             UpdateKnopf.INSTALLIEREN, UpdateKnopf.NOCHMAL -> {
                 findViewById<Button>(R.id.update_knopf).isEnabled = false
+                findViewById<Button>(R.id.update_knopf2).isEnabled = false
                 faeden.execute { Selbstupdate.jetztInstallieren(applicationContext) }
             }
             UpdateKnopf.BROWSER -> oeffnen(Intent(Intent.ACTION_VIEW, NeueVersion.APK.toUri()))

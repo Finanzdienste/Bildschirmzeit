@@ -285,6 +285,21 @@
                 android:id="@+id/update_knopf"
                 style="@style/Knopf"
                 android:visibility="gone" />
+
+            <!-- Zweiter Knopf, leise: „Noch einmal versuchen“ unter „Automatische Sperre öffnen“. -->
+            <Button
+                android:id="@+id/update_knopf2"
+                style="@style/Knopf.Leise"
+                android:layout_marginTop="8dp"
+                android:visibility="gone" />
+
+            <!-- Androids Meldung zum Fehlschlag, klein (UpdateAnzeige.diagnose). -->
+            <TextView
+                android:id="@+id/update_diagnose"
+                style="@style/Hinweis"
+                android:layout_marginTop="10dp"
+                android:textSize="12sp"
+                android:visibility="gone" />
         </LinearLayout>
 
         <Button

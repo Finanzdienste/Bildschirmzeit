@@ -216,9 +216,9 @@ class VorschauTest {
             RuntimeEnvironment.setFontScale(schrift)
             for ((breite, hoehe) in groessen) {
                 for (e in listOf(beispiel(), langerTag(), extremerTag())) {
-                    for (update in listOf(false, true)) {
-                        val ergebnis = e.copy(updateHinweis = update)
-                        val wo = "$breite × $hoehe bei ${(schrift * 100).roundToInt()} % (${dauerText(ergebnis.gesamt)}${if (update) ", Update" else ""})"
+                    for ((update, gesperrt) in listOf(false to false, true to false, true to true)) {
+                        val ergebnis = e.copy(updateHinweis = update, updateGesperrt = gesperrt)
+                        val wo = "$breite × $hoehe bei ${(schrift * 100).roundToInt()} % (${dauerText(ergebnis.gesamt)}${if (update) ", Update" else ""}${if (gesperrt) " blockiert" else ""})"
                         val view = aufgebaut(ergebnis, breite, hoehe)
                         ganz(view, wo)
                         val raster = WidgetRaster.fuer(breite, hoehe, schrift)
@@ -253,6 +253,7 @@ class VorschauTest {
         RuntimeEnvironment.setFontScale(2f)
         val kopf = WidgetAnsicht.Kopf.fuer(kontext, extremerTag(), WidgetRaster.fuer(170f, 170f, 2f), 170f, hinweis = true)
         assertEquals("Update", kopf.titel)
+        assertEquals("„Update blockiert“ ebenso", "Update", WidgetAnsicht.Kopf.fuer(kontext, extremerTag().copy(updateGesperrt = true), WidgetRaster.fuer(170f, 170f, 2f), 170f, hinweis = true).titel)
         assertFalse(kopf.stand, kopf.stand.contains("ohne"))
         assertTrue(kopf.gesamtSp < WidgetAnsicht.Kopf.GESAMT_SP)
     }
@@ -303,17 +304,21 @@ class VorschauTest {
     fun updateHinweisImKopf() {
         for ((breite, hoehe) in listOf(400f to 201f, 352f to 176f, 300f to 176f, 264f to 176f, 352f to 150f, 400f to 100f, 170f to 170f)) {
             for (ergebnis in listOf(beispiel(), langerTag())) {
-                val wo = "$breite × $hoehe"
-                val view = aufgebaut(ergebnis.copy(updateHinweis = true), breite, hoehe)
-                val titel = view.findViewById<TextView>(R.id.titel)
-                assertEquals(wo, View.VISIBLE, titel.visibility)
-                assertEquals(wo, "Update: antippen", titel.text.toString())
-                assertEquals(wo, 0, ellipsen(titel))
-                assertEquals(wo, WidgetAnsicht.standText(ergebnis), text(view, R.id.stand))
-                ganz(view, wo)
+                // Samsungs Sperre: „Update blockiert“ statt „Update: antippen“, genauso ganz.
+                for ((gesperrt, erwartet) in listOf(false to "Update: antippen", true to "Update blockiert")) {
+                    val wo = "$breite × $hoehe, $erwartet"
+                    val view = aufgebaut(ergebnis.copy(updateHinweis = true, updateGesperrt = gesperrt), breite, hoehe)
+                    val titel = view.findViewById<TextView>(R.id.titel)
+                    assertEquals(wo, View.VISIBLE, titel.visibility)
+                    assertEquals(wo, erwartet, titel.text.toString())
+                    assertEquals(wo, 0, ellipsen(titel))
+                    assertEquals(wo, WidgetAnsicht.standText(ergebnis), text(view, R.id.stand))
+                    ganz(view, wo)
+                }
             }
         }
         assertEquals("Heute", text(aufgebaut(beispiel(), 352f, 176f), R.id.titel))
+        assertEquals("ohne Hinweis kein „blockiert“", "Heute", text(aufgebaut(beispiel().copy(updateGesperrt = true), 352f, 176f), R.id.titel))
     }
 
     /**

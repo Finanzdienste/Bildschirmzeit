@@ -19,6 +19,8 @@ data class Ergebnis(
     val web: WebDaten,
     /** Nur fürs Widget: Ein neueres Release kommt ohne Tobi nicht an (UpdateRegeln.widgetHinweis). */
     val updateHinweis: Boolean = false,
+    /** Nur fürs Widget: Es ist Samsungs Automatische Sperre – „Update blockiert“ (UpdateRegeln.widgetGesperrt). */
+    val updateGesperrt: Boolean = false,
 ) {
     val gesamt: Long get() = posten.sumOf { it.sekunden }
 

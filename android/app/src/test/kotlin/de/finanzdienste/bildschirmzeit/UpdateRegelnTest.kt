@@ -31,7 +31,14 @@ class UpdateRegelnTest {
         status: Int = 0,
         erfolg: Int = 0,
         geprueft: Long = jetzt - 17 * 60_000L,
-    ) = UpdateLage(7, "1.7", freigabe, darf, still = true, laeuft = laeuft, fehler = fehler, fehlerStatus = status, erfolg = erfolg, erfolgUm = jetzt - stunde, geprueft = geprueft, jetzt = jetzt, zone = berlin)
+        diagnose: UpdateDiagnose? = null,
+    ) = UpdateLage(
+        7, "1.7", freigabe, darf, still = true, laeuft = laeuft, fehler = fehler, fehlerStatus = status,
+        fehlerZeit = jetzt - 48 * 60_000L, diagnose = diagnose,
+        erfolg = erfolg, erfolgUm = jetzt - stunde, geprueft = geprueft, jetzt = jetzt, zone = berlin,
+    )
+
+    private val selbstSperre = "INSTALL_FAILED_ABORTED: Self update is blocked by unknown source package"
 
     @Test
     fun pruefsummeAusDemDigestVonGitHub() {
@@ -86,31 +93,57 @@ class UpdateRegelnTest {
         assertFalse(UpdateRegeln.hintergrundDarf(UpdateFehler.KEIN_NETZ, 2, jetzt - stunde, jetzt))
         assertTrue(UpdateRegeln.hintergrundDarf(UpdateFehler.KEIN_NETZ, 2, jetzt - 2 * stunde, jetzt))
         // Hier hilft Warten nicht: erst ein neues Release (dann sind die Fehler vergessen) oder der Knopf.
-        for (f in listOf(UpdateFehler.FALSCHE_DATEI, UpdateFehler.KONFLIKT, UpdateFehler.INKOMPATIBEL)) {
+        // Bei Samsungs Sperre käme sonst deren Fenster ungefragt (oder sie verwirft es still, Stunde um Stunde).
+        for (f in listOf(UpdateFehler.FALSCHE_DATEI, UpdateFehler.KONFLIKT, UpdateFehler.INKOMPATIBEL, UpdateFehler.SPERRE)) {
             assertFalse(f.name, UpdateRegeln.hintergrundDarf(f, 1, jetzt - 30 * stunde, jetzt))
+        }
+        for (f in listOf(UpdateFehler.PRUEFUNG, UpdateFehler.VERWORFEN, UpdateFehler.ZU_LANGE, UpdateFehler.ABGEBROCHEN)) {
+            assertFalse(f.name, UpdateRegeln.hintergrundDarf(f, 1, jetzt - 30 * 60_000L, jetzt))
+            assertTrue(f.name, UpdateRegeln.hintergrundDarf(f, 1, jetzt - stunde, jetzt))
         }
     }
 
     @Test
     fun androidsStatusWirdZuTextMitRat() {
-        assertEquals(UpdateFehler.BESTAETIGEN, UpdateRegeln.fehlerAusStatus(PackageInstaller.STATUS_PENDING_USER_ACTION))
-        assertEquals(UpdateFehler.ABGEBROCHEN, UpdateRegeln.fehlerAusStatus(PackageInstaller.STATUS_FAILURE_ABORTED))
-        assertEquals(UpdateFehler.BLOCKIERT, UpdateRegeln.fehlerAusStatus(PackageInstaller.STATUS_FAILURE_BLOCKED))
-        assertEquals(UpdateFehler.KONFLIKT, UpdateRegeln.fehlerAusStatus(PackageInstaller.STATUS_FAILURE_CONFLICT))
-        assertEquals(UpdateFehler.INKOMPATIBEL, UpdateRegeln.fehlerAusStatus(PackageInstaller.STATUS_FAILURE_INCOMPATIBLE))
-        assertEquals(UpdateFehler.UNGUELTIG, UpdateRegeln.fehlerAusStatus(PackageInstaller.STATUS_FAILURE_INVALID))
-        assertEquals(UpdateFehler.SPEICHER, UpdateRegeln.fehlerAusStatus(PackageInstaller.STATUS_FAILURE_STORAGE))
-        assertEquals(UpdateFehler.ZEIT, UpdateRegeln.fehlerAusStatus(8)) // STATUS_FAILURE_TIMEOUT (ab Android 14)
-        assertEquals(UpdateFehler.FEHLER, UpdateRegeln.fehlerAusStatus(PackageInstaller.STATUS_FAILURE))
-        assertEquals(UpdateFehler.FEHLER, UpdateRegeln.fehlerAusStatus(99))
+        assertEquals(UpdateFehler.BESTAETIGEN, UpdateRegeln.fehlerAus(PackageInstaller.STATUS_PENDING_USER_ACTION))
+        assertEquals(UpdateFehler.ABGEBROCHEN, UpdateRegeln.fehlerAus(PackageInstaller.STATUS_FAILURE_ABORTED))
+        assertEquals(UpdateFehler.BLOCKIERT, UpdateRegeln.fehlerAus(PackageInstaller.STATUS_FAILURE_BLOCKED))
+        assertEquals(UpdateFehler.KONFLIKT, UpdateRegeln.fehlerAus(PackageInstaller.STATUS_FAILURE_CONFLICT))
+        assertEquals(UpdateFehler.INKOMPATIBEL, UpdateRegeln.fehlerAus(PackageInstaller.STATUS_FAILURE_INCOMPATIBLE))
+        assertEquals(UpdateFehler.UNGUELTIG, UpdateRegeln.fehlerAus(PackageInstaller.STATUS_FAILURE_INVALID))
+        assertEquals(UpdateFehler.SPEICHER, UpdateRegeln.fehlerAus(PackageInstaller.STATUS_FAILURE_STORAGE))
+        assertEquals(UpdateFehler.ZEIT, UpdateRegeln.fehlerAus(8)) // STATUS_FAILURE_TIMEOUT (ab Android 14)
+        assertEquals(UpdateFehler.FEHLER, UpdateRegeln.fehlerAus(PackageInstaller.STATUS_FAILURE))
+        assertEquals(UpdateFehler.FEHLER, UpdateRegeln.fehlerAus(99))
 
+        // „blockiert“ (Status 2) ist in AOSP nur PRE_APPROVAL_NOT_AVAILABLE – nicht die Sperre (bis v7 stand das so da).
         val blockiert = UpdateRegeln.fehlerText(UpdateFehler.BLOCKIERT, 2)
-        assertTrue(blockiert, blockiert.contains("Einstellungen → Sicherheit und Datenschutz → Automatische Sperre → aus"))
-        assertTrue(UpdateRegeln.fehlerText(UpdateFehler.ABGEBROCHEN, 3).contains("„Noch einmal versuchen“"))
+        assertFalse(blockiert, blockiert.contains("Automatische Sperre"))
+        assertTrue(blockiert, blockiert.contains("(Status 2)") && blockiert.contains("Screenshot an Claude"))
+        // Abgebrochen ohne Androids Meldung: beide Wege – Fenster geschlossen, oder keins bzw. Samsungs „Unbekannte App gesperrt“.
+        val abgebrochen = UpdateRegeln.fehlerText(UpdateFehler.ABGEBROCHEN, 3)
+        assertTrue(abgebrochen, abgebrochen.contains("Android-Fenster geschlossen: „Noch einmal versuchen“ → „Aktualisieren“"))
+        assertTrue(abgebrochen, abgebrochen.contains("„Unbekannte App gesperrt“: Automatische Sperre kurz aus (Einstellungen → Sicherheit und Datenschutz → Automatische Sperre)"))
+        assertTrue(abgebrochen, abgebrochen.contains("danach wieder an"))
+        // Mit Androids „User rejected permissions“ ist klar: Androids Fenster ging ohne „Aktualisieren“ zu.
+        val zu = UpdateRegeln.fehlerText(UpdateFehler.ABGEBROCHEN, 3, "INSTALL_FAILED_ABORTED: User rejected permissions")
+        assertTrue(zu, zu.contains("ohne „Aktualisieren“ zu") && zu.contains("„Noch einmal versuchen“ → „Aktualisieren“"))
+        assertFalse(zu, zu.contains("Automatische Sperre"))
+        val sperre = UpdateRegeln.fehlerText(UpdateFehler.SPERRE, 3)
+        for (teil in listOf("Samsungs Automatische Sperre hat das Update verhindert", "Einstellungen → Sicherheit und Datenschutz → Automatische Sperre) → aus", "„Noch einmal versuchen“ (kommt ein Android-Fenster: „Aktualisieren“)", "Danach kann die Sperre wieder an.")) {
+            assertTrue(sperre, sperre.contains(teil))
+        }
+        assertTrue(UpdateRegeln.fehlerText(UpdateFehler.PRUEFUNG, 3).contains("Play Protect"))
+        assertTrue(UpdateRegeln.fehlerText(UpdateFehler.ZU_LANGE, 0).startsWith("Android-Fenster zu lange offen – noch einmal versuchen."))
+        assertFalse("nicht Tobis Schuld", UpdateRegeln.fehlerText(UpdateFehler.VERWORFEN, 3).contains("abgebrochen", ignoreCase = true))
         assertTrue(UpdateRegeln.fehlerText(UpdateFehler.NICHT_ERLAUBT, 0).contains("„Diese Quelle zulassen“"))
         assertTrue(UpdateRegeln.fehlerText(UpdateFehler.FEHLER, 1).contains("Status 1"))
         // Im Speicher steht der feste Code, nicht der Name der Konstante (den R8 kürzen darf).
         assertEquals(UpdateFehler.entries.size, UpdateFehler.entries.map { it.code }.toSet().size)
+        assertEquals(
+            listOf("sperre", "pruefung", "verworfen", "zu_lange"),
+            listOf(UpdateFehler.SPERRE, UpdateFehler.PRUEFUNG, UpdateFehler.VERWORFEN, UpdateFehler.ZU_LANGE).map { it.code },
+        )
         for (f in UpdateFehler.entries) {
             val text = UpdateRegeln.fehlerText(f, 1)
             assertTrue("$f: $text", text.endsWith(".") && text.length > 30 && !text.contains("null"))
@@ -174,14 +207,104 @@ class UpdateRegelnTest {
         assertTrue("nicht eingerichtet", hinweis(lage(darf = false)))
         assertTrue("keine Prüfsumme bei GitHub", hinweis(lage(freigabe = freigabe(8).copy(sha256 = null))))
         assertTrue("unter Android 12", hinweis(lage().copy(still = false)))
-        for (f in listOf(UpdateFehler.BESTAETIGEN, UpdateFehler.ABGEBROCHEN, UpdateFehler.BLOCKIERT, UpdateFehler.FALSCHE_DATEI, UpdateFehler.KONFLIKT, UpdateFehler.INKOMPATIBEL)) {
+        for (f in listOf(
+            UpdateFehler.BESTAETIGEN, UpdateFehler.ABGEBROCHEN, UpdateFehler.BLOCKIERT, UpdateFehler.FALSCHE_DATEI, UpdateFehler.KONFLIKT,
+            UpdateFehler.INKOMPATIBEL, UpdateFehler.SPERRE, UpdateFehler.PRUEFUNG, UpdateFehler.ZU_LANGE,
+        )) {
             assertTrue(f.name, hinweis(lage(fehler = f)))
         }
         // Was Warten behebt, erst nach drei Fehlschlägen hintereinander.
         assertFalse(hinweis(lage(fehler = UpdateFehler.KEIN_NETZ).copy(fehlversuche = 2)))
         assertTrue(hinweis(lage(fehler = UpdateFehler.KEIN_NETZ).copy(fehlversuche = 3)))
+        assertFalse(hinweis(lage(fehler = UpdateFehler.VERWORFEN).copy(fehlversuche = 1)))
         // Ein altes „nicht erlaubt“, obwohl es jetzt erlaubt ist: Das holt der Hintergrund nach.
         assertFalse(hinweis(lage(fehler = UpdateFehler.NICHT_ERLAUBT).copy(fehlversuche = 1)))
+
+        // „Update blockiert“ nur, wenn die Karte die Sperre zeigt – nicht ohne Erlaubnis (dann geht es ums Einrichten) und nicht, wenn aktuell.
+        assertTrue(UpdateRegeln.widgetGesperrt(lage(fehler = UpdateFehler.SPERRE)))
+        assertFalse(UpdateRegeln.widgetGesperrt(lage(fehler = UpdateFehler.SPERRE, darf = false)))
+        assertFalse(UpdateRegeln.widgetGesperrt(lage(fehler = UpdateFehler.SPERRE, laeuft = true)))
+        assertFalse(UpdateRegeln.widgetGesperrt(lage(fehler = UpdateFehler.SPERRE, freigabe = freigabe(7))))
+        assertFalse(UpdateRegeln.widgetGesperrt(lage(fehler = UpdateFehler.SPERRE, freigabe = freigabe(8).copy(sha256 = null))))
+        assertFalse(UpdateRegeln.widgetGesperrt(lage(fehler = UpdateFehler.ABGEBROCHEN)))
+    }
+
+    /**
+     * Auf Tobis S24 (One UI 8) endete v6 → v7 mit „Abgebrochen“ (Status 3) – ohne
+     * Androids Meldung. ABORTED kommt auch von Samsungs Automatischer Sperre
+     * (-115 „… unknown source package“), von Paket-Prüfern (-22/-21) und von
+     * einer verworfenen Sitzung; Androids Meldung trennt das.
+     */
+    @Test
+    fun abgebrochenNachAndroidsMeldungAufgeteilt() {
+        val a = PackageInstaller.STATUS_FAILURE_ABORTED
+        assertEquals(UpdateFehler.SPERRE, UpdateRegeln.fehlerAus(a, -115, selbstSperre))
+        assertEquals("nach Samsungs Fenster „Unbekannte App gesperrt“", UpdateFehler.SPERRE, UpdateRegeln.fehlerAus(a, -115, "INSTALL_FAILED_ABORTED: User rejected installing unknown source package"))
+        assertEquals(UpdateFehler.PRUEFUNG, UpdateRegeln.fehlerAus(a, -22, "INSTALL_FAILED_VERIFICATION_FAILURE: Install not allowed"))
+        assertEquals(UpdateFehler.PRUEFUNG, UpdateRegeln.fehlerAus(a, -21, null))
+        assertEquals(UpdateFehler.PRUEFUNG, UpdateRegeln.fehlerAus(a, 0, "INSTALL_FAILED_VERIFICATION_TIMEOUT: Verification timed out"))
+        assertEquals(UpdateFehler.ABGEBROCHEN, UpdateRegeln.fehlerAus(a, -115, "INSTALL_FAILED_ABORTED: User rejected permissions"))
+        assertEquals(UpdateFehler.VERWORFEN, UpdateRegeln.fehlerAus(a, -115, "INSTALL_FAILED_ABORTED: Session was abandoned"))
+        assertEquals(UpdateFehler.ABGEBROCHEN, UpdateRegeln.fehlerAus(a, -115, null))
+        assertEquals(UpdateFehler.ABGEBROCHEN, UpdateRegeln.fehlerAus(a))
+        assertEquals("Sperre auch, wenn ein anderes Gerät sie als „fehlgeschlagen“ meldet", UpdateFehler.SPERRE, UpdateRegeln.fehlerAus(PackageInstaller.STATUS_FAILURE, -115, selbstSperre))
+        assertEquals(UpdateFehler.BLOCKIERT, UpdateRegeln.fehlerAus(PackageInstaller.STATUS_FAILURE_BLOCKED, -129, "INSTALL_FAILED_PRE_APPROVAL_NOT_AVAILABLE"))
+        assertEquals(UpdateFehler.BESTAETIGEN, UpdateRegeln.fehlerAus(PackageInstaller.STATUS_PENDING_USER_ACTION, 0, selbstSperre))
+    }
+
+    /** Androids Meldung auf der Karte: ohne Pfade und Adressen, eine Zeile, höchstens 120 Zeichen. */
+    @Test
+    fun meldungOhnePfadeInEinerZeile() {
+        assertEquals(
+            "INSTALL_FAILED_VERIFICATION_FAILURE: Install not allowed for …",
+            UpdateRegeln.meldungSaeubern("INSTALL_FAILED_VERIFICATION_FAILURE: Install not allowed for file:/data/app/vmdl1234.tmp/base.apk"),
+        )
+        assertEquals(
+            "INSTALL_FAILED_INVALID_APK: Failed to parse … (…)",
+            UpdateRegeln.meldungSaeubern("INSTALL_FAILED_INVALID_APK: Failed to parse /data/user/0/$paket/no_backup/update/x.apk (content://beispiel/datei)"),
+        )
+        assertEquals("a b c", UpdateRegeln.meldungSaeubern("a\nb\t  c\u0000"))
+        assertEquals(selbstSperre, UpdateRegeln.meldungSaeubern(selbstSperre))
+        val lang = UpdateRegeln.meldungSaeubern("INSTALL_FAILED_ABORTED: " + "sehr lang ".repeat(30))!!
+        assertTrue(lang, lang.length in UpdateRegeln.MELDUNG_ZEICHEN - 2..UpdateRegeln.MELDUNG_ZEICHEN)
+        assertTrue(lang, lang.endsWith("…"))
+        assertNull(UpdateRegeln.meldungSaeubern(null))
+        assertNull(UpdateRegeln.meldungSaeubern(" \n "))
+        assertEquals("com.beispiel.app", UpdateRegeln.paketSaeubern("com.beispiel.app"))
+        assertNull(UpdateRegeln.paketSaeubern("../daten x"))
+        assertNull(UpdateRegeln.paketSaeubern(null))
+    }
+
+    /**
+     * Die Sperre-Karte: zuerst die Seite der Sperre, „Noch einmal versuchen“
+     * darunter, unten klein Androids Meldung mit Uhrzeit, Quelle und ob Androids
+     * Rückfrage kam.
+     */
+    @Test
+    fun sperreKarteMitZweiKnoepfenUndAndroidsMeldung() {
+        val d = UpdateDiagnose(selbstSperre, -115, null, vordergrund = false, rueckfrage = false)
+        val a = UpdateRegeln.anzeige(lage(fehler = UpdateFehler.SPERRE, status = 3, diagnose = d))
+        assertEquals("Update blockiert", a.titel)
+        assertEquals(UpdateKnopf.SPERRE, a.knopf)
+        assertEquals(UpdateKnopf.NOCHMAL, a.zweiter)
+        assertTrue(a.text, a.text.startsWith("Version 1.8: Samsungs Automatische Sperre hat das Update verhindert"))
+        assertEquals("Android: $selbstSperre · 08:12 · Hintergrund · ohne Rückfrage", a.diagnose)
+
+        // Ohne Meldung Status und Legacy-Code; vom Knopf, nach Androids Rückfrage.
+        val ohne = UpdateRegeln.anzeige(lage(fehler = UpdateFehler.ABGEBROCHEN, status = 3, diagnose = UpdateDiagnose(null, -115, null, vordergrund = true, rueckfrage = true)))
+        assertEquals("Update hat nicht geklappt", ohne.titel)
+        assertNull(ohne.zweiter)
+        assertEquals("Android: Status 3 (-115), ohne Meldung · 08:12 · Knopf · mit Rückfrage", ohne.diagnose)
+        val paketD = UpdateDiagnose("INSTALL_FAILED_DUPLICATE_PERMISSION: Package com.beispiel.app attempting to redeclare permission", -112, "com.beispiel.app", false, false)
+        assertTrue(UpdateRegeln.anzeige(lage(fehler = UpdateFehler.KONFLIKT, status = 5, diagnose = paketD)).diagnose!!.contains(" · Paket com.beispiel.app · 08:12"))
+        // Fehler der App selbst (kein Netz …): keine Zeile von Android.
+        assertNull(UpdateRegeln.anzeige(lage(fehler = UpdateFehler.KEIN_NETZ)).diagnose)
+        // Der Ausgang nach Androids Rückfrage nennt den Weg dorthin.
+        val zu = UpdateRegeln.anzeige(lage(fehler = UpdateFehler.ABGEBROCHEN, status = 3, diagnose = UpdateDiagnose("INSTALL_FAILED_ABORTED: User rejected permissions", -115, null, true, true)))
+        assertTrue(zu.text, zu.text.startsWith("Version 1.8: Androids Fenster ging ohne „Aktualisieren“ zu"))
+        val lange = UpdateRegeln.anzeige(lage(fehler = UpdateFehler.ZU_LANGE))
+        assertEquals(UpdateKnopf.NOCHMAL, lange.knopf)
+        assertTrue(lange.text, lange.text.startsWith("Version 1.8: Android-Fenster zu lange offen – noch einmal versuchen."))
     }
 
     @Test

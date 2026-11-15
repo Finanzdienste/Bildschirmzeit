@@ -88,8 +88,24 @@ Einmal, alles am Handy:
 3. Lässt One UI gar nicht installieren („Automatische Sperre“): Einstellungen
    → Sicherheit und Datenschutz → Automatische Sperre → aus, installieren –
    und erst nach Schritt 5 wieder einschalten (mit der Sperre an fehlt
-   vermutlich „Eingeschränkte Einstellungen zulassen“, siehe unten). Für ein
-   Update der App die Sperre wieder kurz aus.
+   vermutlich „Eingeschränkte Einstellungen zulassen“, siehe unten). Ist die
+   Sperre an, verhindert sie auch die Updates von selbst (Schritt 9). Dafür
+   gibt es zwei Wege, und welchen, entscheidet Tobi:
+   - **Sperre aus lassen** und „Unbekannte Apps installieren“ nur für
+     Bildschirmzeit erlauben, für Chrome und „Eigene Dateien“ wieder entziehen
+     (Einstellungen → Apps → ⋮ bzw. „Spezieller Zugriff“ → „Unbekannte Apps
+     installieren“; den genauen Weg auf One UI 8 hat noch niemand geprüft).
+     Dann kommen Updates still. Weniger Schutz: Die Sperre blockiert auch
+     Befehle über USB, und mit dem offenen Schlüssel (unten
+     „Signaturschlüssel“) nähme Android jede damit signierte APK als Update –
+     ohne Sperre braucht es dafür nur noch Tobis „Installieren“ in einer App,
+     die installieren darf.
+   - **Sperre an, je Update kurz aus:** Widget „Update blockiert“ antippen →
+     „Automatische Sperre öffnen“ → aus → zurück → „Noch einmal versuchen“
+     (kommt ein Android-Fenster: „Aktualisieren“) → Sperre wieder an. Ab One
+     UI 8.5 geht sie mit „Automatisch wieder einschalten“ (ganz unten auf der
+     Seite der Sperre) nach 30 Minuten von selbst wieder an (Samsung-Hilfe);
+     ob Tobis S24 das schon hat, ist offen.
 4. Warnt Play Protect („Unsichere App blockiert“ o. Ä.): „Weitere Details“ →
    „Trotzdem installieren“. Fragt es nach einem Scan, ist beides in Ordnung.
 5. „Bildschirmzeit“ öffnen. **Schritt 1** „Erlauben“ → es öffnet sich gleich
@@ -134,11 +150,16 @@ Einmal, alles am Handy:
    dabei kurz, Einstellungen, Verbindungen und Widget bleiben). Will Android
    ein Update doch einmal bestätigt haben, steht dort „Neue Version
    installieren“ → antippen → „Aktualisieren“. Klappt es nicht, sagt die
-   Karte warum und was zu tun ist (z. B. bei „blockiert“: Einstellungen →
-   Sicherheit und Datenschutz → Automatische Sperre → aus, dann „Noch einmal
-   versuchen“). Steht im Widget oben „Update: antippen“, wartet ein Update
-   auf Tobi: Widget antippen → die App öffnet sich mit der Update-Karte ganz
-   oben → der Knopf auf der Karte.
+   Karte warum und was zu tun ist; darunter steht klein, was Android gemeldet
+   hat (für einen Screenshot an Claude). Steht im Widget oben „Update:
+   antippen“, wartet ein Update auf Tobi: Widget antippen → die App öffnet
+   sich mit der Update-Karte ganz oben → der Knopf auf der Karte. Steht dort
+   „Update blockiert“, war es Samsungs Automatische Sperre (die zwei Wege in
+   Schritt 3): Widget antippen → „Automatische Sperre öffnen“ → aus → zurück
+   → „Noch einmal versuchen“. Kommt dabei Androids Fenster „Möchtest du
+   diese App aktualisieren?“, obwohl es sonst still geht: Android fragt nach,
+   wenn ein Versuch keine 30 Sekunden nach einem stillen kommt – dann
+   „Aktualisieren“.
 
    **Einmal noch von Hand:** Wer eine Fassung ohne diese Karte hat (Tobi:
    1.1), installiert die nächste wie in Schritt 1–4 (Automatische Sperre
@@ -425,9 +446,12 @@ viele eine Adresse), das Öffnen der App höchstens alle 10 Minuten. Ist das
 Release neuer und Schritt 9 eingerichtet, lädt die App die APK, prüft sie
 und installiert sie über eine `PackageInstaller`-Sitzung – ohne Rückfrage.
 Nicht, solange die App offen ist (die Installation schließt sie), nicht
-während einer laufenden Installation (Sitzung gemerkt, nach 10 Minuten
-verworfen), nicht unter Android 12 (dort fragte Android jedes Mal; dann nur
-der Knopf). Die Karte unten in der App zeigt den Stand; ihr Knopf ist der
+während einer laufenden Installation (Sitzung gemerkt, 10 Minuten nach
+`commit` verworfen – war Androids Rückfrage gezeigt, 10 Minuten danach, und
+dann sagt die Karte „Android-Fenster zu lange offen – noch einmal
+versuchen“; bis v7 zählte die Frist ab dem Start des Laufs, vor dem Laden,
+und verwarf still), nicht unter Android 12 (dort fragte Android jedes Mal;
+dann nur der Knopf). Die Karte unten in der App zeigt den Stand; ihr Knopf ist der
 einzige Weg von Hand („Automatische Updates einrichten“, „Neue Version
 installieren“, „Noch einmal versuchen“; „Im Browser herunterladen“ nur,
 wenn GitHub keine Prüfsumme nennt).
@@ -470,17 +494,43 @@ Release sein, nie gleich alt oder älter. Die Signatur prüft Android (gleiche
 Signatur wie die installierte App) – nichts davon wird umgangen. Der
 Status-Empfänger `UpdateStatus` ist nicht exportiert, der PendingIntent
 explizit und `FLAG_MUTABLE` (nur so kann Android Status und Rückfrage
-eintragen; ab targetSdk 35 Pflicht). Im Log stehen nur Statuscodes – die
-Kennung hat mit dem Update nichts zu tun.
+eintragen; ab targetSdk 35 Pflicht). Im Log stehen Statuscodes und Androids
+Meldung, gesäubert wie auf der Karte (ohne Pfade) – die Kennung hat mit dem
+Update nichts zu tun.
 
 **Fehlschläge:** Kein Netz, falsche Prüfsumme, keine Erlaubnis, Androids
-Status (abgebrochen, blockiert – meist Samsungs Automatische Sperre –,
-Konflikt, inkompatibel, beschädigt, Speicher, Zeitüberschreitung) – die
-Karte nennt den Grund und den nächsten Schritt als Klickfolge. Der
-Hintergrund wartet nach dem n-ten Fehlschlag 1, 2, 4, 8, 16, dann 24
-Stunden; bei falscher Datei, Konflikt oder inkompatibel gar nicht mehr bis
-zum nächsten Release. Der Knopf wartet nie. Ein neues Release setzt alles
-zurück.
+Status (abgebrochen, blockiert, Konflikt, inkompatibel, beschädigt,
+Speicher, Zeitüberschreitung) – die Karte nennt den Grund und den nächsten
+Schritt als Klickfolge. „Abgebrochen“ (`STATUS_FAILURE_ABORTED`) heißt nicht
+nur, dass Tobi abgebrochen hat; die App liest deshalb (seit dem nächsten
+Release) auch Androids Meldung (`EXTRA_STATUS_MESSAGE`), den Legacy-Code
+(`android.content.pm.extra.LEGACY_STATUS`) und ein anderes Paket
+(`EXTRA_OTHER_PACKAGE_NAME`) und teilt danach auf (`UpdateRegeln.fehlerAus`):
+
+| Androids Meldung | Fehler (Code im Speicher) | Die Karte sagt |
+|---|---|---|
+| „… unknown source package“ (Samsung: „Self update is blocked …“ ohne Fenster, „User rejected installing …“ nach dem Fenster „Unbekannte App gesperrt“) | `SPERRE` (`sperre`) | „Update blockiert“: Samsungs Automatische Sperre → Knopf „Automatische Sperre öffnen“ → aus → zurück → „Noch einmal versuchen“ (Android-Fenster: „Aktualisieren“), danach kann sie wieder an |
+| Legacy -22/-21 oder „INSTALL_FAILED_VERIFICATION…“ | `PRUEFUNG` (`pruefung`) | ein Paket-Prüfer, meist Play Protect; noch einmal, sonst Screenshot an Claude |
+| „User rejected permissions“ | `ABGEBROCHEN` (`abgebrochen`) | Androids Fenster ging ohne „Aktualisieren“ zu |
+| „Session was abandoned“ | `VERWORFEN` (`verworfen`) | Android hat verworfen; die App versucht es von selbst noch einmal |
+| keine Meldung | `ABGEBROCHEN` | beide Wege: Fenster geschlossen → noch einmal + „Aktualisieren“; kein Fenster oder „Unbekannte App gesperrt“ → Sperre kurz aus |
+
+„Blockiert“ (`STATUS_FAILURE_BLOCKED`) gibt es bei Installationen in AOSP
+nur für `INSTALL_FAILED_PRE_APPROVAL_NOT_AVAILABLE`; die Sperre kommt nie so.
+Bis v7 sagte die Karte dort „meist Samsungs Automatische Sperre“ – das war
+falsch, jetzt nennt sie den Status und bittet um einen Screenshot. Die
+Meldung wird gesäubert (`UpdateRegeln.meldungSaeubern`: `file:…`,
+`content://…`, `/data/…` und andere Pfade werden „…“, eine Zeile, höchstens
+120 Zeichen) und mit dem Fehler gemerkt, dazu, ob der Versuch vom Knopf oder
+aus dem Hintergrund kam und ob Androids Rückfrage gezeigt wurde. Unter dem
+Text steht sie klein, etwa „Android: INSTALL_FAILED_ABORTED: Self update is
+blocked by unknown source package · 15:12 · Hintergrund · ohne Rückfrage“;
+dieselbe Zeile steht im Log. Der Hintergrund wartet nach dem n-ten
+Fehlschlag 1, 2, 4, 8, 16, dann 24 Stunden; bei falscher Datei, Konflikt,
+inkompatibel und nach Samsungs Sperre gar nicht mehr bis zum nächsten
+Release (bei der Sperre käme sonst ihr Fenster „Unbekannte App gesperrt“
+ungefragt, oder sie verwürfe still Stunde um Stunde). Der Knopf wartet nie.
+Ein neues Release setzt alles zurück.
 
 **Wenn es Tobi braucht, sagt es das Widget:** Benachrichtigungen hat die App
 nicht, und wer sie nicht öffnet, sieht die Karte nie. Kommt ein neueres
@@ -488,10 +538,19 @@ Release ohne Tobi nicht an, steht im Widget oben „Update: antippen“ statt
 „Heute“ (in der Akzentfarbe), und Antippen öffnet die App mit `Ziel.UPDATE`
 (die App rechnet dabei auch neu); ganz oben, direkt unter dem Titel, wartet
 die Karte mit Grund und Knopf. Das gilt, wenn Schritt 9 fehlt,
-GitHub keine Prüfsumme nennt, Android bestätigt haben will, Tobi abgebrochen
-hat, Android blockiert (Automatische Sperre), bei falscher Datei, Konflikt,
-inkompatibel – und nach drei Fehlschlägen hintereinander, auch wenn Warten
-sonst hilft (`UpdateRegeln.widgetHinweis`). Nicht, solange installiert wird
+GitHub keine Prüfsumme nennt, Android bestätigt haben will, bei
+abgebrochen, blockiert, Samsungs Sperre, einem Paket-Prüfer, einem zu lange
+offenen Android-Fenster, falscher Datei, Konflikt, inkompatibel – und nach
+drei Fehlschlägen hintereinander, auch wenn Warten sonst hilft
+(`UpdateRegeln.widgetHinweis`). War es Samsungs Sperre, steht dort „Update
+blockiert“ statt „Update: antippen“ (`UpdateRegeln.widgetGesperrt`; bei
+sehr großer Schrift wie der andere Hinweis „Update“). Nach jedem Status
+von Android und gleich nach dem Start einer Sitzung (vor `commit`) zeichnet
+die App die Widgets ohne Netz neu (`Aktualisierung.neuZeichnen`): So steht
+der Hinweis sofort da, und ein vorher gezeichnetes Widget öffnet die App
+während der Installation nicht mehr mit `CLEAR_TOP` (das hätte eine offene
+Rückfrage weggeräumt; die Flags stehen beim Zeichnen fest, bis v7 bis zum
+nächsten Wecker). Nicht, solange installiert wird
 oder der Hintergrund es noch von selbst schafft. Der Hinweis steht in jeder
 Größe des Startbildschirms (auch 2×1 und 4×1); nur flacher als jede Zelle
 fällt „Heute“ samt Hinweis weg, Antippen öffnet dann trotzdem die
@@ -512,20 +571,56 @@ Wartezeit nach Fehlern, Rückfrage im Hintergrund verworfen und im
 Vordergrund nur nach dem Knopf gezeigt, Androids „abgebrochen“ nach dem
 eigenen Verwerfen zählt nicht, Tobis „Abbrechen“ im Dialog schon, Karte →
 Einstellungen → Installieren, das Widget sagt „Update: antippen“ und öffnet
-die App bei der Update-Karte), `VorschauTest` (`updateHinweisImKopf`: ganz,
-auch bei 2×2 und 4×1), `WidgetTippenTest` (Antippen → `Ziel.UPDATE`),
+die App bei der Update-Karte), `UpdateSperreTest` (Androids Meldung auf der
+Karte und im Log, ohne Pfad; „abgebrochen“ nach Meldung aufgeteilt; ohne
+Meldung beide Wege, „blockiert“ ohne Sperre; nach der Sperre kein
+Hintergrund-Versuch, der Knopf darf, ein neues Release setzt zurück; das
+Widget gleich nach dem Start ohne `CLEAR_TOP` und nach dem Status „Update
+blockiert“; der Knopf öffnet Samsungs Seite, sonst Sicherheit, sonst
+Einstellungen; die Frist ab `commit` und ab der Rückfrage – nur mit
+Schnittstellen, die es bis v7 gab, und gegen v7 jeder rot), `VorschauTest`
+(`updateHinweisImKopf`: ganz, auch bei 2×2 und 4×1, „Update blockiert“
+ebenso; `kopfBeiGroesserSchriftGanz` bis 130 % und bei 200 %),
+`WidgetTippenTest` (Antippen → `Ziel.UPDATE`),
 `DatenTest` (die Antwort von GitHub, nur Adressen dieses
 Repos), `WeckerTest` (Rechte im Manifest). Mutationen (Prüfsumme weg,
 Rückfrage auch ohne Knopf, Wartezeit weg, zweite Sitzung erlaubt, Wecker
 weckend) machen je mindestens einen Test rot. Nie das echte GitHub
 (`Netz.gesperrt`, Abruf und Download in den Tests ersetzt).
 
-**Zeigt sich erst auf dem S24:** ob One UI 8 das Selbst-Update wirklich ohne
-Rückfrage durchlässt (AOSP sagt ja), ob die mit „Eigene Dateien“
-installierte Fassung einen Update-Owner hat (dann kommt beim ersten Mal
-die Rückfrage über den Knopf), ob die Automatische Sperre Updates der App
-blockiert oder den Schalter in Schritt 9 sperrt, ob Play Protect warnt,
-und wie genau der Schalter heißt.
+**Zeigt sich erst auf dem S24 – und was der erste Versuch gezeigt hat:**
+Das erste Selbst-Update, v6 → v7 am 15.11., endete mit der Karte „Update hat
+nicht geklappt – Version 1.7: Abgebrochen – nichts installiert …“ (Tobis
+Screenshot; inzwischen ist v7 drauf). Androids Meldung dazu ist verloren,
+denn v6 und v7 lesen nur den Status (3, ABORTED). Wahrscheinlich war es
+Samsungs Automatische Sperre: Nach dekompiliertem Samsung-Code (aus fremden
+One-UI-7-Builds, nicht der Firmware des S24) verwirft sie ein Selbst-Update
+einer App, die weder aus Play Store noch Galaxy Store kommt, mit -115 und
+„Self update is blocked by unknown source package“ (oder nach ihrem Fenster
+„Unbekannte App gesperrt“ mit „User rejected installing unknown source
+package“) – öffentlich ist das ABORTED, also „Abgebrochen“. „Unbekannte Apps
+installieren“ bleibt dabei erlaubt (die Karte zeigte keinen Einrichten-Knopf),
+denn die Sperre prüft über einen eigenen Schalter. Samsungs Hilfe sagt
+dasselbe: „Die Automatische Sperre kann die Aktualisierung von Apps
+blockieren, wenn die dafür benötigte Installationsdatei aus einer nicht
+autorisierten Quelle stammt.“ Belegt ist es für dieses Handy nicht: Ob die
+Sperre in dem Moment an war, weiß niemand, und ein ohne „Aktualisieren“
+geschlossenes Android-Fenster oder Play Protect ergäben dieselbe Karte. Das
+trennt erst die Meldung, die die App seit dem nächsten Release mitschreibt –
+also beim Update danach: v7 → nächstes Release läuft noch mit dem alten Code
+(dieselbe Karte, kein Knopf zur Sperre). Ist die Sperre an, für dieses eine
+Update von Hand: Einstellungen → Sicherheit und Datenschutz → Automatische
+Sperre → aus → Bildschirmzeit öffnen → „Noch einmal versuchen“ (oder „Neue
+Version installieren“; kommt ein Android-Fenster: „Aktualisieren“) → die
+Sperre danach nach Wunsch wieder an.
+Weiter offen: ob One UI 8 bei ausgeschalteter Sperre wirklich ohne Rückfrage
+durchlässt (AOSP sagt ja), ob die mit „Eigene Dateien“ installierte Fassung
+einen Update-Owner hat (dann kommt die Rückfrage über den Knopf), ob die
+Sperre ihr Fenster zeigt oder still verwirft, ob die Aktion
+`com.samsung.android.rampart.action.MAIN_SETTING_ACTIVITY` auf dem S24 die
+Seite der Sperre öffnet (sonst landet der Knopf in „Sicherheit und
+Datenschutz“, sonst in den Einstellungen), ob Play Protect warnt, und wie
+genau der Schalter heißt.
 
 ## Statistik und Verlauf in der App (v7)
 
@@ -1012,6 +1107,32 @@ spricht mit dem echten Supabase oder GitHub (`Netz.gesperrt`).
   JUnit-/Robolectric-Prüfungen grün, Lint ohne Fehler; die App-Bilder neu
   (die Zeilen der Liste haben jetzt oben und unten je 6 dp statt oben 12 dp,
   damit das Antippen eine ganze Fläche hat).
+- 15.11.2026, nach Tobis Screenshot vom ersten Selbst-Update (v6 → v7: „Update
+  hat nicht geklappt – Version 1.7: Abgebrochen – nichts installiert …“; v7
+  ist inzwischen drauf): Befund und Umbau unter „Updates von selbst“
+  (Fehlschläge, Widget-Hinweis, „Zeigt sich erst auf dem S24“), gebaut auf
+  dem Zweig `update-diagnose`, mit „Eine App allein“ im nächsten Release. Die App liest
+  Androids Meldung, den Legacy-Code und ein anderes Paket, säubert sie und
+  zeigt sie klein auf der Fehler-Karte (mit Uhrzeit, Knopf oder Hintergrund
+  und ob Androids Rückfrage kam; dieselbe Zeile im Log). „Abgebrochen“ wird
+  nach der Meldung aufgeteilt (Sperre, Paket-Prüfer, Fenster geschlossen, von
+  Android verworfen), „blockiert“ nennt die Sperre nicht mehr. Nach der
+  Sperre versucht es der Hintergrund für dasselbe Release nicht mehr, das
+  Widget sagt „Update blockiert“, der Knopf der Karte öffnet Samsungs Seite
+  der Sperre (sonst Sicherheit, sonst Einstellungen), „Noch einmal versuchen“
+  steht darunter. Zwei Lücken geschlossen: Die Widgets werden gleich nach dem
+  Start der Sitzung und nach jedem Status neu gezeichnet (kein altes
+  `CLEAR_TOP`), und die 10-Minuten-Frist zählt ab `commit` bzw. ab Androids
+  Rückfrage – wird eine offene Rückfrage verworfen, sagt die Karte es. 188
+  JUnit-/Robolectric-Prüfungen grün (174 vorher; die 11 in `UpdateSperreTest`
+  nutzen nur Schnittstellen, die es bis v7 gab, und waren gegen 9328d64 alle
+  rot), 47 SQL, 61 Web-Modul, Lint ohne Fehler (7 Warnungen UnusedAttribute
+  wie vorher). Alle Bilder in `docs/` byte-gleich; die Sperre-Karte (auch bei
+  130 % Schrift) und „Update blockiert“ im Widget lokal gezeichnet und
+  angesehen. Offen bei Tobi: Sperre aus lassen oder je Update kurz aus
+  (Schritt 3). v7 → nächstes Release läuft noch mit dem alten Code: Ist die
+  Sperre an, einmal von Hand (Klickfolge unter „Zeigt sich erst auf dem
+  S24“); erst das Update danach zeigt Androids Meldung.
 - Noch nicht auf dem S24 ausprobiert: Größen des Startbildschirms, Akku-
   Verhalten von One UI (ob es die App trotz Widget schlafen legt), ob
   Chrome den Verbinden-Link in der installierten Web-App oder als Tab
