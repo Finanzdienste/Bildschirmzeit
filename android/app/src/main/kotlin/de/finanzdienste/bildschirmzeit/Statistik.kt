@@ -112,6 +112,10 @@ data class Auswertung(
     val apps: List<Posten>,
     /** Der früheste Tag im Verlauf; null = noch gar keine Daten. */
     val datenSeit: LocalDate?,
+    /** Nur diese App (Schlüssel wie im Verlauf); null = alle. Dann sind `tage` und `apps` nur ihre. */
+    val nur: String? = null,
+    /** Die Zeit aller Apps im Zeitraum – für den Anteil der einen. */
+    val alle: Long = apps.sumOf { it.sekunden },
 ) {
     val gesamt: Long get() = apps.sumOf { it.sekunden }
 
@@ -129,10 +133,21 @@ data class Auswertung(
         get() = tage.filter { it.sekunden == null && !it.zukunft && datenSeit != null && it.datum >= datenSeit }.map { it.datum }
 }
 
-/** Die Tage des Zeitraums aus dem Verlauf zusammenzählen; Namen vom jüngsten Tag. */
-fun auswerten(z: Zeitraum, verlauf: Map<LocalDate, Tag>, heute: LocalDate, datenSeit: LocalDate?): Auswertung {
+/**
+ * Die Tage des Zeitraums aus dem Verlauf zusammenzählen; Namen vom jüngsten Tag.
+ * Mit `nur` die eine App (Tobi, 15.11.: „Ich will auch auf ne eigene App klicken
+ * und dann deren verteilung zb über die Woche sehen können“): ihre Zeit je Tag –
+ * ein Tag mit Daten, an dem sie nicht lief, hat 0, einer ohne Daten bleibt „keine Daten“.
+ */
+fun auswerten(z: Zeitraum, verlauf: Map<LocalDate, Tag>, heute: LocalDate, datenSeit: LocalDate?, nur: String? = null): Auswertung {
     val tage = z.tage.map { d ->
-        if (d > heute) Tageswert(d, null, zukunft = true) else Tageswert(d, verlauf[d]?.gesamt)
+        val tag = verlauf[d]
+        when {
+            d > heute -> Tageswert(d, null, zukunft = true)
+            tag == null -> Tageswert(d, null)
+            nur == null -> Tageswert(d, tag.gesamt)
+            else -> Tageswert(d, tag.posten.filter { it.schluessel == nur }.sumOf { it.sekunden })
+        }
     }
     val summe = HashMap<String, Long>()
     val namen = HashMap<String, String>()
@@ -143,19 +158,27 @@ fun auswerten(z: Zeitraum, verlauf: Map<LocalDate, Tag>, heute: LocalDate, daten
             namen[p.schluessel] = p.name
         }
     }
-    val apps = sortiert(summe.map { (k, s) -> Posten(k, WebApp.von(k)?.anzeigename ?: namen[k] ?: k, s) })
-    return Auswertung(z, heute, tage, apps, datenSeit)
+    val alle = sortiert(summe.map { (k, s) -> Posten(k, WebApp.von(k)?.anzeigename ?: namen[k] ?: k, s) })
+    val apps = if (nur == null) alle else alle.filter { it.schluessel == nur }
+    return Auswertung(z, heute, tage, apps, datenSeit, nur, alle.sumOf { it.sekunden })
 }
 
 /** Die große Zahl: „12 Std. 34 Min.“, ein Tag ganz ohne Nutzung „0 Min.“ (wie im Widget), oder „keine Daten“. */
 fun gesamtText(a: Auswertung): String = if (a.belegt == 0) "keine Daten" else summeText(a.gesamt)
 
-/** „Ø je Tag 2 Std. 15 Min.“ und, wenn Tage fehlen, „· 5 von 7 Tagen mit Daten“ – nur bei Woche und Monat. */
+/**
+ * „Ø je Tag 2 Std. 15 Min.“ und, wenn Tage fehlen, „· 5 von 7 Tagen mit Daten“ – nur bei Woche und Monat.
+ * Für eine App darunter ihr Anteil: „27 % deiner Bildschirmzeit“ (auch am Tag).
+ */
 fun schnittText(a: Auswertung): String? {
-    if (a.zeitraum.reiter == Reiter.TAG) return null
-    val s = a.schnitt ?: return null
-    val text = "Ø je Tag ${dauerText(s)}"
-    return if (a.belegt < a.vergangen) "$text · ${a.belegt} von ${a.vergangen} Tagen mit Daten" else text
+    val zeilen = ArrayList<String>()
+    val s = a.schnitt
+    if (a.zeitraum.reiter != Reiter.TAG && s != null) {
+        val text = "Ø je Tag ${summeText(s)}"
+        zeilen += if (a.belegt < a.vergangen) "$text · ${a.belegt} von ${a.vergangen} Tagen mit Daten" else text
+    }
+    if (a.nur != null && a.alle > 0L && a.gesamt > 0L) zeilen += "${anteilText(a.gesamt, a.alle)} deiner Bildschirmzeit"
+    return zeilen.takeIf { it.isNotEmpty() }?.joinToString("\n")
 }
 
 /**

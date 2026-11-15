@@ -67,6 +67,16 @@ class MainActivity : Activity(), UpdateBeobachter {
     /** Nur das Ergebnis des neuesten Auftrags zeigen (Reiter schnell hintereinander getippt). */
     private var auftrag = 0
 
+    /**
+     * Eine App, per Tipp auf ihre Zeile gewählt: Die Statistik zeigt nur sie
+     * (Zeit je Tag, Ø, Anteil), über Reiter und ‹ › hinweg, bis „Alle Apps“ oder
+     * Zurück. Nur `schluessel` und `name` zählen.
+     */
+    private var appWahl: Posten? = null
+
+    /** Wo die Liste stand, als die App gewählt wurde – „Alle Apps“ führt dorthin zurück. */
+    private var listeScroll = 0
+
     /** Ein Tag, per Tipp auf einen Balken geöffnet: Zurück führt in diesen Zeitraum (null: Zurück schließt die App). */
     private var vomBalken: Zeitraum? = null
 
@@ -130,6 +140,10 @@ class MainActivity : Activity(), UpdateBeobachter {
             outState.putString(ZUSTAND_BALKEN_REITER, it.reiter.name)
             outState.putString(ZUSTAND_BALKEN_VON, it.von.toString())
         }
+        appWahl?.let {
+            outState.putString(ZUSTAND_APP, it.schluessel)
+            outState.putString(ZUSTAND_APP_NAME, it.name)
+        }
     }
 
     /** Den gesicherten Zustand übernehmen; false, wenn er fehlt oder unlesbar ist. */
@@ -143,6 +157,7 @@ class MainActivity : Activity(), UpdateBeobachter {
             gewaehltAm = LocalDate.parse(am)
             updateOben = b.getBoolean(ZUSTAND_UPDATE)
             vomBalken = b.getString(ZUSTAND_BALKEN_VON)?.let { Zeitraum.um(Reiter.von(b.getString(ZUSTAND_BALKEN_REITER)), LocalDate.parse(it)) }
+            appWahl = b.getString(ZUSTAND_APP)?.let { Posten(it, b.getString(ZUSTAND_APP_NAME) ?: it, 0L) }
             zurueckPflegen()
             true
         } catch (e: DateTimeParseException) {
@@ -170,6 +185,7 @@ class MainActivity : Activity(), UpdateBeobachter {
                 gewaehltAm = heute()
                 zeitraum = Zeitraum.um(reiter, gewaehltAm)
                 vomBalken = null
+                appWahl = null
                 zurueckPflegen()
             }
             Ziel.UPDATE -> updateOben = true
@@ -200,9 +216,13 @@ class MainActivity : Activity(), UpdateBeobachter {
         super.onDestroy()
     }
 
-    /** Zurück aus dem Tag in den Zeitraum, aus dem der Balken kam. false: nichts zu tun (die App schließt). */
+    /**
+     * Zurück: aus dem Tag in den Zeitraum, aus dem der Balken kam; sonst von
+     * der einen App zu allen. false: nichts zu tun (die App schließt).
+     */
     internal fun zurueckZumZeitraum(): Boolean {
-        val z = vomBalken ?: return false
+        val z = vomBalken
+        if (z == null) return alleAppsZeigen()
         vomBalken = null
         zurueckPflegen()
         reiter = z.reiter
@@ -211,11 +231,31 @@ class MainActivity : Activity(), UpdateBeobachter {
         return true
     }
 
-    /** Den Rückruf für Zurück nur anmelden, solange ein Tag vom Balken offen ist – sonst schließt Zurück die App wie gewohnt. */
+    /** Eine App angetippt: nur sie, im selben Zeitraum; die Statistik rückt nach oben ins Bild. */
+    internal fun appWaehlen(p: Posten) {
+        val wurzel = findViewById<ScrollView>(R.id.wurzel)
+        if (appWahl == null) listeScroll = wurzel.scrollY
+        appWahl = Posten(p.schluessel, p.name, 0L)
+        zurueckPflegen()
+        statistikNeu()
+        val karte = findViewById<View>(R.id.statistik_karte)
+        if (wurzel.scrollY > karte.top) wurzel.scrollTo(0, karte.top)
+    }
+
+    /** „Alle Apps“ (oder Zurück): wieder alle, die Liste dort, wo sie war. false: es war keine gewählt. */
+    internal fun alleAppsZeigen(): Boolean {
+        if (appWahl == null) return false
+        appWahl = null
+        zurueckPflegen()
+        statistikNeu(nachher = { findViewById<ScrollView>(R.id.wurzel).post { findViewById<ScrollView>(R.id.wurzel).scrollTo(0, listeScroll) } })
+        return true
+    }
+
+    /** Den Rückruf für Zurück nur anmelden, solange ein Tag vom Balken oder eine App offen ist – sonst schließt Zurück die App wie gewohnt. */
     private fun zurueckPflegen() {
         if (Build.VERSION.SDK_INT < 33) return
         val ruf = zurueckRuf ?: return
-        val soll = vomBalken != null
+        val soll = vomBalken != null || appWahl != null
         if (soll == zurueckAngemeldet) return
         if (soll) {
             onBackInvokedDispatcher.registerOnBackInvokedCallback(OnBackInvokedDispatcher.PRIORITY_DEFAULT, ruf)
@@ -325,6 +365,7 @@ class MainActivity : Activity(), UpdateBeobachter {
             statistikNeu()
         }
         findViewById<Balken>(R.id.balken).beiTipp = { tag -> tagZeigen(tag) }
+        findViewById<View>(R.id.alle_apps).setOnClickListener { alleAppsZeigen() }
     }
 
     /** Ein Reiter von Hand gewählt: gemerkt, und der Zeitraum um den letzten gezeigten Tag (nie nach heute). */
@@ -351,15 +392,21 @@ class MainActivity : Activity(), UpdateBeobachter {
     }
 
     /** Den Zeitraum aus dem Verlauf lesen (im Hintergrund: bis zu 31 kleine Dateien) und zeigen. */
-    internal fun statistikNeu() {
+    internal fun statistikNeu(nachher: (() -> Unit)? = null) {
         if (faeden.isShutdown) return
         val z = zeitraum
+        val nur = appWahl?.schluessel
         val heute = heute()
         val nr = ++auftrag
         faeden.execute {
             val tage = verlauf.lesen(z.von, minOf(z.bis, heute))
-            val a = auswerten(z, tage, heute, verlauf.erster())
-            imVordergrund { if (nr == auftrag) statistikZeigen(a) }
+            val a = auswerten(z, tage, heute, verlauf.erster(), nur)
+            imVordergrund {
+                if (nr == auftrag) {
+                    statistikZeigen(a)
+                    nachher?.invoke()
+                }
+            }
         }
     }
 
@@ -384,16 +431,34 @@ class MainActivity : Activity(), UpdateBeobachter {
         }
         textSetzen(R.id.luecken, lueckenText(a))
 
+        // Eine App gewählt: oben ihr Name, die Liste weg (die Balken sind ihre Verteilung).
+        val gewaehlt = appWahl?.takeIf { it.schluessel == a.nur }
+        val kopf = findViewById<View>(R.id.app_kopf)
         val liste = findViewById<LinearLayout>(R.id.app_liste)
         liste.removeAllViews()
-        val symbolPx = (30 * resources.displayMetrics.density).roundToInt()
-        for (p in a.apps) {
-            val zeile = LayoutInflater.from(this).inflate(R.layout.zeile_app, liste, false)
-            zeile.findViewById<ImageView>(R.id.symbol).setImageBitmap(Symbole.bild(this, p, symbolPx))
-            zeile.findViewById<TextView>(R.id.name).text = p.name
-            zeile.findViewById<TextView>(R.id.zeit).text = dauerText(p.sekunden)
-            zeile.findViewById<TextView>(R.id.anteil).text = anteilText(p.sekunden, a.gesamt)
-            liste.addView(zeile)
+        val dichte = resources.displayMetrics.density
+        if (gewaehlt != null) {
+            // Der Name aus dem Zeitraum (der jüngste), sonst der beim Antippen.
+            val name = a.apps.firstOrNull()?.name ?: gewaehlt.name
+            kopf.visibility = View.VISIBLE
+            findViewById<ImageView>(R.id.app_kopf_symbol).setImageBitmap(Symbole.bild(this, Posten(gewaehlt.schluessel, name, 0L), (28 * dichte).roundToInt()))
+            findViewById<TextView>(R.id.app_kopf_name).text = name
+            liste.visibility = View.GONE
+        } else {
+            kopf.visibility = View.GONE
+            liste.visibility = View.VISIBLE
+            val symbolPx = (30 * dichte).roundToInt()
+            for (p in a.apps) {
+                val zeile = LayoutInflater.from(this).inflate(R.layout.zeile_app, liste, false)
+                zeile.findViewById<ImageView>(R.id.symbol).setImageBitmap(Symbole.bild(this, p, symbolPx))
+                zeile.findViewById<TextView>(R.id.name).text = p.name
+                zeile.findViewById<TextView>(R.id.zeit).text = dauerText(p.sekunden)
+                val anteil = anteilText(p.sekunden, a.gesamt)
+                zeile.findViewById<TextView>(R.id.anteil).text = anteil
+                zeile.contentDescription = "${p.name}, ${dauerText(p.sekunden)}, $anteil"
+                zeile.setOnClickListener { appWaehlen(p) }
+                liste.addView(zeile)
+            }
         }
         textSetzen(R.id.statistik_hinweis, hinweis(a))
     }
@@ -403,10 +468,10 @@ class MainActivity : Activity(), UpdateBeobachter {
         val e = letztes
         return when {
             !erlaubt -> getString(R.string.statistik_ohne_erlaubnis)
-            a.zeitraum.reiter == Reiter.TAG && a.belegt == 1 && a.apps.isEmpty() ->
+            a.nur == null && a.zeitraum.reiter == Reiter.TAG && a.belegt == 1 && a.apps.isEmpty() ->
                 getString(if (a.zeitraum.von == a.heute) R.string.heute_leer else R.string.tag_leer)
             e == null || !a.zeitraum.enthaelt(a.heute) -> null
-            e.web.verbunden -> "Chrome ohne Boxenstopp, Freizeit und Workout. ${statistikStand(e)}."
+            e.web.verbunden && (a.nur == null || a.nur == CHROME) -> "Chrome ohne Boxenstopp, Freizeit und Workout. ${statistikStand(e)}."
             else -> "${statistikStand(e)}."
         }
     }
@@ -586,6 +651,8 @@ class MainActivity : Activity(), UpdateBeobachter {
         const val ZUSTAND_UPDATE = "updateOben"
         const val ZUSTAND_BALKEN_REITER = "balkenReiter"
         const val ZUSTAND_BALKEN_VON = "balkenVon"
+        const val ZUSTAND_APP = "app"
+        const val ZUSTAND_APP_NAME = "appName"
     }
 }
 

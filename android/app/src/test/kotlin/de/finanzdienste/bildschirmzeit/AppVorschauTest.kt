@@ -35,7 +35,8 @@ import kotlin.math.roundToInt
  * Bild: docs/vorschau-app-hell.png und -dunkel.png (Woche mit Balken),
  * vorschau-app-monat-*.png (Monat mit Lücken „keine Daten“, nur die
  * Statistik), vorschau-app-tag-hell.png (der Reiter Tag) und
- * vorschau-app-einrichten-hell.png (ohne Erlaubnis). Das Netz ist gesperrt –
+ * vorschau-app-einrichten-hell.png (ohne Erlaubnis), vorschau-app-eine-*.png
+ * (eine App angetippt: ihre Woche). Das Netz ist gesperrt –
  * kein Test spricht mit dem echten Supabase oder GitHub.
  */
 @RunWith(RobolectricTestRunner::class)
@@ -129,6 +130,14 @@ class AppVorschauTest {
 
     @Test
     fun tagHell() = aufnehmen("app-tag-hell", 0xFFF2F3F6.toInt(), update = update(eingerichtet = true), reiter = Reiter.TAG, nurStatistik = true)
+
+    /** Tobi, 15.11.: „… auf ne eigene App klicken und dann deren verteilung zb über die Woche sehen“. */
+    @Test
+    fun eineAppHell() = aufnehmen("app-eine-hell", 0xFFF2F3F6.toInt(), update = update(eingerichtet = true), nurStatistik = true, app = "Workout")
+
+    @Test
+    @Config(qualifiers = "+night")
+    fun eineAppDunkel() = aufnehmen("app-eine-dunkel", 0xFF111215.toInt(), update = update(eingerichtet = true), nurStatistik = true, app = "WhatsApp")
 
     /**
      * Tobis S24 (15.11.): Der Schalter war grau, „Gesteuert durch eingeschränkte
@@ -249,6 +258,7 @@ class AppVorschauTest {
         reiter: Reiter = Reiter.WOCHE,
         nurStatistik: Boolean = false,
         verlauf: Boolean = true,
+        app: String? = null,
     ) {
         if (verlauf) erfundenerVerlauf(RuntimeEnvironment.getApplication(), beispiel().posten)
         Speicher(RuntimeEnvironment.getApplication()).reiter = reiter.name
@@ -262,6 +272,12 @@ class AppVorschauTest {
         // Feste Uhr: Samstag, 14.11.2026, 21:40 – die Woche 9.–15. Nov., der Sonntag kommt noch.
         aktivitaet.uhrStellen { stand }
         warten()
+        if (app != null) {
+            // Wie Tobis Finger: die Zeile der App in der Liste antippen.
+            val liste = aktivitaet.findViewById<ViewGroup>(R.id.app_liste)
+            (0 until liste.childCount).map { liste.getChildAt(it) }.first { it.findViewById<android.widget.TextView>(R.id.name).text == app }.performClick()
+            warten()
+        }
 
         val inhalt = (aktivitaet.findViewById<ViewGroup>(R.id.wurzel)).getChildAt(0)
         val dichte = aktivitaet.resources.displayMetrics.density

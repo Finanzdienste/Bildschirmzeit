@@ -63,9 +63,12 @@ class Balken @JvmOverloads constructor(context: Context, attrs: AttributeSet? = 
         setMeasuredDimension(getDefaultSize(suggestedMinimumWidth, widthMeasureSpec), hoehe)
     }
 
-    /** Die Achse: oben die nächste runde Stufe über dem größten Tag, dazwischen höchstens drei Linien. */
+    /**
+     * Die Achse: oben die nächste runde Stufe über dem größten Tag, dazwischen höchstens drei Linien.
+     * 5 und 10 Minuten für eine App, die nur wenig läuft (sonst stünde keine Linie da).
+     */
     private fun stufe(groesster: Long): Long {
-        val stufen = longArrayOf(15, 30, 60, 120, 180, 240, 360, 480, 720).map { it * 60 }
+        val stufen = longArrayOf(5, 10, 15, 30, 60, 120, 180, 240, 360, 480, 720).map { it * 60 }
         return stufen.firstOrNull { groesster / it <= 3 } ?: stufen.last()
     }
 

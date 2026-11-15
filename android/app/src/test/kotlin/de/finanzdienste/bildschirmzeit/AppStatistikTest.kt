@@ -273,6 +273,102 @@ class AppStatistikTest {
         assertEquals(listOf(R.id.kopf_titel, R.id.update_karte), update.get().reihe().take(2))
     }
 
+    private fun MainActivity.zeile(name: String): View {
+        val liste = findViewById<ViewGroup>(R.id.app_liste)
+        return (0 until liste.childCount).map { liste.getChildAt(it) }.first { it.findViewById<TextView>(R.id.name).text == name }
+    }
+
+    private fun wochenSumme(schluessel: String, vararg tage: Int): Long =
+        Verlauf(kontext).lesen(heute.withDayOfMonth(tage.min()), heute.withDayOfMonth(tage.max()))
+            .filterKeys { it.dayOfMonth in tage }.values.sumOf { t -> t.posten.filter { it.schluessel == schluessel }.sumOf { it.sekunden } }
+
+    /**
+     * Tobi, 15.11.: „Ich will auch auf ne eigene App klicken und dann deren
+     * verteilung zb über die Woche sehen können“. Tipp auf eine Zeile: nur diese
+     * App – ihr Name oben, ihre Zeit, Ø und Anteil, die Balken je Tag, keine
+     * Liste. Reiter und ‹ › behalten sie, „Alle Apps“ führt zurück.
+     */
+    @Test
+    fun appAntippenZeigtIhreVerteilung() {
+        val a = oeffnen().get()
+        a.zeile("Workout").performClick()
+        warten()
+        assertEquals(View.VISIBLE, a.findViewById<View>(R.id.app_kopf).visibility)
+        assertEquals("Workout", a.text(R.id.app_kopf_name))
+        assertEquals(View.GONE, a.findViewById<View>(R.id.app_liste).visibility)
+        assertEquals("9.–15. Nov.", a.text(R.id.zeitraum_titel))
+        assertEquals(dauerText(wochenSumme("workout", 9, 10, 11, 12, 13, 14)), a.text(R.id.gesamt))
+        assertTrue(a.text(R.id.schnitt), a.text(R.id.schnitt).startsWith("Ø je Tag "))
+        assertTrue(a.text(R.id.schnitt), a.text(R.id.schnitt).endsWith("% deiner Bildschirmzeit"))
+        val balken = a.findViewById<Balken>(R.id.balken)
+        assertEquals(View.VISIBLE, balken.visibility)
+        // Die Balken sind die Tage dieser App (TalkBack liest sie vor).
+        val mi = Verlauf(kontext).lesen(heute.withDayOfMonth(11), heute.withDayOfMonth(11)).values.single().posten.single { it.schluessel == "workout" }.sekunden
+        assertTrue(balken.contentDescription.toString(), balken.contentDescription.contains("Mi ${summeText(mi)}"))
+
+        // Monat und eine Woche zurück: weiter nur Workout.
+        a.findViewById<View>(R.id.reiter_monat).performClick()
+        warten()
+        assertEquals("November 2026", a.text(R.id.zeitraum_titel))
+        assertEquals("Workout", a.text(R.id.app_kopf_name))
+        assertEquals(dauerText(wochenSumme("workout", 3, 4, 5, 6, 9, 10, 11, 12, 13, 14)), a.text(R.id.gesamt))
+        a.findViewById<View>(R.id.reiter_woche).performClick()
+        warten()
+        a.findViewById<View>(R.id.zurueck).performClick()
+        warten()
+        assertEquals("2.–8. Nov.", a.text(R.id.zeitraum_titel))
+        assertEquals(dauerText(wochenSumme("workout", 3, 4, 5, 6)), a.text(R.id.gesamt))
+
+        // „Alle Apps“: wieder die ganze Liste, kein Kopf.
+        a.findViewById<View>(R.id.alle_apps).performClick()
+        warten()
+        assertEquals(View.GONE, a.findViewById<View>(R.id.app_kopf).visibility)
+        assertEquals(View.VISIBLE, a.findViewById<View>(R.id.app_liste).visibility)
+        assertEquals(dauerText(summe(3, 4, 5, 6)), a.text(R.id.gesamt))
+        assertFalse(a.text(R.id.schnitt).contains("deiner Bildschirmzeit"))
+    }
+
+    /** Zurück: vom Tag (Balken) in die Woche der App, dann zu allen Apps, dann schließt die App wie gewohnt. */
+    @Test
+    fun zurueckVonDerAppZuAllen() {
+        wieAndroid16()
+        val a = oeffnen().get()
+        assertNotSame(a.zurueckRuf, obersterRueckruf(a))
+        a.zeile("WhatsApp").performClick()
+        warten()
+        assertSame(a.zurueckRuf, obersterRueckruf(a))
+        a.tagZeigen(LocalDate.of(2026, 11, 12))
+        warten()
+        assertEquals("Do., 12. Nov.", a.text(R.id.zeitraum_titel))
+        assertEquals("WhatsApp", a.text(R.id.app_kopf_name))
+        obersterRueckruf(a)!!.onBackInvoked()
+        warten()
+        assertEquals("9.–15. Nov.", a.text(R.id.zeitraum_titel))
+        assertEquals("WhatsApp", a.text(R.id.app_kopf_name))
+        obersterRueckruf(a)!!.onBackInvoked()
+        warten()
+        assertEquals(View.GONE, a.findViewById<View>(R.id.app_kopf).visibility)
+        assertEquals(View.VISIBLE, a.findViewById<View>(R.id.app_liste).visibility)
+        assertNotSame(a.zurueckRuf, obersterRueckruf(a))
+        assertFalse(a.zurueckZumZeitraum())
+    }
+
+    /** Drehen behält die App; ein neues Antippen des Widgets zeigt wieder alle. */
+    @Test
+    fun appUeberstehtDrehenAberNichtDasWidget() {
+        val steuerung = oeffnen()
+        steuerung.get().zeile("Freizeit").performClick()
+        warten()
+        steuerung.recreate()
+        warten()
+        assertEquals("Freizeit", steuerung.get().text(R.id.app_kopf_name))
+        assertEquals(View.VISIBLE, steuerung.get().findViewById<View>(R.id.app_kopf).visibility)
+        steuerung.newIntent(ziel(Ziel.STATISTIK))
+        warten()
+        assertEquals(View.GONE, steuerung.get().findViewById<View>(R.id.app_kopf).visibility)
+        assertEquals(8, steuerung.get().findViewById<ViewGroup>(R.id.app_liste).childCount)
+    }
+
     /**
      * Zurück aus einem Tag, den ein Tipp auf einen Balken geöffnet hat, führt
      * in die Woche (bzw. den Monat) davor, statt die App zu schließen – über
