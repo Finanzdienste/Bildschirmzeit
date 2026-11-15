@@ -66,11 +66,17 @@ object Rechner {
         val verlauf = Verlauf(context)
         val bisher = verlauf.lesen(heute)
         val android: Map<String, Long>
+        val seiten: Map<String, Long>
         try {
             // Ein paar Stunden vor Mitternacht anfangen: Eine App, die über
             // Mitternacht offen war, hat ihr „vorn“ vor Mitternacht bekommen.
             val ereignisse = Nutzungsdaten.ereignisse(context, mitternacht - VORLAUF_MS, jetzt)
-            android = nieWeniger(heuteJeApp(ereignisse, mitternacht, jetzt, launcher + bisher.schluessel(), home), bisher)
+            val firefox = ArrayList<Intervall>()
+            val roh = heuteJeApp(ereignisse, mitternacht, jetzt, launcher + bisher.schluessel(), home) { p, a, e ->
+                if (p in FIREFOXE) firefox += Intervall(p, a, e)
+            }
+            android = nieWeniger(roh, bisher)
+            seiten = seitenZeiten(firefox, Beobachtungen(context).lesen(mitternacht, jetzt))
             nachtragen(context, verlauf, speicher, heute, zone, jetzt, launcher, home, name)
         } catch (e: SecurityException) {
             // Gerade eben in den Einstellungen wieder abgeschaltet.
@@ -78,7 +84,7 @@ object Rechner {
         }
         val web = webStand(speicher, heute, netz, jetzt, if (netz) webVon(heute, verlauf.webFehltAb) else heute)
         if (web.frisch) verlauf.webEintragen(web.zeilen, web.von, heute, web.daten.gelesen)
-        val tag = tagAus(heute, android, web.daten.heute, web.daten.gelesen, fertig = false, mitAltenNamen(bisher, name))
+        val tag = tagAus(heute, android, web.daten.heute, web.daten.gelesen, fertig = false, seiten = seiten, name = mitAltenNamen(bisher, name))
         verlauf.schreiben(tag)
         return Ergebnis(erlaubt = true, posten = tag.posten, stand = jetzt, web = web.daten)
     }
@@ -145,14 +151,19 @@ object Rechner {
             )
             if (!gedeckt && bisher == null) continue
             // Was an dem Tag schon gezählt war, zählt weiter – auch wenn die App inzwischen deinstalliert ist.
-            val android = nieWeniger(heuteJeApp(abfrage.ereignisse, anfang, ende, launcher + bisher.schluessel(), home), bisher)
+            val firefox = ArrayList<Intervall>()
+            val roh = heuteJeApp(abfrage.ereignisse, anfang, ende, launcher + bisher.schluessel(), home) { p, a, e ->
+                if (p in FIREFOXE) firefox += Intervall(p, a, e)
+            }
+            val android = nieWeniger(roh, bisher)
+            val seiten = seitenZeiten(firefox, Beobachtungen(context).lesen(anfang, ende))
             val (web, gelesen) = when {
                 bisher != null && bisher.webGelesen > 0L -> bisher.web to bisher.webGelesen
                 alt != null && altVon != null && tag >= altVon -> webFuerTag(alt.second, tag) to alt.first
                 else -> emptyMap<String, Long>() to 0L
             }
             val fertig = gedeckt || bisher?.fertig == true
-            verlauf.schreiben(tagAus(tag, android, web, gelesen, fertig, mitAltenNamen(bisher, name)))
+            verlauf.schreiben(tagAus(tag, android, web, gelesen, fertig, seiten = seiten, name = mitAltenNamen(bisher, name)))
             // Noch keine Web-Werte, oder gelesen, bevor der Tag zu Ende war: Die nächste Netzabfrage holt ihn einmal mit.
             if (gelesen < ende) {
                 val fehlt = verlauf.webFehltAb
@@ -168,6 +179,7 @@ object Rechner {
         if ((verlauf.nachgetragenBis ?: LocalDate.MIN) < vorSicher) verlauf.nachgetragenBis = vorSicher
         if (verlauf.nachgetragenBis != heute.minusDays(1)) verlauf.nachtragVersuch = jetzt
         verlauf.aufraeumen(heute)
+        Beobachtungen(context).aufraeumen(jetzt)
     }
 
     /**
@@ -222,6 +234,7 @@ object Rechner {
         }
         if (ok) {
             Verlauf(context).loeschen(Instant.ofEpochMilli(jetzt).atZone(ZoneId.systemDefault()).toLocalDate())
+            Beobachtungen(context).loeschen()
             val neu = speicher.neueKennungSetzen()
             try {
                 if (Supabase.anmelden(neu)) speicher.angemeldet = true

@@ -60,8 +60,17 @@ const val SYSTEMUI = "com.android.systemui"
  * die neue Instanz nicht schließen: Ein GESTOPPT nach einem PAUSIERT
  * derselben Klasse schließt deshalb nichts mehr (es gehört zur pausierten
  * Instanz), nur ein GESTOPPT ohne PAUSIERT davor schließt.
+ *
+ * `intervall` bekommt jedes gezählte Stück (Paket, Anfang, Ende – schon auf
+ * [von, bis] geschnitten): daraus teilt Webseiten.kt Firefox auf, mit genau
+ * denselben Grenzen wie hier.
  */
-fun vordergrundZeiten(ereignisse: List<Ereignis>, von: Long, bis: Long): Map<String, Long> {
+fun vordergrundZeiten(
+    ereignisse: List<Ereignis>,
+    von: Long,
+    bis: Long,
+    intervall: ((String, Long, Long) -> Unit)? = null,
+): Map<String, Long> {
     val offen = HashMap<String, MutableSet<String>>() // Paket → Activities, die gerade vorn sind
     val pausiert = HashSet<String>() // „paket/klasse“: pausiert, GESTOPPT steht noch aus
     val seit = HashMap<String, Long>() // Paket → seit wann vorn
@@ -70,7 +79,10 @@ fun vordergrundZeiten(ereignisse: List<Ereignis>, von: Long, bis: Long): Map<Str
     fun gutschreiben(paket: String, anfang: Long, ende: Long) {
         val a = maxOf(anfang, von)
         val e = minOf(ende, bis)
-        if (e > a) summe[paket] = (summe[paket] ?: 0L) + (e - a)
+        if (e > a) {
+            summe[paket] = (summe[paket] ?: 0L) + (e - a)
+            intervall?.invoke(paket, a, e)
+        }
     }
 
     fun schliessen(paket: String, zeit: Long) {
@@ -132,6 +144,7 @@ fun heuteJeApp(
     bis: Long,
     launcherPakete: Set<String>,
     homeActivities: Set<String>,
+    intervall: ((String, Long, Long) -> Unit)? = null,
 ): Map<String, Long> {
     val zaehlbar = ereignisse.filter { e ->
         when (e.art) {
@@ -140,7 +153,7 @@ fun heuteJeApp(
             else -> true
         }
     }
-    return vordergrundZeiten(zaehlbar, von, bis)
+    return vordergrundZeiten(zaehlbar, von, bis, intervall)
         .filterKeys { it in launcherPakete }
         .mapValues { it.value / 1000 }
         .filterValues { it > 0 }

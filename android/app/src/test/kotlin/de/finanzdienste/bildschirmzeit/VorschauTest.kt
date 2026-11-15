@@ -111,6 +111,32 @@ class VorschauTest {
     fun updateHell() = speichern("update-hell", beispiel().copy(updateHinweis = true), 400f, 201f, nacht = false)
 
     /**
+     * Tobi, 15.11.: „Bei Firefox bin ich viel auf Youtube. Kann man sich die
+     * größten Webseiten als einzelnen Punkt auflisten lassen?“ – youtube.com
+     * und wikipedia.org zwischen den Apps, mit der blauen Kachel der Seiten;
+     * der Rest bleibt „Firefox“.
+     */
+    private fun mitSeiten() = beispiel().copy(
+        posten = sortiert(
+            listOf(
+                Posten(seitenSchluessel("org.mozilla.firefox", "youtube.com"), "youtube.com", 80 * 60L),
+                Posten("boxenstopp", "Boxenstopp", 69 * 60L),
+                Posten("com.beispiel.chat", "WhatsApp", 54 * 60L),
+                Posten("workout", "Workout", 41 * 60L),
+                Posten("org.mozilla.firefox", "Firefox", 23 * 60L),
+                Posten(seitenSchluessel("org.mozilla.firefox", "wikipedia.org"), "wikipedia.org", 17 * 60L),
+                Posten("freizeit", "Freizeit", 9 * 60L),
+                Posten("com.beispiel.karten", "Karten", 6 * 60L),
+                Posten("com.beispiel.kamera", "Kamera", 3 * 60L),
+            ),
+        ),
+    )
+
+    @Test
+    @Config(qualifiers = "+night")
+    fun webseitenDunkel() = speichern("webseiten-dunkel", mitSeiten(), 400f, 201f, nacht = true)
+
+    /**
      * Tobis Widget (400 × 201 dp): acht Apps in zwei Spalten, links Platz 1–4,
      * rechts 5–8, kein Ring, kein „Andere Apps“, oben „Heute“ und die
      * Gesamtzeit aller Apps. Namen und Zeiten ganz.

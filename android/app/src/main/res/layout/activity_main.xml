@@ -267,6 +267,37 @@
                 android:visibility="gone" />
         </LinearLayout>
 
+        <!-- Freiwillig: Webseiten in Firefox einzeln (WebseitenDienst). -->
+        <LinearLayout
+            android:id="@+id/webseiten_karte"
+            style="@style/Karte">
+
+            <TextView
+                android:id="@+id/schritt4_titel"
+                style="@style/Ueberschrift"
+                android:text="@string/schritt4_titel" />
+
+            <TextView
+                android:id="@+id/schritt4_text"
+                style="@style/Fliesstext"
+                android:text="@string/schritt4_text" />
+
+            <TextView
+                android:id="@+id/schritt4_stand"
+                style="@style/Hinweis"
+                android:visibility="gone" />
+
+            <Button
+                android:id="@+id/schritt4_knopf"
+                style="@style/Knopf"
+                android:text="@string/schritt4_knopf" />
+
+            <TextView
+                android:id="@+id/schritt4_anleitung"
+                style="@style/Hinweis"
+                android:text="@string/schritt4_anleitung" />
+        </LinearLayout>
+
         <LinearLayout
             android:id="@+id/update_karte"
             style="@style/Karte"

@@ -1,0 +1,345 @@
+package de.finanzdienste.bildschirmzeit
+
+import android.content.ComponentName
+import android.content.Context
+import android.provider.Settings
+import android.view.accessibility.AccessibilityManager
+import java.io.File
+import java.io.IOException
+
+/*
+ * Webseiten in Firefox einzeln – Tobi, 15.11.: „Bei Firefox bin ich viel auf
+ * Youtube. Kann man sich die größten Webseiten als einzelnen Punkt auflisten
+ * lassen?“ Android kennt nur die App Firefox; welche Seite offen ist, steht
+ * nur in Firefox' Adresszeile. Die liest der WebseitenDienst (eine
+ * Bedienungshilfe, die nur Firefox sieht) und merkt sich bei jedem Wechsel die
+ * Domain mit Uhrzeit (Beobachtungen). Die Rechnung teilt Firefox'
+ * Vordergrundzeit danach auf: Eine Domain mit mindestens einer Minute am Tag
+ * wird ein eigener Posten („seite:<paket>/<domain>“, angezeigt als die
+ * Domain), der Rest bleibt Firefox. Die Gesamtzeit ändert sich nie. Rein und
+ * ohne Android getestet in WebseitenTest.
+ */
+
+/** Die Firefox-Pakete, deren Adresszeile gelesen wird – nur diese bekommt der Dienst (xml/webseiten_dienst.xml). */
+val FIREFOXE = setOf("org.mozilla.firefox", "org.mozilla.firefox_beta", "org.mozilla.fenix")
+
+/** Schlüsselraum der Seiten im Verlauf – kein Paketname beginnt so. */
+const val SEITE = "seite:"
+
+/** Ab so viel Zeit am Tag wird eine Seite ein eigener Posten; darunter bleibt sie im Browser. */
+const val SEITE_MIN_SEKUNDEN = 60L
+
+/** Eine Beobachtung gilt höchstens so lange, wenn danach keine mehr kam (Vollbild-Video: keine Leiste zu sehen). */
+const val BEOBACHTUNG_GILT_MS = 12 * 60 * 60 * 1000L
+
+/** Beobachtungen werden so lange aufgehoben – länger, als Android seine Ereignisse hat (Nachtragen rechnet bis dahin neu). */
+const val BEOBACHTUNG_BEHALTEN_MS = 12 * 24 * 60 * 60 * 1000L
+
+/** Paket einer Beobachtung, die für alle Browser gilt: Der Dienst ging an oder aus. */
+const val ALLE = "*"
+
+fun seitenSchluessel(paket: String, domain: String) = "$SEITE$paket/$domain"
+
+/** Paket und Domain aus einem Seiten-Schlüssel; null für alles andere. */
+fun seiteVon(schluessel: String): Pair<String, String>? {
+    if (!schluessel.startsWith(SEITE)) return null
+    val rest = schluessel.substring(SEITE.length)
+    val i = rest.indexOf('/')
+    if (i <= 0 || i == rest.length - 1) return null
+    return rest.substring(0, i) to rest.substring(i + 1)
+}
+
+/** Keine Seite, sondern Firefox selbst oder etwas Lokales. */
+private val OHNE_SEITE = listOf(
+    "about:", "moz-extension:", "file:", "content:", "javascript:", "data:", "chrome:", "view-source:", "resource:", "blob:", "intent:",
+)
+
+/**
+ * Zweistufige Endungen (eine Auswahl der Public Suffix List) und Dienste, unter
+ * denen jede Unterdomain eine eigene Seite ist: dort zählen drei Teile
+ * („bbc.co.uk“, „finanzdienste.github.io“), sonst zwei („youtube.com“).
+ */
+private val DREITEILIG = setOf(
+    "co.uk", "org.uk", "ac.uk", "gov.uk", "me.uk", "ltd.uk", "plc.uk", "com.au", "net.au", "org.au", "edu.au", "gov.au",
+    "co.nz", "org.nz", "co.jp", "ne.jp", "or.jp", "ac.jp", "co.kr", "or.kr", "com.br", "com.tr", "com.mx", "co.za", "co.in",
+    "com.cn", "com.hk", "com.sg", "com.tw", "com.ar", "co.il", "co.at", "or.at", "ac.at", "gv.at",
+    "github.io", "gitlab.io", "blogspot.com", "netlify.app", "vercel.app", "pages.dev", "web.app", "firebaseapp.com",
+    "herokuapp.com", "appspot.com", "wordpress.com", "substack.com", "tumblr.com",
+)
+
+/**
+ * Die Domain aus dem, was in der Adresszeile steht: „youtube.com“,
+ * „https://m.youtube.com/watch?v=…“, „www.spiegel.de/politik“ → nur die
+ * registrierbare Domain („youtube.com“, „spiegel.de“), nie Pfad, Abfrage oder
+ * Anker. null: keine Seite (Suchtext, about:, leer, kein Punkt).
+ */
+fun domainAus(text: CharSequence?): String? {
+    val roh = text?.toString()?.trim()?.lowercase() ?: return null
+    if (roh.isEmpty() || roh.any { it.isWhitespace() }) return null
+    if (OHNE_SEITE.any { roh.startsWith(it) }) return null
+    val ohneSchema = if ("://" in roh) roh.substringAfter("://") else roh
+    var host = ohneSchema.takeWhile { it != '/' && it != '?' && it != '#' }.substringAfterLast('@')
+    if (host.startsWith("[")) return null // IPv6 – keine Seite mit Namen
+    host = host.substringBefore(':').trimEnd('.')
+    val teile = host.split('.')
+    if (teile.size < 2 || teile.any { t -> t.isEmpty() || !t.all { it.isLetterOrDigit() || it == '-' } }) return null
+    if (teile.all { t -> t.all(Char::isDigit) }) return if (teile.size == 4) host else null
+    val endung = teile.last()
+    if (endung.length < 2 || endung.all(Char::isDigit)) return null
+    val n = if (teile.size >= 3 && teile.takeLast(2).joinToString(".") in DREITEILIG) 3 else 2
+    return teile.takeLast(n).joinToString(".")
+}
+
+/** Ein Knoten des Bedienungshilfe-Baums – so klein, dass Tests ihn ohne Android bauen. */
+interface Knoten {
+    val id: String?
+    val klasse: String?
+    val text: CharSequence?
+    val beschreibung: CharSequence?
+    val editierbar: Boolean
+    val fokussiert: Boolean
+    val kinder: Int
+
+    fun kind(i: Int): Knoten?
+}
+
+/** Was die Adresszeile gerade zeigt. */
+sealed interface Befund {
+    data class Seite(val domain: String) : Befund
+
+    /** Leiste da, aber keine Seite (neuer Tab, Startseite, about:, Suchtext): Firefox ohne Seite. */
+    data object Keine : Befund
+
+    /** Ein privater Tab: keine Domain merken, die Zeit bleibt Firefox. */
+    data object Privat : Befund
+
+    /** Keine Leiste zu sehen (Vollbild-Video, Tab-Übersicht) oder gerade in Eingabe: das Bisherige gilt weiter. */
+    data object Unbekannt : Befund
+}
+
+/**
+ * Die Adresszeile von Firefox im Baum finden – nachgelesen in den Quellen
+ * (searchfox, mozilla-central, mobile/android):
+ * - Die neue Leiste (Compose, android-components browser-toolbar) setzt
+ *   `testTagsAsResourceId`; ihr Feld heißt ADDRESSBAR_URL_BOX (Origin.kt), und
+ *   es löscht die Semantik darunter und trägt nur die Beschreibung
+ *   „‹Titel› ‹Adresse›. ‹Hinweis›“ (ohne Adresse nur der Hinweis).
+ * - Die alte Leiste ist ein TextView `<paket>:id/mozac_browser_toolbar_url_view`
+ *   mit der Adresse als Text.
+ * - Privat erkennt man am Tab-Zähler: „Offene private Tabs: 2. …“ bzw.
+ *   „Private Tabs Open: 2. …“ (tabcounter strings.xml, deutsch und englisch).
+ * Gesucht wird in der Breite, höchstens HOECHSTENS Knoten; den Inhalt der
+ * Seite selbst (GeckoView, WebView) betritt die Suche nicht.
+ */
+object Leiste {
+    const val COMPOSE = "ADDRESSBAR_URL_BOX"
+    const val ALT = "mozac_browser_toolbar_url_view"
+    private const val HOECHSTENS = 600
+
+    /** Nach der Leiste noch so viele Knoten ansehen (der Tab-Zähler steht daneben). */
+    private const val DANACH = 150
+
+    fun lesen(wurzel: Knoten, paket: String): Befund {
+        var gefunden: Befund? = null
+        var privat = false
+        var danach = 0
+        val schlange = ArrayDeque<Knoten>()
+        schlange.add(wurzel)
+        var besucht = 0
+        while (schlange.isNotEmpty() && besucht < HOECHSTENS) {
+            val k = schlange.removeFirst()
+            besucht++
+            if (privatZaehler(k.beschreibung)) privat = true
+            val hier = ausKnoten(k, paket)
+            // Mehrere Leisten (voll und schmal): eine mit Seite gewinnt.
+            if (hier != null && (gefunden == null || hier is Befund.Seite && gefunden !is Befund.Seite)) gefunden = hier
+            if (gefunden != null && ++danach > DANACH) break
+            if (webinhalt(k)) continue
+            for (i in 0 until k.kinder) k.kind(i)?.let(schlange::add)
+        }
+        return if (privat) Befund.Privat else gefunden ?: Befund.Unbekannt
+    }
+
+    private fun ausKnoten(k: Knoten, paket: String): Befund? {
+        val id = k.id ?: return null
+        val compose = id == COMPOSE || id.endsWith(":id/$COMPOSE")
+        val alt = id == "$paket:id/$ALT" || id.endsWith(":id/$ALT")
+        if (!compose && !alt) return null
+        if (k.editierbar || k.fokussiert) return Befund.Unbekannt
+        return if (compose) ausBeschreibung(k.beschreibung) else domainAus(k.text)?.let(Befund::Seite) ?: Befund.Keine
+    }
+
+    /** „‹Titel› ‹Adresse›. ‹Hinweis›“ → die Domain der Adresse; nur der Hinweis → keine Seite. */
+    internal fun ausBeschreibung(b: CharSequence?): Befund {
+        val s = b?.toString()?.trim() ?: return Befund.Keine
+        val ende = s.lastIndexOf(". ")
+        if (ende < 0) return Befund.Keine
+        val adresse = s.substring(0, ende).trim().substringAfterLast(' ')
+        return domainAus(adresse)?.let(Befund::Seite) ?: Befund.Keine
+    }
+
+    internal fun privatZaehler(b: CharSequence?): Boolean {
+        val s = b?.toString()?.lowercase() ?: return false
+        val privat = "offene private tabs" in s || "private tabs open" in s
+        return privat && "non-private" !in s && "nicht private" !in s
+    }
+
+    private fun webinhalt(k: Knoten): Boolean =
+        k.klasse == "android.webkit.WebView" || k.klasse?.contains("GeckoView") == true || k.id?.endsWith(":id/engineView") == true
+}
+
+/** Ein Stück Vordergrund einer App (ms, schon auf den Tag geschnitten). */
+data class Intervall(val paket: String, val von: Long, val bis: Long)
+
+/** Was der Dienst gesehen hat: ab `zeit` zeigt `paket` die Seite `domain` (null: keine Seite, privat, Dienst an oder aus). */
+data class Beobachtung(val zeit: Long, val paket: String, val domain: String?)
+
+/**
+ * Sekunden je Seiten-Schlüssel: Jedes Vordergrund-Intervall eines Browsers
+ * wird an den Beobachtungen geteilt; ein Stück zählt für die Domain, die
+ * zuletzt davor gesehen wurde (nicht älter als `gilt`). Bis zur ersten
+ * Beobachtung, nach „keine Seite“ und nach „Dienst an/aus“ (`ALLE`) zählt
+ * nichts – das bleibt Firefox. Zusammen nie mehr als die Intervalle.
+ */
+fun seitenZeiten(intervalle: List<Intervall>, beobachtungen: List<Beobachtung>, gilt: Long = BEOBACHTUNG_GILT_MS): Map<String, Long> {
+    if (intervalle.isEmpty() || beobachtungen.isEmpty()) return emptyMap()
+    val fuerAlle = beobachtungen.filter { it.paket == ALLE }
+    val jePaket = HashMap<String, List<Beobachtung>>()
+    val ms = HashMap<String, Long>()
+    for (iv in intervalle) {
+        if (iv.bis <= iv.von) continue
+        val liste = jePaket.getOrPut(iv.paket) { (beobachtungen.filter { it.paket == iv.paket } + fuerAlle).sortedBy { it.zeit } }
+        val davor = liste.indexOfLast { it.zeit <= iv.von }
+        var aktuell = liste.getOrNull(davor)?.takeIf { iv.von - it.zeit <= gilt }
+        var t = iv.von
+        var j = davor + 1
+        while (t < iv.bis) {
+            val naechste = liste.getOrNull(j)?.takeIf { it.zeit < iv.bis }
+            val ende = naechste?.zeit ?: iv.bis
+            val domain = aktuell?.domain
+            if (domain != null && ende > t) {
+                val k = seitenSchluessel(iv.paket, domain)
+                ms[k] = (ms[k] ?: 0L) + (ende - t)
+            }
+            if (naechste == null) break
+            aktuell = naechste
+            t = maxOf(t, naechste.zeit)
+            j++
+        }
+    }
+    return ms.mapValues { it.value / 1000 }.filterValues { it > 0 }
+}
+
+/**
+ * Die Browser um ihre Seiten kürzen: `geteilt` sind Sekunden je Schlüssel
+ * (nach dem Abzug der Web-Apps von Chrome), `seiten` Sekunden je
+ * Seiten-Schlüssel. Seiten unter `mindestens` bleiben im Browser; zusammen nie
+ * mehr, als der Browser lief (sonst anteilig gekürzt). Die Gesamtzeit bleibt.
+ */
+fun seitenAbziehen(geteilt: Map<String, Long>, seiten: Map<String, Long>, mindestens: Long = SEITE_MIN_SEKUNDEN): Map<String, Long> {
+    val gross = seiten.entries.filter { (k, s) -> s >= maxOf(1L, mindestens) && seiteVon(k) != null }
+    if (gross.isEmpty()) return geteilt
+    val aus = LinkedHashMap(geteilt)
+    for ((paket, eintraege) in gross.groupBy { seiteVon(it.key)!!.first }) {
+        val browser = aus[paket] ?: continue
+        if (browser <= 0L) continue
+        val werte = eintraege.map { it.value }
+        val anteile = if (werte.sum() <= browser) werte else anteilig(werte, browser)
+        eintraege.zip(anteile).forEach { (e, s) -> if (s > 0L) aus[e.key] = s }
+        val rest = browser - anteile.sum()
+        if (rest > 0L) aus[paket] = rest else aus.remove(paket)
+    }
+    return aus
+}
+
+/**
+ * Die Beobachtungen des Dienstes – eine kleine Textdatei („zeit⇥paket⇥domain“,
+ * „-“ für keine) im noBackupFilesDir: nur auf dem Handy, nie in der Sicherung,
+ * nie im Netz. Geschrieben wird nur bei einem Wechsel. Dienst (eigener Faden)
+ * und Rechnung greifen über eine gemeinsame Sperre zu.
+ */
+class Beobachtungen(context: Context) {
+    private val datei = File(File(context.applicationContext.noBackupFilesDir, ORDNER), "beobachtungen.txt")
+
+    /** Merken, wenn sie sich vom letzten Stand dieses Pakets unterscheidet; true, wenn geschrieben. */
+    fun merken(b: Beobachtung): Boolean = synchronized(SPERRE) {
+        val zuletzt = letzte ?: alleLesen().groupBy { it.paket }.mapValuesTo(HashMap()) { it.value.last().domain }.also { letzte = it }
+        // „Dienst an/aus“ immer; sonst nur, wenn sich für dieses Paket etwas geändert hat.
+        if (b.paket != ALLE && zuletzt.containsKey(b.paket) && zuletzt[b.paket] == b.domain) return false
+        try {
+            datei.parentFile?.mkdirs()
+            datei.appendText("${b.zeit}\t${b.paket}\t${b.domain ?: "-"}\n")
+        } catch (e: IOException) {
+            return false
+        }
+        zuletzt[b.paket] = b.domain
+        // „Dienst an/aus“ gilt für alle: danach zählt jeder Browser erst wieder ab der nächsten Beobachtung.
+        if (b.paket == ALLE) for (k in zuletzt.keys.toList()) zuletzt[k] = null
+        true
+    }
+
+    /** Alle Beobachtungen ab `von - gilt` bis `bis` (die davor braucht die Rechnung für den Anfang). */
+    fun lesen(von: Long, bis: Long): List<Beobachtung> = synchronized(SPERRE) {
+        alleLesen().filter { it.zeit in (von - BEOBACHTUNG_GILT_MS)..bis }
+    }
+
+    /** Die letzte erkannte Seite – für „zuletzt erkannt: youtube.com, 16:40“. */
+    fun zuletztErkannt(): Beobachtung? = synchronized(SPERRE) { alleLesen().lastOrNull { it.domain != null } }
+
+    /** Ältere als BEOBACHTUNG_BEHALTEN_MS weg – sie gelten ohnehin nicht mehr (BEOBACHTUNG_GILT_MS). */
+    fun aufraeumen(jetzt: Long) = synchronized(SPERRE) {
+        val alle = alleLesen()
+        val grenze = jetzt - BEOBACHTUNG_BEHALTEN_MS
+        if (alle.none { it.zeit < grenze }) return@synchronized
+        val behalten = alle.filter { it.zeit >= grenze }
+        try {
+            datei.writeText(behalten.joinToString("") { "${it.zeit}\t${it.paket}\t${it.domain ?: "-"}\n" })
+        } catch (e: IOException) {
+            // beim nächsten Mal
+        }
+    }
+
+    fun loeschen() = synchronized(SPERRE) {
+        datei.delete()
+        letzte = null
+    }
+
+    private fun alleLesen(): List<Beobachtung> {
+        if (!datei.isFile) return emptyList()
+        return try {
+            datei.readLines().mapNotNull { zeile ->
+                val t = zeile.split('\t')
+                val zeit = t.getOrNull(0)?.toLongOrNull() ?: return@mapNotNull null
+                val paket = t.getOrNull(1)?.takeIf { it.isNotEmpty() } ?: return@mapNotNull null
+                Beobachtung(zeit, paket, t.getOrNull(2)?.takeIf { it.isNotEmpty() && it != "-" })
+            }.sortedBy { it.zeit }
+        } catch (e: IOException) {
+            emptyList()
+        }
+    }
+
+    companion object {
+        const val ORDNER = "webseiten"
+        private val SPERRE = Any()
+
+        /** Der letzte Stand je Paket, für „nur bei einem Wechsel schreiben“ (gilt für den ganzen Prozess). */
+        private var letzte: HashMap<String, String?>? = null
+    }
+}
+
+/** Ist die Bedienungshilfe eingeschaltet, und läuft sie? */
+object WebseitenStatus {
+    fun eingeschaltet(context: Context): Boolean {
+        val eigene = ComponentName(context, WebseitenDienst::class.java)
+        val liste = Settings.Secure.getString(context.contentResolver, Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES) ?: return false
+        return liste.split(':').any { ComponentName.unflattenFromString(it.trim()) == eigene }
+    }
+
+    fun laeuft(context: Context): Boolean {
+        val am = context.getSystemService(AccessibilityManager::class.java) ?: return false
+        return am.getEnabledAccessibilityServiceList(android.accessibilityservice.AccessibilityServiceInfo.FEEDBACK_ALL_MASK).any {
+            val s = it.resolveInfo?.serviceInfo
+            s != null && s.packageName == context.packageName && s.name == WebseitenDienst::class.java.name
+        }
+    }
+}

@@ -102,7 +102,7 @@ class AppStatistikTest {
     @Test
     fun statistikObenBeimErstenMalDieWoche() {
         val a = oeffnen().get()
-        assertEquals(listOf(R.id.kopf_titel, R.id.statistik_karte, R.id.erlaubnis_karte, R.id.web_karte, R.id.widget_karte, R.id.update_karte), a.reihe().take(6))
+        assertEquals(listOf(R.id.kopf_titel, R.id.statistik_karte, R.id.erlaubnis_karte, R.id.web_karte, R.id.widget_karte, R.id.webseiten_karte, R.id.update_karte), a.reihe().take(7))
         assertTrue(a.findViewById<View>(R.id.reiter_woche).isSelected)
         assertFalse(a.findViewById<View>(R.id.reiter_tag).isSelected)
         assertEquals("9.–15. Nov.", a.text(R.id.zeitraum_titel))
@@ -459,7 +459,7 @@ class AppStatistikTest {
         steuerung.newIntent(ziel(Ziel.STATISTIK))
         warten()
         assertEquals(R.id.statistik_karte, a.reihe()[1])
-        assertEquals(R.id.update_karte, a.reihe()[5])
+        assertEquals(R.id.update_karte, a.reihe()[6])
     }
 
     @Test

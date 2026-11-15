@@ -34,6 +34,18 @@
     <string name="schritt3_text">Die Zeit von heute und deine Top-Apps, so viele hineinpassen (bis zu 8). Es bleibt von selbst aktuell, solange du das Handy benutzt (alle 2 Minuten und gleich nach dem Einschalten); Antippen öffnet die Statistik.</string>
     <string name="schritt3_text_fertig">Das Widget ist auf dem Startbildschirm. Antippen öffnet die Statistik und rechnet sofort neu.</string>
     <string name="schritt3_knopf">Widget hinzufügen</string>
+    <string name="schritt4_titel">4  Webseiten einzeln (freiwillig)</string>
+    <string name="schritt4_fertig">4  Webseiten einzeln ✓</string>
+    <string name="schritt4_text">Android zählt Firefox als eine App. Mit einer Bedienungshilfe liest Bildschirmzeit nur die Adresszeile von Firefox: Jede Seite ab 1 Minute am Tag steht dann einzeln da (z.\u00A0B. youtube.com), der Rest bleibt „Firefox“. Gespeichert wird nur der Name der Seite, nur auf dem Handy; private Tabs nicht. Android warnt beim Einschalten, die App könne den Bildschirm sehen\u00A0– sie bekommt aber nur Firefox mit.</string>
+    <string name="schritt4_text_fertig">Seiten in Firefox ab 1 Minute am Tag stehen einzeln da, der Rest bleibt „Firefox“. Gespeichert wird nur der Name der Seite, nur auf dem Handy; private Tabs nicht.</string>
+    <string name="schritt4_knopf">Einschalten</string>
+    <string name="schritt4_knopf_fertig">Eingabehilfe öffnen</string>
+    <string name="schritt4_anleitung">„Einschalten“ → „Installierte Apps“ → „Bildschirmzeit: Webseiten“ → Schalter ein → „Zulassen“. Ist der Schalter grau: wie bei Schritt 1 in der App-Info ⋮ → „Eingeschränkte Einstellungen zulassen“.</string>
+    <string name="schritt4_noch_nichts">Läuft. Noch keine Webseite erkannt\u00A0– Firefox einmal öffnen.</string>
+    <string name="schritt4_zuletzt">Läuft. Zuletzt erkannt: %1$s, %2$s.</string>
+    <string name="schritt4_haengt">Eingeschaltet, läuft aber nicht: „Eingabehilfe öffnen“ → „Installierte Apps“ → „Bildschirmzeit: Webseiten“ aus- und wieder einschalten.</string>
+    <string name="webseiten_dienst_name">Bildschirmzeit: Webseiten</string>
+    <string name="webseiten_dienst_beschreibung">Liest nur die Adresszeile von Firefox, damit Bildschirmzeit Seiten wie youtube.com einzeln zählt. Gespeichert wird nur der Name der Seite mit Uhrzeit, nur auf diesem Handy\u00A0– keine Adressen, keine Inhalte, keine privaten Tabs, nichts geht ins Netz. Die Bedienungshilfe tippt, wischt und schreibt nie.</string>
     <string name="schritt3_anleitung">So geht es von Hand: Startbildschirm lange gedrückt halten → „Widgets“ → „Bildschirmzeit“ → antippen → „Hinzufügen“.</string>
 
     <!-- Die Statistik oben in der App; Titel, Ø und Lücken stehen in Statistik.kt (StatistikTest). -->

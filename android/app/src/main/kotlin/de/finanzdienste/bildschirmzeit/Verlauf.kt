@@ -42,30 +42,45 @@ data class Tag(
      */
     fun mitWeb(neu: Map<String, Long>, gelesen: Long): Tag {
         val namen = posten.associate { it.schluessel to it.name }
-        val geteilt = aufteilen(androidTeil(), neu)
+        // Die Seiten bleiben, wie sie sind: Firefox' Zeit ändert sich hier nicht.
+        val seiten = posten.filter { seiteVon(it.schluessel) != null }.associate { it.schluessel to it.sekunden }
+        val geteilt = seitenAbziehen(aufteilen(androidTeil(), neu), seiten, mindestens = 0L)
         return copy(
-            posten = sortiert(geteilt.map { (k, s) -> Posten(k, WebApp.von(k)?.anzeigename ?: namen[k] ?: if (k == CHROME) "Chrome" else k, s) }),
+            posten = sortiert(geteilt.map { (k, s) -> Posten(k, anzeigename(k) ?: namen[k] ?: if (k == CHROME) "Chrome" else k, s) }),
             web = neu.filterValues { it > 0 },
             webGelesen = gelesen,
         )
     }
 
-    /** Androids Teil des Tages vor dem Aufteilen: Sekunden je Paket, Chrome wieder samt den drei Web-Apps. */
+    /**
+     * Androids Teil des Tages vor dem Aufteilen: Sekunden je Paket, Chrome
+     * wieder samt den drei Web-Apps, Firefox wieder samt seinen Seiten.
+     */
     fun androidTeil(): Map<String, Long> {
         val android = LinkedHashMap<String, Long>()
         var chrome = 0L
         for (p in posten) {
-            if (p.webApp != null || p.schluessel == CHROME) chrome += p.sekunden else android[p.schluessel] = p.sekunden
+            val seite = seiteVon(p.schluessel)
+            when {
+                p.webApp != null || p.schluessel == CHROME -> chrome += p.sekunden
+                seite != null -> android[seite.first] = (android[seite.first] ?: 0L) + p.sekunden
+                else -> android[p.schluessel] = (android[p.schluessel] ?: 0L) + p.sekunden
+            }
         }
         if (chrome > 0) android[CHROME] = chrome
         return android
     }
 }
 
+/** Der Name eines Schlüssels, der keinen vom System braucht: Web-App oder Seite (die Domain). */
+fun anzeigename(schluessel: String): String? = WebApp.von(schluessel)?.anzeigename ?: seiteVon(schluessel)?.second
+
 /**
  * Ein Tag aus Androids Rechnung: `android` sind Sekunden je Paket (wie
- * heuteJeApp sie liefert), `web` die Meldungen der Web-Apps für den Tag.
- * Installierte Web-Apps zählen zu Chrome, Chrome wird um die drei gekürzt.
+ * heuteJeApp sie liefert), `web` die Meldungen der Web-Apps für den Tag,
+ * `seiten` die Sekunden je Firefox-Seite (seitenZeiten). Installierte
+ * Web-Apps zählen zu Chrome, Chrome wird um die drei gekürzt, Firefox um
+ * seine Seiten ab einer Minute.
  */
 fun tagAus(
     datum: LocalDate,
@@ -73,10 +88,11 @@ fun tagAus(
     web: Map<String, Long>,
     webGelesen: Long,
     fertig: Boolean,
+    seiten: Map<String, Long> = emptyMap(),
     name: (String) -> String,
 ): Tag {
-    val geteilt = aufteilen(webApksZuChrome(android), web)
-    val posten = geteilt.map { (k, s) -> Posten(k, WebApp.von(k)?.anzeigename ?: name(k), s) }
+    val geteilt = seitenAbziehen(aufteilen(webApksZuChrome(android), web), seiten)
+    val posten = geteilt.map { (k, s) -> Posten(k, anzeigename(k) ?: name(k), s) }
     return Tag(datum, sortiert(posten), web.filterValues { it > 0 }, webGelesen, fertig)
 }
 

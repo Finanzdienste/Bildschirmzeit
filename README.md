@@ -27,6 +27,8 @@ Statistik einer Woche, darunter die Einrichtung und die Update-Karte – hell
 noch nicht eingerichtet, dunkel eingerichtet), `vorschau-app-monat-*.png`
 (ein Monat mit Lücken), `vorschau-app-tag-hell.png` (der Reiter Tag),
 `vorschau-app-eine-hell.png` / `-dunkel.png` (eine App angetippt: ihre Woche),
+`vorschau-webseiten-dunkel.png` (das Widget mit youtube.com und wikipedia.org
+als eigene Einträge, Kachel der Seiten blau),
 `vorschau-app-einrichten-hell.png` (die App ohne Erlaubnis: deren Karte vor
 der Statistik, mit dem Weg über die eingeschränkte Einstellung).
 
@@ -61,6 +63,11 @@ der Statistik, mit dem Weg über die eingeschränkte Einstellung).
   Tag, Woche, Monat, je mit allen Apps (unten „Statistik und Verlauf in der
   App“). Offen gelassen, also entschieden: Woche Montag bis Sonntag, beim
   ersten Mal der Reiter Woche, danach der zuletzt gewählte.
+- „Bei Firefox bin ich viel auf Youtube. Kann man sich die größten Webseiten
+  als einzelnen Punkt auflisten lassen?“ (15.11.) – seit v9 freiwillig über
+  eine Bedienungshilfe (unten „Webseiten in Firefox einzeln“). Entschieden:
+  nur Firefox; nur die Domain („youtube.com“, nicht die YouTube-App); eigener
+  Eintrag ab einer Minute am Tag; private Tabs nie; nur auf dem Handy.
 - „Ich will auch auf ne eigene App klicken und dann deren verteilung zb über
   die Woche sehen können“ (15.11., 17:21, Screenshot der Woche in v7) – ein
   Tipp auf eine App in der Statistik zeigt nur sie, je Tag (unten „Eine App
@@ -838,6 +845,96 @@ ohne Auswahl wie bisher); `AppStatistikTest.appAntippenZeigtIhreVerteilung`
 „Alle Apps“), `zurueckVonDerAppZuAllen`, `appUeberstehtDrehenAberNichtDasWidget`;
 Bilder `vorschau-app-eine-hell.png` / `-dunkel.png`.
 
+## Webseiten in Firefox einzeln (v9)
+
+> „Bei Firefox bin ich viel auf Youtube. Kann man sich die größten Webseiten
+> als einzelnen Punkt auflisten lassen?“ – Tobi, 15.11.
+
+![Widget mit Webseiten, dunkel](docs/vorschau-webseiten-dunkel.png)
+
+**Vorher:** Android kennt nur Apps. Was in Firefox offen war, stand als eine
+Zeile „Firefox“ da.
+
+**Warum eine Bedienungshilfe:** Welche Seite offen ist, weiß Android nicht
+(UsageEvents nennen nur Paket und Activity), und Firefox gibt es keiner
+anderen App. Sichtbar ist es nur in Firefox' Adresszeile – lesen darf die
+nur eine Bedienungshilfe (`AccessibilityService`), so machen es auch andere
+Bildschirmzeit-Apps.
+
+**Jetzt** (`Webseiten.kt`, `WebseitenDienst.kt`, Karte 4 der App):
+
+- Der Dienst „Bildschirmzeit: Webseiten“ bekommt nur Ereignisse von Firefox
+  (`packageNames` in `xml/webseiten_dienst.xml`: `org.mozilla.firefox`,
+  `…firefox_beta`, `…fenix`), nur Fenster- und Inhaltswechsel, und handelt
+  nie (keine Gesten, keine Tasten, kein Text). Er liest den Baum nur bis zur
+  Adresszeile, höchstens 600 Knoten, nie den Inhalt der Seite (GeckoView).
+- **Die Adresszeile**, nachgelesen in Firefox' Quellen (searchfox,
+  mozilla-central): Die neue Leiste (Compose) setzt `testTagsAsResourceId`,
+  ihr Feld heißt `ADDRESSBAR_URL_BOX` und trägt nur die Beschreibung
+  „‹Titel› ‹Adresse›. ‹Hinweis›“ (`Origin.kt`, `getContentDescription`); die
+  alte Leiste ist ein TextView `…:id/mozac_browser_toolbar_url_view`. Beim
+  Tippen (Eingabe, Fokus) zählt nichts. Steht nur der Hinweis da (neuer Tab)
+  oder `about:…`, ist es „keine Seite“.
+- **Private Tabs** erkennt der Dienst am Tab-Zähler („Offene private Tabs:
+  2. …“ bzw. „Private Tabs Open: 2. …“, tabcounter `strings.xml`) – dann
+  merkt er keine Domain, die Zeit bleibt „Firefox“.
+- **Gespeichert** wird nur bei einem Wechsel eine Zeile „Uhrzeit, Paket,
+  Domain“ in `noBackupFilesDir/webseiten/beobachtungen.txt` – nie Pfad,
+  Abfrage, Titel oder Inhalt, nie im Log, nie in der Sicherung, nie im Netz
+  (nicht nach Supabase). Nach 12 Tagen fällt sie weg; „Alle Daten löschen“
+  löscht sie mit. Geht der Dienst an oder aus, steht eine Zeile „alle, keine“.
+- **Domain:** die registrierbare (`domainAus`): „m.youtube.com/watch?v=…“ →
+  „youtube.com“, „www.bbc.co.uk“ → „bbc.co.uk“ (eine kleine Liste
+  zweistufiger Endungen), „finanzdienste.github.io“ bleibt ganz.
+- **Gedrosselt:** nach einem Fensterwechsel nach 0,3 s, auf
+  Inhaltsereignisse (ein Video schickt sie ständig) höchstens alle 5 s, auf
+  einem eigenen Faden (`Drossel`).
+- **Rechnung:** Firefox' Vordergrund-Stücke kommen aus genau derselben
+  Rechnung wie jede App-Zeit (`vordergrundZeiten` meldet sie); jedes Stück
+  zählt für die zuletzt davor gesehene Domain (`seitenZeiten`, höchstens 12
+  Stunden alt – ein Vollbild-Video ohne Leiste zählt weiter für youtube.com).
+  Eine Domain mit mindestens 1 Minute am Tag wird ein eigener Posten
+  `seite:<paket>/<domain>` (angezeigt als die Domain, blaue Kachel ohne
+  Favicon), Firefox wird um sie gekürzt (`seitenAbziehen`, nie mehr, als
+  Firefox lief); der Rest bleibt „Firefox“. **Die Gesamtzeit ändert sich
+  nie.** Im Verlauf faltet `Tag.androidTeil` die Seiten wieder in Firefox,
+  so zählt `nieWeniger` nichts doppelt, und neue Web-App-Werte (`mitWeb`)
+  lassen die Seiten stehen.
+- **Karte 4 „Webseiten einzeln (freiwillig)“:** aus – was es tut, ehrlich mit
+  Androids Warnung, Knopf „Einschalten“ (öffnet die Eingabehilfe) und die
+  Klickfolge; an – „Läuft. Zuletzt erkannt: youtube.com, 16:40.“ oder „Noch
+  keine Webseite erkannt – Firefox einmal öffnen“; eingeschaltet, aber nicht
+  gebunden – aus- und wieder einschalten.
+
+**Einschalten auf dem S24 (One UI 8):** In Bildschirmzeit Karte 4 →
+„Einschalten“ → „Installierte Apps“ → „Bildschirmzeit: Webseiten“ → Schalter
+ein → „Zulassen“. Ist der Schalter grau („eingeschränkte Einstellung“): wie
+bei Schritt 1 in der App-Info ⋮ → „Eingeschränkte Einstellungen zulassen“
+(laut AOSP gilt die Freigabe von Schritt 1 für alle eingeschränkten
+Einstellungen der App).
+
+**Geprüft:** `WebseitenTest` (Domain: Host, ganze Adresse, Zugangsdaten und
+Port, zweistufige Endungen, Suchtext und about: → keine; die neue Leiste mit
+und ohne Titel, nur Hinweis; die alte Leiste, beim Tippen nichts; keine Leiste
+→ das Bisherige; private Tabs deutsch und englisch, „nicht privat“ nicht;
+zwei Leisten; die Aufteilung mit Lücke, Weitergelten, zu alt, Dienst an/aus,
+anderer Browser; das Kürzen mit 1-Minuten-Grenze, anteilig, ohne Firefox;
+der Verlauf: Falten, `mitWeb`, `nieWeniger` ohne Doppelzählung, ein Tag von
+vor der Funktion; die Drossel) und `WebseitenGeraetTest` (der Dienst im
+Manifest nur für Firefox und nur lesend; der Schalter aus
+`ENABLED_ACCESSIBILITY_SERVICES`; die Beobachtungen nur bei einem Wechsel,
+ohne Pfad, nach 12 Tagen weg, gelöscht; die Rechnung mit Androids Ereignissen:
+40 und 20 Minuten Seiten, Firefox ganz weg, die Summe bleibt, auch bei der
+nächsten Rechnung und ohne Dienst; „Alle Daten löschen“; Karte 4 aus, nicht
+gebunden, läuft mit und ohne Erkanntes); Bild
+`vorschau-webseiten-dunkel.png`.
+
+**Zeigt sich erst auf dem S24:** welche Leiste Tobis Firefox gerade hat und
+ob ihre Beschreibung so aussieht wie in den Quellen (sonst bleibt alles
+„Firefox“ und Karte 4 sagt „noch keine Webseite erkannt“ – dann bitte einen
+Screenshot); ob One UI den Dienst in Ruhe lässt (Akku); ob Firefox mit
+eingeschalteter Bedienungshilfe spürbar langsamer wird.
+
 ## Der Vertrag zwischen Widget-App, Supabase und Web-Apps
 
 **Supabase** – Projekt `vjyohppohmvhhxgwouti` („Finanzdienste's Project“),
@@ -937,6 +1034,8 @@ android/                     Gradle-Projekt (Kotlin DSL)
     Rechner.kt               setzt alles zu einem Ergebnis zusammen, füllt den Verlauf
     Verlauf.kt               der eigene Tagesverlauf (noBackupFilesDir/verlauf), welche Tage fehlen (rein)
     Statistik.kt             Tag, Woche, Monat: Zeiträume, Titel, Summen (rein)
+    Webseiten.kt             Firefox-Seiten: Domain, Adresszeile, Aufteilung (rein), Beobachtungen, Schalter
+    WebseitenDienst.kt       die Bedienungshilfe „Bildschirmzeit: Webseiten“ (nur Firefox), Drossel
     Balken.kt                das Balkendiagramm der Statistik (Canvas)
     Ziel.kt                  wohin das Widget die App öffnet (Extra an MainActivity: statistik, update)
     WidgetAnsicht.kt         WidgetRaster (wie viele Apps in welche Größe, rein), RemoteViews
@@ -1145,6 +1244,9 @@ spricht mit dem echten Supabase oder GitHub (`Netz.gesperrt`).
   `bc6f91b9…759e`, versionCode 8, targetSdk 36, dieselben 9 Rechte. v7
   installiert v8 noch mit dem alten Update-Code; ist die Sperre an, braucht
   es einmal die Klickfolge von Hand.
+- 15.11.2026: Webseiten in Firefox einzeln (Abschnitt oben) gebaut, kommt
+  als v9. Volle Prüfung siehe Commit; Bilder `vorschau-webseiten-dunkel.png`
+  neu, die drei großen App-Bilder mit Karte 4.
 - Noch nicht auf dem S24 ausprobiert: Größen des Startbildschirms, Akku-
   Verhalten von One UI (ob es die App trotz Widget schlafen legt), ob
   Chrome den Verbinden-Link in der installierten Web-App oder als Tab

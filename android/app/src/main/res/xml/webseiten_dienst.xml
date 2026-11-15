@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Die Bedienungshilfe „Bildschirmzeit: Webseiten“ (WebseitenDienst):
+    nur Firefox (packageNames), nur Fenster- und Inhaltswechsel, liest den Baum
+    (für die Adresszeile), meldet IDs (die Leiste heißt ADDRESSBAR_URL_BOX bzw.
+    mozac_browser_toolbar_url_view). Keine Gesten, keine Tasten, kein Text.
+-->
+<accessibility-service xmlns:android="http://schemas.android.com/apk/res/android"
+    android:accessibilityEventTypes="typeWindowStateChanged|typeWindowContentChanged"
+    android:accessibilityFeedbackType="feedbackGeneric"
+    android:accessibilityFlags="flagReportViewIds"
+    android:canRetrieveWindowContent="true"
+    android:description="@string/webseiten_dienst_beschreibung"
+    android:notificationTimeout="500"
+    android:packageNames="org.mozilla.firefox,org.mozilla.firefox_beta,org.mozilla.fenix"
+    android:settingsActivity="de.finanzdienste.bildschirmzeit.MainActivity" />

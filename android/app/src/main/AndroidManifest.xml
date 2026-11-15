@@ -75,5 +75,23 @@
         <receiver
             android:name=".UpdateStatus"
             android:exported="false" />
+
+        <!--
+            Freiwillig: Webseiten in Firefox einzeln (Webseiten.kt). Eine Bedienungshilfe,
+            die nur Firefox sieht und nur dessen Adresszeile liest. Binden darf nur das
+            System (BIND_ACCESSIBILITY_SERVICE), deshalb exportiert.
+        -->
+        <service
+            android:name=".WebseitenDienst"
+            android:exported="true"
+            android:label="@string/webseiten_dienst_name"
+            android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE">
+            <intent-filter>
+                <action android:name="android.accessibilityservice.AccessibilityService" />
+            </intent-filter>
+            <meta-data
+                android:name="android.accessibilityservice"
+                android:resource="@xml/webseiten_dienst" />
+        </service>
     </application>
 </manifest>

@@ -114,6 +114,9 @@ class MainActivity : Activity(), UpdateBeobachter {
             oeffnen(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, "package:$packageName".toUri()))
         }
         findViewById<Button>(R.id.schritt3_knopf).setOnClickListener { widgetHinzufuegen() }
+        findViewById<Button>(R.id.schritt4_knopf).setOnClickListener {
+            einstellungOeffnen(listOf(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS), Intent(Settings.ACTION_SETTINGS)))
+        }
         findViewById<Button>(R.id.update_knopf).setOnClickListener { updateKnopf(it.tag as? UpdateKnopf) }
         findViewById<Button>(R.id.update_knopf2).setOnClickListener { updateKnopf(it.tag as? UpdateKnopf) }
         findViewById<Button>(R.id.loeschen).setOnClickListener { loeschenFragen() }
@@ -289,6 +292,7 @@ class MainActivity : Activity(), UpdateBeobachter {
         schritt1Zeigen(erlaubt)
         ordnen()
         schritt3Zeigen()
+        schritt4Zeigen()
         val heute = heute()
         if (heute != gewaehltAm && zeitraum.enthaelt(gewaehltAm)) zeitraum = Zeitraum.um(reiter, heute)
         gewaehltAm = heute
@@ -334,6 +338,7 @@ class MainActivity : Activity(), UpdateBeobachter {
             if (erlaubt) add(erlaubnis)
             add(findViewById<View>(R.id.web_karte))
             add(findViewById<View>(R.id.widget_karte))
+            add(findViewById<View>(R.id.webseiten_karte))
             if (!updateOben) add(update)
             add(findViewById<View>(R.id.loeschen))
             add(findViewById<View>(R.id.version))
@@ -456,7 +461,8 @@ class MainActivity : Activity(), UpdateBeobachter {
                 zeile.findViewById<TextView>(R.id.zeit).text = dauerText(p.sekunden)
                 val anteil = anteilText(p.sekunden, a.gesamt)
                 zeile.findViewById<TextView>(R.id.anteil).text = anteil
-                zeile.contentDescription = "${p.name}, ${dauerText(p.sekunden)}, $anteil"
+                val inFirefox = if (seiteVon(p.schluessel) != null) " in Firefox" else ""
+                zeile.contentDescription = "${p.name}$inFirefox, ${dauerText(p.sekunden)}, $anteil"
                 zeile.setOnClickListener { appWaehlen(p) }
                 liste.addView(zeile)
             }
@@ -498,6 +504,26 @@ class MainActivity : Activity(), UpdateBeobachter {
         findViewById<TextView>(R.id.schritt3_text).setText(if (da) R.string.schritt3_text_fertig else R.string.schritt3_text)
         findViewById<View>(R.id.schritt3_knopf).visibility = if (da) View.GONE else View.VISIBLE
         if (da) findViewById<View>(R.id.schritt3_anleitung).visibility = View.GONE
+    }
+
+    /**
+     * Schritt 4, freiwillig: Webseiten in Firefox einzeln. Aus: was es tut, der
+     * Knopf zur Eingabehilfe und die Klickfolge. An: ob der Dienst läuft und
+     * welche Seite er zuletzt erkannt hat (aus den eigenen Beobachtungen).
+     */
+    internal fun schritt4Zeigen() {
+        val an = WebseitenStatus.eingeschaltet(this)
+        findViewById<TextView>(R.id.schritt4_titel).setText(if (an) R.string.schritt4_fertig else R.string.schritt4_titel)
+        findViewById<TextView>(R.id.schritt4_text).setText(if (an) R.string.schritt4_text_fertig else R.string.schritt4_text)
+        findViewById<Button>(R.id.schritt4_knopf).setText(if (an) R.string.schritt4_knopf_fertig else R.string.schritt4_knopf)
+        findViewById<View>(R.id.schritt4_anleitung).visibility = if (an) View.GONE else View.VISIBLE
+        val stand = when {
+            !an -> null
+            !WebseitenStatus.laeuft(this) -> getString(R.string.schritt4_haengt)
+            else -> Beobachtungen(this).zuletztErkannt()?.let { getString(R.string.schritt4_zuletzt, it.domain, zeitpunktText(it.zeit, jetzt())) }
+                ?: getString(R.string.schritt4_noch_nichts)
+        }
+        textSetzen(R.id.schritt4_stand, stand)
     }
 
     private fun webZeilenAnlegen() {
