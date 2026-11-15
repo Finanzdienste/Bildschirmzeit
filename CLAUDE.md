@@ -5,7 +5,26 @@ Bevor du mit einer Aufgabe anfängst: Wenn sie sich für einen Workflow eignet
 (dieselbe Arbeit über viele Dateien, eine Prüfung über das ganze Projekt oder
 eine Aufgabe, die zu groß für einen einzelnen Agenten ist), schlag mir in einem
 Satz vor, sie mit „ultracode“ laufen zu lassen, und warte auf meine Antwort.
-Bei normalen Aufgaben erwähnst du Ultracode nicht.
+Bei normalen Aufgaben erwähnst du Ultracode nicht. Änderungen an Widget und
+App sind normale Aufgaben: Am 15.11. liefen dafür Workflows, Tobi fragte
+zweimal „Sicher dass wir ultracode hier noch brauchen?“ – zu teuer und zu
+langsam für diese Größe. Ist Ultracode an, obwohl es nicht nötig ist, sag es
+und arbeite ohne Workflows.
+
+## Modell und Aufwand – immer konkret
+Tobi, 15.11.: „Sowas sollst du immer konkret mit angeben“. Was läuft, zeigt
+`get_session` (`model`, `effort_level`, `flag_settings.ultracode`).
+- Rätst du von etwas ab (Ultracode, ein anderes Modell), sag in einem Satz,
+  was stattdessen gilt, mit dem genauen Befehl, z. B. „kein Ultracode – Opus
+  mit `/effort max` reicht, läuft schon“.
+- Mehr (vorschlagen, auf Antwort warten): `/model fable` mit `/effort high`
+  nur, wenn eine Ursache nach dem ersten Durchgang unklar bleibt oder ein
+  Fehler nach einer Korrektur wiederkommt. Fable kostet Nutzungsguthaben
+  („Requires usage credits“), das gehört in den Vorschlag.
+- Weniger (erledigen, am Ende ein Satz): Für reine Texte, README und Zahlen
+  reicht `/effort high`; für eine einzelne schwere Frage dann „ultrathink“ in
+  der Nachricht.
+- Lieber den Aufwand senken als das Modell wechseln, und nicht hin und her.
 
 ## Das Projekt
 Tobis Bildschirmzeit-Widget für sein Samsung Galaxy S24: eine kleine
