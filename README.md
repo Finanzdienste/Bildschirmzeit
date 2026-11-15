@@ -613,6 +613,10 @@ Update von Hand: Einstellungen → Sicherheit und Datenschutz → Automatische
 Sperre → aus → Bildschirmzeit öffnen → „Noch einmal versuchen“ (oder „Neue
 Version installieren“; kommt ein Android-Fenster: „Aktualisieren“) → die
 Sperre danach nach Wunsch wieder an.
+**Bestätigt (15.11., Tobi):** „Ja es lag an der Sperre. Wenn ich die
+ausschalte klappts.“ – mit eingeschalteter Automatischer Sperre kommt kein
+Update an, mit ausgeschalteter geht es. Die Wahl zwischen „Sperre aus lassen“
+und „je Update kurz aus“ (Schritt 3) bleibt Tobis.
 Weiter offen: ob One UI 8 bei ausgeschalteter Sperre wirklich ohne Rückfrage
 durchlässt (AOSP sagt ja), ob die mit „Eigene Dateien“ installierte Fassung
 einen Update-Owner hat (dann kommt die Rückfrage über den Knopf), ob die
