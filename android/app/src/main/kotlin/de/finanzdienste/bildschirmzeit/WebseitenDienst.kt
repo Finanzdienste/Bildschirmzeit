@@ -83,11 +83,8 @@ class WebseitenDienst : AccessibilityService() {
         }
         val (paket, b) = befund
         val jetzt = System.currentTimeMillis()
-        when (b) {
-            is Befund.Seite -> Beobachtungen(this).merken(Beobachtung(jetzt, paket, gemerkteDomain(paket, b.domain)))
-            Befund.Keine, Befund.Privat -> Beobachtungen(this).merken(Beobachtung(jetzt, paket, null))
-            Befund.Unbekannt -> Unit
-        }
+        val (merken, domain) = zuMerken(paket, b)
+        if (merken) Beobachtungen(this).merken(Beobachtung(jetzt, paket, domain))
     }
 
     override fun onInterrupt() = Unit

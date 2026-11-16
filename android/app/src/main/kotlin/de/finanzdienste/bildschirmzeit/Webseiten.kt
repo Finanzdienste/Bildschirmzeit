@@ -60,6 +60,14 @@ const val SONSTIGE_KURZ = "Sonstige Seiten"
  */
 const val WEB_APPS_DOMAIN = "finanzdienste.github.io"
 
+/**
+ * „Eine Seite, aber ohne erkennbare Domain“: neuer Tab, Suchbegriffe statt
+ * Adresse, about:, private und Inkognito-Tabs. Zählt zu „Sonstige Webseiten“,
+ * nie einzeln – Tobi, 16.11., Widget mit „Chrome 7 Min.“: „Eigentlich dürften
+ * Chrome und Firefox ja garnicht mehr auftauchen oder?“
+ */
+const val OHNE_DOMAIN = "?"
+
 /** Eine Beobachtung gilt höchstens so lange, wenn danach keine mehr kam (Vollbild-Video: keine Leiste zu sehen). */
 const val BEOBACHTUNG_GILT_MS = 12 * 60 * 60 * 1000L
 
@@ -138,11 +146,14 @@ interface Knoten {
 sealed interface Befund {
     data class Seite(val domain: String) : Befund
 
-    /** Leiste da, aber keine Seite (neuer Tab, Startseite, about:, Suchtext): Firefox ohne Seite. */
+    /** Leiste da, aber keine Domain (neuer Tab, Startseite, about:, Suchbegriffe): „Sonstige Webseiten“. */
     data object Keine : Befund
 
-    /** Ein privater Tab: keine Domain merken, die Zeit bleibt Firefox. */
+    /** Ein privater bzw. Inkognito-Tab: keine Domain merken – „Sonstige Webseiten“. */
     data object Privat : Befund
+
+    /** Kein Web: eine installierte Web-App oder ein Custom Tab ohne Leiste – die Zeit bleibt beim Browser. */
+    data object KeinWeb : Befund
 
     /** Keine Leiste zu sehen (Vollbild-Video, Tab-Übersicht) oder gerade in Eingabe: das Bisherige gilt weiter. */
     data object Unbekannt : Befund
@@ -153,6 +164,18 @@ sealed interface Befund {
  * zählen über Supabase als Boxenstopp, Freizeit, Workout).
  */
 fun gemerkteDomain(paket: String, domain: String): String? = if (paket in CHROMES && domain == WEB_APPS_DOMAIN) null else domain
+
+/**
+ * Was zu einem Befund in die Beobachtungen kommt: die Domain, OHNE_DOMAIN
+ * (eine Seite ohne Namen), null (kein Web, die Zeit bleibt beim Browser) –
+ * oder gar nichts (Unbekannt: das Bisherige gilt weiter, Rückgabe `false`).
+ */
+fun zuMerken(paket: String, befund: Befund): Pair<Boolean, String?> = when (befund) {
+    is Befund.Seite -> true to gemerkteDomain(paket, befund.domain)
+    Befund.Keine, Befund.Privat -> true to OHNE_DOMAIN
+    Befund.KeinWeb -> true to null
+    Befund.Unbekannt -> false to null
+}
 
 /**
  * Die Adresszeile im Baum finden. Firefox – nachgelesen in den Quellen
@@ -214,7 +237,7 @@ object Leiste {
         return when {
             privat -> Befund.Privat
             gefunden != null -> gefunden
-            ohneLeiste(fenster) -> Befund.Keine
+            ohneLeiste(fenster) -> Befund.KeinWeb
             else -> Befund.Unbekannt
         }
     }
@@ -331,9 +354,9 @@ fun seitenAbziehen(geteilt: Map<String, Long>, seiten: Map<String, Long>, mindes
  */
 fun einzelneDomains(sekunden: Map<String, Long>, immer: String? = null): Set<String> {
     val jeDomain = HashMap<String, Long>()
-    for ((k, s) in sekunden) seiteVon(k)?.let { (_, d) -> jeDomain[d] = (jeDomain[d] ?: 0L) + s }
+    for ((k, s) in sekunden) seiteVon(k)?.let { (_, d) -> if (d != OHNE_DOMAIN) jeDomain[d] = (jeDomain[d] ?: 0L) + s }
     val aus = jeDomain.filterValues { it >= WEBSEITE_EINZELN_SEKUNDEN }.keys.toMutableSet()
-    if (immer != null && immer.startsWith(WEBSEITE) && immer != SONSTIGE_WEBSEITEN) aus += immer.removePrefix(WEBSEITE)
+    if (immer != null && immer.startsWith(WEBSEITE) && immer != SONSTIGE_WEBSEITEN && immer != WEBSEITE + OHNE_DOMAIN) aus += immer.removePrefix(WEBSEITE)
     return aus
 }
 
@@ -395,8 +418,10 @@ class Beobachtungen(context: Context) {
         alleLesen().filter { it.zeit in (von - BEOBACHTUNG_GILT_MS)..bis }
     }
 
-    /** Die letzte erkannte Seite – für „zuletzt erkannt: youtube.com, 16:40“. */
-    fun zuletztErkannt(): Beobachtung? = synchronized(SPERRE) { alleLesen().lastOrNull { it.domain != null } }
+    /** Die letzte erkannte Seite (mit Namen) – für „zuletzt erkannt: youtube.com in Firefox, 16:40“; `pakete`: nur diese Browser. */
+    fun zuletztErkannt(pakete: Set<String> = BROWSER): Beobachtung? = synchronized(SPERRE) {
+        alleLesen().lastOrNull { it.domain != null && it.domain != OHNE_DOMAIN && it.paket in pakete }
+    }
 
     /** Ältere als BEOBACHTUNG_BEHALTEN_MS weg – sie gelten ohnehin nicht mehr (BEOBACHTUNG_GILT_MS). */
     fun aufraeumen(jetzt: Long) = synchronized(SPERRE) {

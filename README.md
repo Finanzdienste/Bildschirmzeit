@@ -76,6 +76,13 @@ der Statistik, mit dem Weg über die eingeschränkte Einstellung).
   Entschieden: Browserzeit ohne erkannte Seite (neuer Tab, privat, Dienst aus)
   bleibt „Firefox“ bzw. „Chrome“; Tobis Web-Apps zählen in Chrome weiter als
   Boxenstopp, Freizeit und Workout, nicht als Seite.
+- „Eigentlich dürften Chrome und Firefox ja garnicht mehr auftauchen oder?“
+  (16.11., 12:29, Widget mit „Chrome 7 Min.“) – seit v11 zählt Browserzeit
+  ohne erkennbaren Namen (neuer Tab, Suchbegriffe statt Adresse, about:,
+  privat, Inkognito) zu „Sonstige Webseiten“. „Chrome“/„Firefox“ bleibt nur
+  für installierte Web-Apps (kein Web; bei Tobis Web-Apps die Zeit, die sie
+  noch nicht an Supabase gemeldet haben) und für Zeit, in der die
+  Bedienungshilfe nicht lief.
 - „Ich will auch auf ne eigene App klicken und dann deren verteilung zb über
   die Woche sehen können“ (15.11., 17:21, Screenshot der Woche in v7) – ein
   Tipp auf eine App in der Statistik zeigt nur sie, je Tag (unten „Eine App
@@ -949,6 +956,21 @@ ein → „Zulassen“. Ist der Schalter grau („eingeschränkte Einstellung“
 bei Schritt 1 in der App-Info ⋮ → „Eingeschränkte Einstellungen zulassen“
 (laut AOSP gilt die Freigabe von Schritt 1 für alle eingeschränkten
 Einstellungen der App).
+
+**v11 – Browser nur noch, wo kein Web ist:** Der Dienst merkt sich drei
+Arten: eine Domain; `?` („eine Seite ohne erkennbaren Namen“: neuer Tab,
+Suchbegriffe, about:, privat, Inkognito – zählt zu „Sonstige Webseiten“, nie
+einzeln, auch über 5 Minuten); „kein Web“ (installierte Web-App, Custom Tab
+ohne Leiste, Tobis Web-Apps in Chrome – bleibt beim Browser). Vorher galten
+`?` und „kein Web“ beide als „keine Seite“ und blieben beim Browser. Karte 4
+nennt je Browser die zuletzt erkannte Seite („youtube.com in Firefox, 12:20;
+in Chrome noch keine Seite“), damit man sieht, ob beide gelesen werden.
+Beobachtungen von vor v11 bleiben, wie sie waren (ihr „keine Seite“ lässt sich
+nicht nachträglich trennen).
+Geprüft: `WebseitenTest.wasDerDienstSichMerkt` (die drei Arten, `?` nie
+einzeln), `WebseitenGeraetTest.chromeUndFirefoxZusammenKleineUnterSonstige`
+(Suche → Sonstige, Web-App → Chrome, Summe gleich),
+`karteVierAusAnUndWasZuletztKam` (je Browser, `?` zählt nicht als erkannt).
 
 **Geprüft (v10):** `WebseitenTest.chromeLeiste` (url_bar mit und ohne Fokus,
 Suchbegriffe, neuer Tab, Inkognito, Web-App, Custom Tab, Vollbild),

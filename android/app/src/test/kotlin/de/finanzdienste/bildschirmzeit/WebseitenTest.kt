@@ -213,10 +213,10 @@ class WebseitenTest {
         // Inkognito: das Abzeichen in der Leiste.
         assertEquals(Befund.Privat, Leiste.lesen(baum(K(id = "$cr:id/location_bar_incognito_badge", beschreibung = "Inkognitomodus"), leiste), cr))
         assertTrue(Leiste.privatZaehler("Incognito mode"))
-        // Ohne Leiste: in einer installierten Web-App oder einem Custom Tab keine Seite, im Browser (Vollbild) das Bisherige.
+        // Ohne Leiste: eine installierte Web-App oder ein Custom Tab ist kein Web (bleibt beim Browser), im Browser (Vollbild) das Bisherige.
         val ohne = K(unten = listOf(seiteninhalt(30)))
-        assertEquals(Befund.Keine, Leiste.lesen(ohne, cr, "org.chromium.chrome.browser.webapps.SameTaskWebApkActivity"))
-        assertEquals(Befund.Keine, Leiste.lesen(ohne, cr, "org.chromium.chrome.browser.customtabs.CustomTabActivity"))
+        assertEquals(Befund.KeinWeb, Leiste.lesen(ohne, cr, "org.chromium.chrome.browser.webapps.SameTaskWebApkActivity"))
+        assertEquals(Befund.KeinWeb, Leiste.lesen(ohne, cr, "org.chromium.chrome.browser.customtabs.CustomTabActivity"))
         assertEquals(Befund.Unbekannt, Leiste.lesen(ohne, cr, "org.chromium.chrome.browser.ChromeTabbedActivity"))
         assertEquals(Befund.Unbekannt, Leiste.lesen(ohne, ff, "org.mozilla.fenix.HomeActivity"))
     }
@@ -278,5 +278,26 @@ class WebseitenTest {
         assertEquals(200L, auswerten(Zeitraum.um(Reiter.TAG, mo), verlauf, mo.plusDays(1), mo, nur = WEBSEITE + "youtube.com").gesamt)
         // „Sonstige Webseiten“ angetippt: am Montag die 200 s.
         assertEquals(200L, auswerten(Zeitraum.um(Reiter.TAG, mo), verlauf, mo.plusDays(1), mo, nur = SONSTIGE_WEBSEITEN).gesamt)
+    }
+    /**
+     * Tobi, 16.11. (Widget mit „Chrome 7 Min.“): „Eigentlich dürften Chrome und
+     * Firefox ja garnicht mehr auftauchen oder?“ – Browserzeit ohne erkennbaren
+     * Namen (neuer Tab, Suchbegriffe, privat, Inkognito) zählt zu „Sonstige
+     * Webseiten“; nur Web-Apps (kein Web) bleiben beim Browser.
+     */
+    @Test
+    fun wasDerDienstSichMerkt() {
+        assertEquals(true to "youtube.com", zuMerken(ff, Befund.Seite("youtube.com")))
+        assertEquals(true to OHNE_DOMAIN, zuMerken(ff, Befund.Keine))
+        assertEquals(true to OHNE_DOMAIN, zuMerken(CHROME, Befund.Privat))
+        assertEquals(true to null, zuMerken(CHROME, Befund.KeinWeb))
+        assertEquals(true to null, zuMerken(CHROME, Befund.Seite("finanzdienste.github.io")))
+        assertEquals(false to null, zuMerken(ff, Befund.Unbekannt))
+        // Eine Seite ohne Namen steht nie einzeln da, auch über 5 Minuten.
+        val gezeigt = webseitenZusammenfassen(
+            listOf(Posten(seitenSchluessel(CHROME, OHNE_DOMAIN), "?", 900L), Posten(seitenSchluessel(ff, "youtube.com"), "youtube.com", 100L), Posten(CHROME, "Chrome", 60L)),
+        )
+        assertEquals(listOf("Sonstige Webseiten" to 1000L, "Chrome" to 60L), gezeigt.map { it.name to it.sekunden })
+        assertEquals(SONSTIGE_NAME, anzeigename(seitenSchluessel(ff, OHNE_DOMAIN)))
     }
 }

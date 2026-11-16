@@ -520,10 +520,21 @@ class MainActivity : Activity(), UpdateBeobachter {
         val stand = when {
             !an -> null
             !WebseitenStatus.laeuft(this) -> getString(R.string.schritt4_haengt)
-            else -> Beobachtungen(this).zuletztErkannt()?.let { getString(R.string.schritt4_zuletzt, it.domain, zeitpunktText(it.zeit, jetzt())) }
-                ?: getString(R.string.schritt4_noch_nichts)
+            else -> zuletztText(Beobachtungen(this), jetzt())
         }
         textSetzen(R.id.schritt4_stand, stand)
+    }
+
+    /**
+     * „Läuft. Zuletzt erkannt: o2mail.de in Firefox, 19:46; in Chrome noch
+     * keine Seite.“ – je Browser, damit man sieht, ob beide gelesen werden.
+     */
+    private fun zuletztText(b: Beobachtungen, jetzt: Long): String {
+        val teile = listOf("Firefox" to FIREFOXE, "Chrome" to CHROMES).map { (name, pakete) ->
+            b.zuletztErkannt(pakete)?.let { "${it.domain} in $name, ${zeitpunktText(it.zeit, jetzt)}" } ?: "in $name noch keine Seite"
+        }
+        if (teile.all { it.startsWith("in ") }) return getString(R.string.schritt4_noch_nichts)
+        return getString(R.string.schritt4_zuletzt, teile.joinToString("; "))
     }
 
     private fun webZeilenAnlegen() {

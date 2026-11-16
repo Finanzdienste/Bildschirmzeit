@@ -191,9 +191,10 @@ class WebseitenGeraetTest {
     /**
      * Tobi, 16.11.: „Das gleiche für Chrome. … alles unter fünf min unter sonstige
      * websiten … Also Chrome und Firefox addiert“. Firefox 20–21 Uhr (40 Min.
-     * youtube.com, 20 Min. spiegel.de), Chrome 21:00–21:30 (10 Min. youtube.com,
-     * 2 Min. klein.de, dann eine Web-App), Chat 10 Min.: youtube.com 50 Min.,
-     * spiegel.de 20, Chrome 18, Chat 10, „Sonstige Webseiten“ 2 – zusammen 100.
+     * youtube.com, 15 Min. spiegel.de, 5 Min. Suche ohne Adresse), Chrome
+     * 21:00–21:30 (10 Min. youtube.com, 2 Min. klein.de, dann eine Web-App),
+     * Chat 10 Min.: youtube.com 50 Min., Chrome 18 (nur die Web-App), spiegel.de
+     * 15, Chat 10, „Sonstige Webseiten“ 7 (Suche und klein.de) – zusammen 100.
      */
     @Test
     fun chromeUndFirefoxZusammenKleineUnterSonstige() {
@@ -203,13 +204,16 @@ class WebseitenGeraetTest {
         val b = Beobachtungen(kontext)
         b.merken(Beobachtung(um(20), ff, "youtube.com"))
         b.merken(Beobachtung(um(20, 40), ff, "spiegel.de"))
+        // Ab 20:55 eine Google-Suche (Suchbegriffe statt Adresse): „Sonstige Webseiten“.
+        b.merken(Beobachtung(um(20, 55), ff, zuMerken(ff, Befund.Keine).second))
         b.merken(Beobachtung(um(21), CHROME, "youtube.com"))
         b.merken(Beobachtung(um(21, 10), CHROME, "klein.de"))
-        b.merken(Beobachtung(um(21, 12), CHROME, gemerkteDomain(CHROME, "finanzdienste.github.io")))
+        // Ab 21:12 eine installierte Web-App (kein Web): bleibt Chrome.
+        b.merken(Beobachtung(um(21, 12), CHROME, zuMerken(CHROME, Befund.KeinWeb).second))
         val e = Rechner.berechnen(kontext, netz = false, jetzt = um(21, 40))
         assertEquals(100 * 60L, e.gesamt)
         assertEquals(
-            listOf("youtube.com" to 50 * 60L, "spiegel.de" to 20 * 60L, "Chrome" to 18 * 60L, "Chat" to 10 * 60L, "Sonstige Webseiten" to 2 * 60L),
+            listOf("youtube.com" to 50 * 60L, "Chrome" to 18 * 60L, "spiegel.de" to 15 * 60L, "Chat" to 10 * 60L, "Sonstige Webseiten" to 7 * 60L),
             e.posten.map { it.name to it.sekunden },
         )
         // Im Verlauf je Browser (für nieWeniger), auch die kleine Seite.
@@ -253,6 +257,14 @@ class WebseitenGeraetTest {
         assertEquals(kontext.getString(R.string.schritt4_noch_nichts), text(R.id.schritt4_stand))
         Beobachtungen(kontext).merken(Beobachtung(um(21, 35), ff, "youtube.com"))
         a.schritt4Zeigen()
-        assertEquals("Läuft. Zuletzt erkannt: youtube.com, ${zeitpunktText(um(21, 35), um(21, 40))}.", text(R.id.schritt4_stand))
+        assertEquals("Läuft. Zuletzt erkannt: youtube.com in Firefox, ${zeitpunktText(um(21, 35), um(21, 40))}; in Chrome noch keine Seite.", text(R.id.schritt4_stand))
+        // Je Browser: dann auch Chrome; eine Seite ohne Namen zählt dafür nicht.
+        Beobachtungen(kontext).merken(Beobachtung(um(21, 36), CHROME, "spiegel.de"))
+        Beobachtungen(kontext).merken(Beobachtung(um(21, 37), CHROME, OHNE_DOMAIN))
+        a.schritt4Zeigen()
+        assertEquals(
+            "Läuft. Zuletzt erkannt: youtube.com in Firefox, ${zeitpunktText(um(21, 35), um(21, 40))}; spiegel.de in Chrome, ${zeitpunktText(um(21, 36), um(21, 40))}.",
+            text(R.id.schritt4_stand),
+        )
     }
 }

@@ -73,7 +73,7 @@ data class Tag(
 }
 
 /** Der Name eines Schlüssels, der keinen vom System braucht: Web-App, Seite (die Domain) oder „Sonstige Webseiten“. */
-fun anzeigename(schluessel: String): String? = WebApp.von(schluessel)?.anzeigename ?: seiteVon(schluessel)?.second ?: when {
+fun anzeigename(schluessel: String): String? = WebApp.von(schluessel)?.anzeigename ?: seiteVon(schluessel)?.second?.let { if (it == OHNE_DOMAIN) SONSTIGE_NAME else it } ?: when {
     schluessel == SONSTIGE_WEBSEITEN -> SONSTIGE_NAME
     schluessel.startsWith(WEBSEITE) -> schluessel.removePrefix(WEBSEITE)
     else -> null
