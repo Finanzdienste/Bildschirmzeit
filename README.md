@@ -1309,6 +1309,14 @@ spricht mit dem echten Supabase oder GitHub (`Netz.gesperrt`).
   Einschalten (gezählt wird erst ab dann, früher hat niemand mitgeschrieben,
   welche Seite offen war), und eine Seite wird erst ab 1 Minute am Tag ein
   eigener Eintrag.
+- 16.11.2026: Release **v10** (Fassung 1.10, aus bad3d6f) – Webseiten auch in
+  Chrome, beide Browser zusammen, unter 5 Minuten „Sonstige Webseiten“
+  (Abschnitt „Webseiten in Firefox und Chrome einzeln“). 218
+  JUnit-/Robolectric-Prüfungen, 47 SQL, 61 Web-Modul grün, Lint ohne Fehler;
+  Prüfsumme gleich dem `digest`, Zertifikat `bc6f91b9…759e`, versionCode 10,
+  dieselben 9 Rechte. Auf dem S24 noch offen: ob Chromes Leiste so heißt wie in
+  den Quellen (Karte 4 zeigt dann eine Chrome-Seite unter „Zuletzt erkannt“),
+  und ob One UI die eingeschaltete Bedienungshilfe nach dem Update behält.
 - Noch nicht auf dem S24 ausprobiert: Größen des Startbildschirms, Akku-
   Verhalten von One UI (ob es die App trotz Widget schlafen legt), ob
   Chrome den Verbinden-Link in der installierten Web-App oder als Tab
