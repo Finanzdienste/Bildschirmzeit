@@ -14,6 +14,11 @@ und arbeite ohne Workflows.
 ## Modell und Aufwand – immer konkret
 Tobi, 15.11.: „Sowas sollst du immer konkret mit angeben“. Was läuft, zeigt
 `get_session` (`model`, `effort_level`, `flag_settings.ultracode`).
+- Am Ende jeder Antwort, mit der du eine Aufgabe abschließt (nicht bei
+  Zwischenständen), ein Satz: was lief und ob es passte, etwa „Opus 5.5 mit
+  `/effort max`, passt – nichts umstellen“. Tobi, 16.11.: „So eine nachricht
+  gibst du mir irgendwie nur in diesen chat, nicht in den anderen“ – die Regel
+  stand nur hier; jetzt gleich in Workout, Boxenstopp und Freizeit.
 - Rätst du von etwas ab (Ultracode, ein anderes Modell), sag in einem Satz,
   was stattdessen gilt, mit dem genauen Befehl, z. B. „kein Ultracode – Opus
   mit `/effort max` reicht, läuft schon“.
