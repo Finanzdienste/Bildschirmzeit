@@ -292,7 +292,7 @@ object WidgetAnsicht {
                 val z = RemoteViews(context.packageName, zeileLayout)
                 z.setViewPadding(R.id.zeile, 0, if (i == 0) 0 else abstand, 0, 0)
                 z.setImageViewBitmap(R.id.symbol, symbole.getOrPut(p.schluessel) { Symbole.bild(context, p, symbolPx) })
-                z.setTextViewText(R.id.name, p.name)
+                z.setTextViewText(R.id.name, if (p.schluessel == SONSTIGE_WEBSEITEN) SONSTIGE_KURZ else p.name)
                 z.setTextViewText(R.id.zeit, kurzText(p.sekunden))
                 v.addView(spalte, z)
             }

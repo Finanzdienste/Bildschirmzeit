@@ -54,7 +54,7 @@ data class Tag(
 
     /**
      * Androids Teil des Tages vor dem Aufteilen: Sekunden je Paket, Chrome
-     * wieder samt den drei Web-Apps, Firefox wieder samt seinen Seiten.
+     * wieder samt den drei Web-Apps, jeder Browser wieder samt seinen Seiten.
      */
     fun androidTeil(): Map<String, Long> {
         val android = LinkedHashMap<String, Long>()
@@ -72,15 +72,19 @@ data class Tag(
     }
 }
 
-/** Der Name eines Schlüssels, der keinen vom System braucht: Web-App oder Seite (die Domain). */
-fun anzeigename(schluessel: String): String? = WebApp.von(schluessel)?.anzeigename ?: seiteVon(schluessel)?.second
+/** Der Name eines Schlüssels, der keinen vom System braucht: Web-App, Seite (die Domain) oder „Sonstige Webseiten“. */
+fun anzeigename(schluessel: String): String? = WebApp.von(schluessel)?.anzeigename ?: seiteVon(schluessel)?.second ?: when {
+    schluessel == SONSTIGE_WEBSEITEN -> SONSTIGE_NAME
+    schluessel.startsWith(WEBSEITE) -> schluessel.removePrefix(WEBSEITE)
+    else -> null
+}
 
 /**
  * Ein Tag aus Androids Rechnung: `android` sind Sekunden je Paket (wie
  * heuteJeApp sie liefert), `web` die Meldungen der Web-Apps für den Tag,
- * `seiten` die Sekunden je Firefox-Seite (seitenZeiten). Installierte
- * Web-Apps zählen zu Chrome, Chrome wird um die drei gekürzt, Firefox um
- * seine Seiten ab einer Minute.
+ * `seiten` die Sekunden je Seite und Browser (seitenZeiten). Installierte
+ * Web-Apps zählen zu Chrome, Chrome wird um die drei gekürzt, dann jeder
+ * Browser um seine Seiten.
  */
 fun tagAus(
     datum: LocalDate,

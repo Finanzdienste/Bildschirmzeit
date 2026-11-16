@@ -360,6 +360,8 @@ class AppStatistikTest {
         steuerung.get().zeile("Freizeit").performClick()
         warten()
         steuerung.recreate()
+        // Die neu gebaute Activity hat wieder die echte Uhr – feste Uhr wie in oeffnen(), sonst hängt der Test am Datum.
+        steuerung.get().uhrStellen { stand }
         warten()
         assertEquals("Freizeit", steuerung.get().text(R.id.app_kopf_name))
         assertEquals(View.VISIBLE, steuerung.get().findViewById<View>(R.id.app_kopf).visibility)

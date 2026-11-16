@@ -72,6 +72,7 @@ class WebseitenGeraetTest {
         Verlauf(kontext).ordner.deleteRecursively()
         Beobachtungen(kontext).loeschen()
         app(ff, "Firefox")
+        app(CHROME, "Chrome")
         app("com.beispiel.chat", "Chat")
         shadowOf(kontext.getSystemService(AppOpsManager::class.java))
             .setMode(AppOpsManager.OPSTR_GET_USAGE_STATS, Process.myUid(), kontext.packageName, AppOpsManager.MODE_ALLOWED)
@@ -114,7 +115,7 @@ class WebseitenGeraetTest {
     }
 
     @Test
-    fun derDienstSiehtNurFirefoxUndLiestNur() {
+    fun derDienstSiehtNurDieBrowserUndLiestNur() {
         val info = kontext.packageManager.getServiceInfo(dienst, PackageManager.GET_META_DATA)
         assertEquals(Manifest.permission.BIND_ACCESSIBILITY_SERVICE, info.permission)
         assertTrue(info.exported)
@@ -123,7 +124,7 @@ class WebseitenGeraetTest {
         while (xml.next() != XmlPullParser.START_TAG) Unit
         assertEquals("accessibility-service", xml.name)
         val ns = "http://schemas.android.com/apk/res/android"
-        assertEquals(FIREFOXE, xml.getAttributeValue(ns, "packageNames").split(',').map { it.trim() }.toSet())
+        assertEquals(BROWSER, xml.getAttributeValue(ns, "packageNames").split(',').map { it.trim() }.toSet())
         assertEquals("true", xml.getAttributeValue(ns, "canRetrieveWindowContent"))
         // Kein Tippen, keine Gesten, keine Tasten.
         for (attr in listOf("canPerformGestures", "canRequestFilterKeyEvents", "isAccessibilityTool")) assertNull(attr, xml.getAttributeValue(ns, attr))
@@ -185,6 +186,36 @@ class WebseitenGeraetTest {
         Verlauf(kontext).ordner.deleteRecursively()
         val ohne = Rechner.berechnen(kontext, netz = false, jetzt = um(21, 30))
         assertEquals(mapOf("Firefox" to 60 * 60L, "Chat" to 10 * 60L), ohne.posten.associate { it.name to it.sekunden })
+    }
+
+    /**
+     * Tobi, 16.11.: „Das gleiche für Chrome. … alles unter fünf min unter sonstige
+     * websiten … Also Chrome und Firefox addiert“. Firefox 20–21 Uhr (40 Min.
+     * youtube.com, 20 Min. spiegel.de), Chrome 21:00–21:30 (10 Min. youtube.com,
+     * 2 Min. klein.de, dann eine Web-App), Chat 10 Min.: youtube.com 50 Min.,
+     * spiegel.de 20, Chrome 18, Chat 10, „Sonstige Webseiten“ 2 – zusammen 100.
+     */
+    @Test
+    fun chromeUndFirefoxZusammenKleineUnterSonstige() {
+        benutzt("com.beispiel.chat", um(8), um(8, 10))
+        benutzt(ff, um(20), um(21))
+        benutzt(CHROME, um(21), um(21, 30))
+        val b = Beobachtungen(kontext)
+        b.merken(Beobachtung(um(20), ff, "youtube.com"))
+        b.merken(Beobachtung(um(20, 40), ff, "spiegel.de"))
+        b.merken(Beobachtung(um(21), CHROME, "youtube.com"))
+        b.merken(Beobachtung(um(21, 10), CHROME, "klein.de"))
+        b.merken(Beobachtung(um(21, 12), CHROME, gemerkteDomain(CHROME, "finanzdienste.github.io")))
+        val e = Rechner.berechnen(kontext, netz = false, jetzt = um(21, 40))
+        assertEquals(100 * 60L, e.gesamt)
+        assertEquals(
+            listOf("youtube.com" to 50 * 60L, "spiegel.de" to 20 * 60L, "Chrome" to 18 * 60L, "Chat" to 10 * 60L, "Sonstige Webseiten" to 2 * 60L),
+            e.posten.map { it.name to it.sekunden },
+        )
+        // Im Verlauf je Browser (für nieWeniger), auch die kleine Seite.
+        val tag = Verlauf(kontext).lesen(heute)!!
+        assertEquals(120L, tag.posten.single { it.schluessel == seitenSchluessel(CHROME, "klein.de") }.sekunden)
+        assertEquals(100 * 60L, tag.gesamt)
     }
 
     @Test

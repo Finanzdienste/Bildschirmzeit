@@ -71,12 +71,12 @@ object Rechner {
             // Ein paar Stunden vor Mitternacht anfangen: Eine App, die über
             // Mitternacht offen war, hat ihr „vorn“ vor Mitternacht bekommen.
             val ereignisse = Nutzungsdaten.ereignisse(context, mitternacht - VORLAUF_MS, jetzt)
-            val firefox = ArrayList<Intervall>()
+            val browser = ArrayList<Intervall>()
             val roh = heuteJeApp(ereignisse, mitternacht, jetzt, launcher + bisher.schluessel(), home) { p, a, e ->
-                if (p in FIREFOXE) firefox += Intervall(p, a, e)
+                if (p in BROWSER) browser += Intervall(p, a, e)
             }
             android = nieWeniger(roh, bisher)
-            seiten = seitenZeiten(firefox, Beobachtungen(context).lesen(mitternacht, jetzt))
+            seiten = seitenZeiten(browser, Beobachtungen(context).lesen(mitternacht, jetzt))
             nachtragen(context, verlauf, speicher, heute, zone, jetzt, launcher, home, name)
         } catch (e: SecurityException) {
             // Gerade eben in den Einstellungen wieder abgeschaltet.
@@ -86,7 +86,8 @@ object Rechner {
         if (web.frisch) verlauf.webEintragen(web.zeilen, web.von, heute, web.daten.gelesen)
         val tag = tagAus(heute, android, web.daten.heute, web.daten.gelesen, fertig = false, seiten = seiten, name = mitAltenNamen(bisher, name))
         verlauf.schreiben(tag)
-        return Ergebnis(erlaubt = true, posten = tag.posten, stand = jetzt, web = web.daten)
+        // Gezeigt werden die Seiten zusammengefasst (beide Browser, ab 5 Minuten einzeln); im Verlauf je Browser.
+        return Ergebnis(erlaubt = true, posten = webseitenZusammenfassen(tag.posten), stand = jetzt, web = web.daten)
     }
 
     private fun ohneErlaubnis(speicher: Speicher, heute: LocalDate, netz: Boolean, jetzt: Long) = Ergebnis(
@@ -151,12 +152,12 @@ object Rechner {
             )
             if (!gedeckt && bisher == null) continue
             // Was an dem Tag schon gezählt war, zählt weiter – auch wenn die App inzwischen deinstalliert ist.
-            val firefox = ArrayList<Intervall>()
+            val browser = ArrayList<Intervall>()
             val roh = heuteJeApp(abfrage.ereignisse, anfang, ende, launcher + bisher.schluessel(), home) { p, a, e ->
-                if (p in FIREFOXE) firefox += Intervall(p, a, e)
+                if (p in BROWSER) browser += Intervall(p, a, e)
             }
             val android = nieWeniger(roh, bisher)
-            val seiten = seitenZeiten(firefox, Beobachtungen(context).lesen(anfang, ende))
+            val seiten = seitenZeiten(browser, Beobachtungen(context).lesen(anfang, ende))
             val (web, gelesen) = when {
                 bisher != null && bisher.webGelesen > 0L -> bisher.web to bisher.webGelesen
                 alt != null && altVon != null && tag >= altVon -> webFuerTag(alt.second, tag) to alt.first

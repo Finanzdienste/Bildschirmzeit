@@ -112,22 +112,24 @@ class VorschauTest {
 
     /**
      * Tobi, 15.11.: „Bei Firefox bin ich viel auf Youtube. Kann man sich die
-     * größten Webseiten als einzelnen Punkt auflisten lassen?“ – youtube.com
-     * und wikipedia.org zwischen den Apps, mit der blauen Kachel der Seiten;
-     * der Rest bleibt „Firefox“.
+     * größten Webseiten als einzelnen Punkt auflisten lassen?“ und 16.11.:
+     * „Das gleiche für Chrome. … alles unter fünf min unter sonstige websiten
+     * … Also Chrome und Firefox addiert“ – youtube.com und wikipedia.org (beide
+     * Browser zusammen) zwischen den Apps, die kleinen als „Sonstige
+     * Webseiten“, mit der blauen Kachel der Seiten.
      */
     private fun mitSeiten() = beispiel().copy(
         posten = sortiert(
             listOf(
-                Posten(seitenSchluessel("org.mozilla.firefox", "youtube.com"), "youtube.com", 80 * 60L),
+                Posten(WEBSEITE + "youtube.com", "youtube.com", 80 * 60L),
                 Posten("boxenstopp", "Boxenstopp", 69 * 60L),
                 Posten("com.beispiel.chat", "WhatsApp", 54 * 60L),
                 Posten("workout", "Workout", 41 * 60L),
-                Posten("org.mozilla.firefox", "Firefox", 23 * 60L),
-                Posten(seitenSchluessel("org.mozilla.firefox", "wikipedia.org"), "wikipedia.org", 17 * 60L),
-                Posten("freizeit", "Freizeit", 9 * 60L),
+                Posten(SONSTIGE_WEBSEITEN, SONSTIGE_NAME, 23 * 60L),
+                Posten(WEBSEITE + "wikipedia.org", "wikipedia.org", 17 * 60L),
+                Posten("org.mozilla.firefox", "Firefox", 9 * 60L),
                 Posten("com.beispiel.karten", "Karten", 6 * 60L),
-                Posten("com.beispiel.kamera", "Kamera", 3 * 60L),
+                Posten("com.android.chrome", "Chrome", 3 * 60L),
             ),
         ),
     )
@@ -135,6 +137,15 @@ class VorschauTest {
     @Test
     @Config(qualifiers = "+night")
     fun webseitenDunkel() = speichern("webseiten-dunkel", mitSeiten(), 400f, 201f, nacht = true)
+
+    /** In Tobis 4×2 steht „Sonstige Seiten“ ganz da (in der App: „Sonstige Webseiten“). */
+    @Test
+    fun sonstigeSeitenGanzImWidget() {
+        val v = aufgebaut(mitSeiten(), 400f, 201f)
+        val t = alleViews(v).filterIsInstance<TextView>().single { it.text.toString() == SONSTIGE_KURZ }
+        assertEquals(0, ellipsen(t))
+        assertTrue(alleTexte(v).contains("youtube.com"))
+    }
 
     /**
      * Tobis Widget (400 × 201 dp): acht Apps in zwei Spalten, links Platz 1–4,

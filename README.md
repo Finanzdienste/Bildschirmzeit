@@ -28,7 +28,7 @@ noch nicht eingerichtet, dunkel eingerichtet), `vorschau-app-monat-*.png`
 (ein Monat mit Lücken), `vorschau-app-tag-hell.png` (der Reiter Tag),
 `vorschau-app-eine-hell.png` / `-dunkel.png` (eine App angetippt: ihre Woche),
 `vorschau-webseiten-dunkel.png` (das Widget mit youtube.com und wikipedia.org
-als eigene Einträge, Kachel der Seiten blau),
+als eigene Einträge und „Sonstige Seiten“, Kachel der Seiten blau),
 `vorschau-app-einrichten-hell.png` (die App ohne Erlaubnis: deren Karte vor
 der Statistik, mit dem Weg über die eingeschränkte Einstellung).
 
@@ -68,6 +68,14 @@ der Statistik, mit dem Weg über die eingeschränkte Einstellung).
   eine Bedienungshilfe (unten „Webseiten in Firefox einzeln“). Entschieden:
   nur Firefox; nur die Domain („youtube.com“, nicht die YouTube-App); eigener
   Eintrag ab einer Minute am Tag; private Tabs nie; nur auf dem Handy.
+- „Das gleiche für Chrome. Aber würde sagen lass mal machen dass alles unter
+  fünf min unter sonstige websiten zusammengefasst wird oder? Also Chrome und
+  Firefox addiert“ (16.11.) – seit v10 auch Chrome; dieselbe Domain aus beiden
+  Browsern zusammen, einzeln ab 5 Minuten (am Tag bzw. im Zeitraum), der Rest
+  „Sonstige Webseiten“ (im Widget „Sonstige Seiten“, sonst abgeschnitten).
+  Entschieden: Browserzeit ohne erkannte Seite (neuer Tab, privat, Dienst aus)
+  bleibt „Firefox“ bzw. „Chrome“; Tobis Web-Apps zählen in Chrome weiter als
+  Boxenstopp, Freizeit und Workout, nicht als Seite.
 - „Ich will auch auf ne eigene App klicken und dann deren verteilung zb über
   die Woche sehen können“ (15.11., 17:21, Screenshot der Woche in v7) – ein
   Tipp auf eine App in der Statistik zeigt nur sie, je Tag (unten „Eine App
@@ -845,10 +853,39 @@ ohne Auswahl wie bisher); `AppStatistikTest.appAntippenZeigtIhreVerteilung`
 „Alle Apps“), `zurueckVonDerAppZuAllen`, `appUeberstehtDrehenAberNichtDasWidget`;
 Bilder `vorschau-app-eine-hell.png` / `-dunkel.png`.
 
-## Webseiten in Firefox einzeln (v9)
+## Webseiten in Firefox und Chrome einzeln (v9, v10)
 
 > „Bei Firefox bin ich viel auf Youtube. Kann man sich die größten Webseiten
 > als einzelnen Punkt auflisten lassen?“ – Tobi, 15.11.
+
+> „Das gleiche für Chrome. Aber würde sagen lass mal machen dass alles unter
+> fünf min unter sonstige websiten zusammengefasst wird oder? Also Chrome und
+> Firefox addiert“ – Tobi, 16.11. (nach dem ersten Abend mit v9: „Zuletzt
+> erkannt: o2mail.de“, die Firefox-Zeit von vorher noch ganz „Firefox“).
+
+**v10 – Chrome, zusammen, ab 5 Minuten:**
+- Der Dienst sieht auch Chrome (`com.android.chrome`, `com.chrome.beta`,
+  `…dev`, `…canary`). Chromes Adresszeile, nachgelesen in Chromium
+  (chromium.googlesource.com): `…:id/url_bar` (ein EditText auch ohne Tippen –
+  getippt wird nur mit Fokus), auf dem neuen Tab `…:id/search_box_text`
+  (`fake_search_box_layout.xml`, keine Seite), Inkognito am Abzeichen
+  `…:id/location_bar_incognito_badge` („Inkognitomodus“,
+  `location_status.xml`) – dann keine Domain.
+- Installierte Web-Apps (WebappActivity, WebApk…), Trusted Web Activities
+  und Custom Tabs ohne Leiste sind „keine Seite“ (nicht „das Bisherige“):
+  Der Dienst merkt sich die Activity des letzten Fensterwechsels. Tobis
+  Web-Apps auf `finanzdienste.github.io` zählen in Chrome nie als Seite – sie
+  kommen über Supabase als Boxenstopp, Freizeit und Workout (in Firefox
+  zählen sie als Seite, dort sind sie nicht verbunden).
+- Im Verlauf steht jede erkannte Seite je Browser als Posten (`seite:<paket>/<domain>`,
+  auch unter einer Minute), die Browser behalten nur ihre Zeit ohne erkannte
+  Seite. Gezeigt wird zusammengefasst (`webseitenZusammenfassen`, in der
+  Statistik `auswerten`): dieselbe Domain aus beiden Browsern addiert
+  (`webseite:<domain>`), einzeln ab 5 Minuten im Tag (Widget) bzw. im
+  Zeitraum (Tag, Woche, Monat), der Rest als „Sonstige Webseiten“ (blaue
+  Kachel „…“; im Widget „Sonstige Seiten“, die volle Fassung war in Tobis
+  4×2 abgeschnitten). Eine angetippte Seite zählt in jeder Woche einzeln,
+  „Sonstige Webseiten“ lässt sich auch antippen. Die Gesamtzeit ändert sich nie.
 
 ![Widget mit Webseiten, dunkel](docs/vorschau-webseiten-dunkel.png)
 
@@ -912,6 +949,19 @@ ein → „Zulassen“. Ist der Schalter grau („eingeschränkte Einstellung“
 bei Schritt 1 in der App-Info ⋮ → „Eingeschränkte Einstellungen zulassen“
 (laut AOSP gilt die Freigabe von Schritt 1 für alle eingeschränkten
 Einstellungen der App).
+
+**Geprüft (v10):** `WebseitenTest.chromeLeiste` (url_bar mit und ohne Fokus,
+Suchbegriffe, neuer Tab, Inkognito, Web-App, Custom Tab, Vollbild),
+`webAppsInChromeKeineSeite`, `zusammenfassenBeideBrowserAbFuenfMinuten`
+(addiert, genau 5 Minuten, Sonstige, Summe gleich),
+`statistikFasstJeZeitraumZusammen` (Woche einzeln, Tag „Sonstige“, angetippt
+in jedem Zeitraum); `WebseitenGeraetTest.chromeUndFirefoxZusammenKleineUnterSonstige`
+(Rechnung mit Androids Ereignissen: youtube.com 50 Min. aus beiden Browsern,
+Chrome nach der Web-App, „Sonstige Webseiten“, Summe 100 Min., im Verlauf je
+Browser); `VorschauTest.sonstigeSeitenGanzImWidget`. Nebenbei:
+`AppStatistikTest.appUeberstehtDrehenAberNichtDasWidget` hing am echten Datum
+(nach dem Drehen galt die echte Uhr, ab 16.11. eine Woche ohne erfundene
+Daten) – jetzt mit fester Uhr.
 
 **Geprüft:** `WebseitenTest` (Domain: Host, ganze Adresse, Zugangsdaten und
 Port, zweistufige Endungen, Suchtext und about: → keine; die neue Leiste mit
@@ -1034,8 +1084,8 @@ android/                     Gradle-Projekt (Kotlin DSL)
     Rechner.kt               setzt alles zu einem Ergebnis zusammen, füllt den Verlauf
     Verlauf.kt               der eigene Tagesverlauf (noBackupFilesDir/verlauf), welche Tage fehlen (rein)
     Statistik.kt             Tag, Woche, Monat: Zeiträume, Titel, Summen (rein)
-    Webseiten.kt             Firefox-Seiten: Domain, Adresszeile, Aufteilung (rein), Beobachtungen, Schalter
-    WebseitenDienst.kt       die Bedienungshilfe „Bildschirmzeit: Webseiten“ (nur Firefox), Drossel
+    Webseiten.kt             Seiten in Firefox und Chrome: Domain, Adresszeile, Aufteilung, Zusammenfassen (rein), Beobachtungen, Schalter
+    WebseitenDienst.kt       die Bedienungshilfe „Bildschirmzeit: Webseiten“ (nur die Browser), Drossel
     Balken.kt                das Balkendiagramm der Statistik (Canvas)
     Ziel.kt                  wohin das Widget die App öffnet (Extra an MainActivity: statistik, update)
     WidgetAnsicht.kt         WidgetRaster (wie viele Apps in welche Größe, rein), RemoteViews

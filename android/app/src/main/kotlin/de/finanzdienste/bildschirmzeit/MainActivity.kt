@@ -461,8 +461,8 @@ class MainActivity : Activity(), UpdateBeobachter {
                 zeile.findViewById<TextView>(R.id.zeit).text = dauerText(p.sekunden)
                 val anteil = anteilText(p.sekunden, a.gesamt)
                 zeile.findViewById<TextView>(R.id.anteil).text = anteil
-                val inFirefox = if (seiteVon(p.schluessel) != null) " in Firefox" else ""
-                zeile.contentDescription = "${p.name}$inFirefox, ${dauerText(p.sekunden)}, $anteil"
+                val seite = if (istWebseite(p.schluessel) && p.schluessel != SONSTIGE_WEBSEITEN) ", Webseite" else ""
+                zeile.contentDescription = "${p.name}$seite, ${dauerText(p.sekunden)}, $anteil"
                 zeile.setOnClickListener { appWaehlen(p) }
                 liste.addView(zeile)
             }

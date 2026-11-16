@@ -138,17 +138,14 @@ data class Auswertung(
  * Mit `nur` die eine App (Tobi, 15.11.: „Ich will auch auf ne eigene App klicken
  * und dann deren verteilung zb über die Woche sehen können“): ihre Zeit je Tag –
  * ein Tag mit Daten, an dem sie nicht lief, hat 0, einer ohne Daten bleibt „keine Daten“.
+ *
+ * Webseiten (Tobi, 16.11.: „… alles unter fünf min unter sonstige websiten
+ * zusammengefasst … Also Chrome und Firefox addiert“): je Domain beide
+ * Browser zusammen, ab 5 Minuten im Zeitraum einzeln, sonst „Sonstige
+ * Webseiten“. `nur` ist ein gezeigter Schlüssel (auch „webseite:…“); eine
+ * angetippte Seite zählt in jedem Zeitraum einzeln.
  */
 fun auswerten(z: Zeitraum, verlauf: Map<LocalDate, Tag>, heute: LocalDate, datenSeit: LocalDate?, nur: String? = null): Auswertung {
-    val tage = z.tage.map { d ->
-        val tag = verlauf[d]
-        when {
-            d > heute -> Tageswert(d, null, zukunft = true)
-            tag == null -> Tageswert(d, null)
-            nur == null -> Tageswert(d, tag.gesamt)
-            else -> Tageswert(d, tag.posten.filter { it.schluessel == nur }.sumOf { it.sekunden })
-        }
-    }
     val summe = HashMap<String, Long>()
     val namen = HashMap<String, String>()
     for (d in z.tage.sorted()) {
@@ -158,7 +155,22 @@ fun auswerten(z: Zeitraum, verlauf: Map<LocalDate, Tag>, heute: LocalDate, daten
             namen[p.schluessel] = p.name
         }
     }
-    val alle = sortiert(summe.map { (k, s) -> Posten(k, WebApp.von(k)?.anzeigename ?: namen[k] ?: k, s) })
+    val einzeln = einzelneDomains(summe, immer = nur)
+    val tage = z.tage.map { d ->
+        val tag = verlauf[d]
+        when {
+            d > heute -> Tageswert(d, null, zukunft = true)
+            tag == null -> Tageswert(d, null)
+            nur == null -> Tageswert(d, tag.gesamt)
+            else -> Tageswert(d, tag.posten.filter { anzeigeSchluessel(it.schluessel, einzeln) == nur }.sumOf { it.sekunden })
+        }
+    }
+    val gruppiert = HashMap<String, Long>()
+    for ((k, s) in summe) {
+        val g = anzeigeSchluessel(k, einzeln)
+        gruppiert[g] = (gruppiert[g] ?: 0L) + s
+    }
+    val alle = sortiert(gruppiert.map { (k, s) -> Posten(k, anzeigename(k) ?: namen[k] ?: k, s) })
     val apps = if (nur == null) alle else alle.filter { it.schluessel == nur }
     return Auswertung(z, heute, tage, apps, datenSeit, nur, alle.sumOf { it.sekunden })
 }

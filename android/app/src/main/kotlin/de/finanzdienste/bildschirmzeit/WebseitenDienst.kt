@@ -11,21 +11,25 @@ import java.util.concurrent.atomic.AtomicBoolean
 
 /**
  * Die Bedienungshilfe „Bildschirmzeit: Webseiten“ (freiwillig): Sie bekommt
- * nur Ereignisse von Firefox (packageNames in xml/webseiten_dienst.xml),
- * liest nur die Adresszeile (Leiste) und merkt sich nur die Domain mit
- * Uhrzeit (Beobachtungen) – nie Adresse, Titel oder Inhalt, nichts im Log,
- * nichts im Netz. Sie handelt nie: keine Gesten, kein Tippen, kein Text.
+ * nur Ereignisse von Firefox und Chrome (packageNames in
+ * xml/webseiten_dienst.xml), liest nur die Adresszeile (Leiste) und merkt sich
+ * nur die Domain mit Uhrzeit (Beobachtungen) – nie Adresse, Titel oder
+ * Inhalt, nichts im Log, nichts im Netz. Sie handelt nie: keine Gesten, kein
+ * Tippen, kein Text.
  *
  * Gedrosselt, weil ein laufendes Video ständig Inhaltsereignisse schickt: Auf
  * einen Fensterwechsel wird nach FENSTER_MS gelesen, auf Inhaltsereignisse
  * höchstens alle INHALT_ABSTAND_MS (Drossel). Gelesen wird auf einem eigenen
- * Faden: Knotenabfragen sind synchrone Aufrufe ins Firefox-Fenster, und der
- * Prozess teilt sich den Hauptfaden mit Widget und Empfängern.
+ * Faden: Knotenabfragen sind synchrone Aufrufe ins Fenster des Browsers, und
+ * der Prozess teilt sich den Hauptfaden mit Widget und Empfängern.
  */
 class WebseitenDienst : AccessibilityService() {
     private var faden: HandlerThread? = null
     private var handler: Handler? = null
     private val geplant = AtomicBoolean(false)
+
+    /** Die Activity des letzten Fensterwechsels je Browser (Web-App, Custom Tab oder Browser). */
+    private val fenster = java.util.concurrent.ConcurrentHashMap<String, String>()
 
     @Volatile
     private var letzteAbfrage = 0L
@@ -46,10 +50,13 @@ class WebseitenDienst : AccessibilityService() {
 
     override fun onAccessibilityEvent(event: AccessibilityEvent?) {
         val e = event ?: return
-        if (e.packageName?.toString() !in FIREFOXE) return
+        val paket = e.packageName?.toString() ?: return
+        if (paket !in BROWSER) return
         val h = handler ?: return
         when (e.eventType) {
             AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED -> {
+                // Nur Activities merken (nicht Menüs und Dialoge darüber).
+                e.className?.toString()?.takeIf { "Activity" in it }?.let { fenster[paket] = it }
                 h.removeCallbacks(pruefen)
                 geplant.set(true)
                 h.postDelayed(pruefen, Drossel.FENSTER_MS)
@@ -68,8 +75,8 @@ class WebseitenDienst : AccessibilityService() {
             val wurzel = rootInActiveWindow ?: return
             val paket = wurzel.packageName?.toString()
             // Das aktive Fenster kann schon eine andere App sein.
-            if (paket == null || paket !in FIREFOXE) return
-            paket to Leiste.lesen(InfoKnoten(wurzel), paket)
+            if (paket == null || paket !in BROWSER) return
+            paket to Leiste.lesen(InfoKnoten(wurzel), paket, fenster[paket])
         } catch (e: RuntimeException) {
             // Fenster weg, Knoten veraltet: beim nächsten Ereignis wieder.
             return
@@ -77,7 +84,7 @@ class WebseitenDienst : AccessibilityService() {
         val (paket, b) = befund
         val jetzt = System.currentTimeMillis()
         when (b) {
-            is Befund.Seite -> Beobachtungen(this).merken(Beobachtung(jetzt, paket, b.domain))
+            is Befund.Seite -> Beobachtungen(this).merken(Beobachtung(jetzt, paket, gemerkteDomain(paket, b.domain)))
             Befund.Keine, Befund.Privat -> Beobachtungen(this).merken(Beobachtung(jetzt, paket, null))
             Befund.Unbekannt -> Unit
         }

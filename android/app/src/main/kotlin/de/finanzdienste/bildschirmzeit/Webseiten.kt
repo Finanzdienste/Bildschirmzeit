@@ -8,26 +8,57 @@ import java.io.File
 import java.io.IOException
 
 /*
- * Webseiten in Firefox einzeln – Tobi, 15.11.: „Bei Firefox bin ich viel auf
- * Youtube. Kann man sich die größten Webseiten als einzelnen Punkt auflisten
- * lassen?“ Android kennt nur die App Firefox; welche Seite offen ist, steht
- * nur in Firefox' Adresszeile. Die liest der WebseitenDienst (eine
- * Bedienungshilfe, die nur Firefox sieht) und merkt sich bei jedem Wechsel die
- * Domain mit Uhrzeit (Beobachtungen). Die Rechnung teilt Firefox'
- * Vordergrundzeit danach auf: Eine Domain mit mindestens einer Minute am Tag
- * wird ein eigener Posten („seite:<paket>/<domain>“, angezeigt als die
- * Domain), der Rest bleibt Firefox. Die Gesamtzeit ändert sich nie. Rein und
- * ohne Android getestet in WebseitenTest.
+ * Webseiten in Firefox und Chrome einzeln – Tobi, 15.11.: „Bei Firefox bin ich
+ * viel auf Youtube. Kann man sich die größten Webseiten als einzelnen Punkt
+ * auflisten lassen?“, und 16.11.: „Das gleiche für Chrome. Aber würde sagen
+ * lass mal machen dass alles unter fünf min unter sonstige websiten
+ * zusammengefasst wird oder? Also Chrome und Firefox addiert“.
+ *
+ * Android kennt nur die App; welche Seite offen ist, steht nur in der
+ * Adresszeile. Die liest der WebseitenDienst (eine Bedienungshilfe, die nur
+ * die Browser sieht) und merkt sich bei jedem Wechsel die Domain mit Uhrzeit
+ * (Beobachtungen). Die Rechnung teilt die Vordergrundzeit des Browsers danach
+ * auf: jede erkannte Seite ein Posten „seite:<paket>/<domain>“ im Verlauf,
+ * der Rest bleibt der Browser. Gezeigt (Widget, Statistik) wird sie
+ * zusammengefasst (webseitenZusammenfassen): dieselbe Domain aus beiden
+ * Browsern addiert, ab 5 Minuten (am Tag bzw. im Zeitraum) einzeln, sonst
+ * „Sonstige Webseiten“. Die Gesamtzeit ändert sich nie. Rein und ohne Android
+ * getestet in WebseitenTest.
  */
 
-/** Die Firefox-Pakete, deren Adresszeile gelesen wird – nur diese bekommt der Dienst (xml/webseiten_dienst.xml). */
+/** Die Firefox-Pakete, deren Adresszeile gelesen wird. */
 val FIREFOXE = setOf("org.mozilla.firefox", "org.mozilla.firefox_beta", "org.mozilla.fenix")
 
-/** Schlüsselraum der Seiten im Verlauf – kein Paketname beginnt so. */
+/** Chrome und seine Vorabfassungen. In Chrome laufen auch Tobis Web-Apps (Aufteilung.kt). */
+val CHROMES = setOf(CHROME, "com.chrome.beta", "com.chrome.dev", "com.chrome.canary")
+
+/** Alle Browser, die der Dienst sieht (packageNames in xml/webseiten_dienst.xml). */
+val BROWSER = FIREFOXE + CHROMES
+
+/** Schlüsselraum der Seiten im Verlauf (je Browser) – kein Paketname beginnt so. */
 const val SEITE = "seite:"
 
-/** Ab so viel Zeit am Tag wird eine Seite ein eigener Posten; darunter bleibt sie im Browser. */
-const val SEITE_MIN_SEKUNDEN = 60L
+/** Ab so viel Zeit am Tag wird eine erkannte Seite ein Posten; der Rest bleibt im Browser. */
+const val SEITE_MIN_SEKUNDEN = 1L
+
+/** Ab so viel Zeit (beide Browser zusammen, im Tag bzw. Zeitraum) steht eine Seite einzeln da. */
+const val WEBSEITE_EINZELN_SEKUNDEN = 5 * 60L
+
+/** Schlüsselraum der gezeigten Seiten (beide Browser zusammen): „webseite:youtube.com“. */
+const val WEBSEITE = "webseite:"
+
+/** Alle kleineren Seiten zusammen. */
+const val SONSTIGE_WEBSEITEN = "webseite:*"
+const val SONSTIGE_NAME = "Sonstige Webseiten"
+
+/** Im Widget ist neben der Zeit weniger Platz: dort so (die blaue Kachel „…“ sagt, dass es Seiten sind). */
+const val SONSTIGE_KURZ = "Sonstige Seiten"
+
+/**
+ * Hier liegen Tobis Web-Apps (Boxenstopp, Freizeit, Workout). In Chrome zählen
+ * sie über Supabase unter eigenem Namen – dort also keine Seite.
+ */
+const val WEB_APPS_DOMAIN = "finanzdienste.github.io"
 
 /** Eine Beobachtung gilt höchstens so lange, wenn danach keine mehr kam (Vollbild-Video: keine Leiste zu sehen). */
 const val BEOBACHTUNG_GILT_MS = 12 * 60 * 60 * 1000L
@@ -118,7 +149,13 @@ sealed interface Befund {
 }
 
 /**
- * Die Adresszeile von Firefox im Baum finden – nachgelesen in den Quellen
+ * Was der Dienst sich merkt: die Domain – außer Tobis Web-Apps in Chrome (die
+ * zählen über Supabase als Boxenstopp, Freizeit, Workout).
+ */
+fun gemerkteDomain(paket: String, domain: String): String? = if (paket in CHROMES && domain == WEB_APPS_DOMAIN) null else domain
+
+/**
+ * Die Adresszeile im Baum finden. Firefox – nachgelesen in den Quellen
  * (searchfox, mozilla-central, mobile/android):
  * - Die neue Leiste (Compose, android-components browser-toolbar) setzt
  *   `testTagsAsResourceId`; ihr Feld heißt ADDRESSBAR_URL_BOX (Origin.kt), und
@@ -128,18 +165,35 @@ sealed interface Befund {
  *   mit der Adresse als Text.
  * - Privat erkennt man am Tab-Zähler: „Offene private Tabs: 2. …“ bzw.
  *   „Private Tabs Open: 2. …“ (tabcounter strings.xml, deutsch und englisch).
+ * Chrome – nachgelesen in den Quellen (chromium.googlesource.com, chrome/…):
+ * - Die Adresszeile ist der UrlBar `<paket>:id/url_bar`, ein EditText, auch
+ *   wenn man nicht tippt; getippt wird nur mit Fokus.
+ * - Der neue Tab zeigt statt ihrer das Suchfeld `…:id/search_box_text`
+ *   (fake_search_box_layout.xml): keine Seite.
+ * - Inkognito zeigt das Abzeichen `…:id/location_bar_incognito_badge`
+ *   (location_status.xml), Beschreibung „Inkognitomodus“ bzw. „Incognito mode“.
+ * - Installierte Web-Apps (WebappActivity …) und Trusted Web Activities haben
+ *   keine Adresszeile: keine Seite, nicht „das Bisherige“ (`fenster`).
  * Gesucht wird in der Breite, höchstens HOECHSTENS Knoten; den Inhalt der
  * Seite selbst (GeckoView, WebView) betritt die Suche nicht.
  */
 object Leiste {
     const val COMPOSE = "ADDRESSBAR_URL_BOX"
     const val ALT = "mozac_browser_toolbar_url_view"
+    const val CHROME_LEISTE = "url_bar"
+    const val CHROME_NEUER_TAB = "search_box_text"
+    const val CHROME_INKOGNITO = "location_bar_incognito_badge"
     private const val HOECHSTENS = 600
 
     /** Nach der Leiste noch so viele Knoten ansehen (der Tab-Zähler steht daneben). */
     private const val DANACH = 150
 
-    fun lesen(wurzel: Knoten, paket: String): Befund {
+    /**
+     * `fenster`: die Klasse des Fensters aus dem letzten Fensterwechsel. Ohne
+     * Leiste heißt eine Web-App oder ein Custom Tab „keine Seite“, sonst
+     * (Vollbild-Video, Tab-Übersicht) gilt das Bisherige weiter.
+     */
+    fun lesen(wurzel: Knoten, paket: String, fenster: String? = null): Befund {
         var gefunden: Befund? = null
         var privat = false
         var danach = 0
@@ -149,7 +203,7 @@ object Leiste {
         while (schlange.isNotEmpty() && besucht < HOECHSTENS) {
             val k = schlange.removeFirst()
             besucht++
-            if (privatZaehler(k.beschreibung)) privat = true
+            if (privatZaehler(k.beschreibung) || k.id?.endsWith(":id/$CHROME_INKOGNITO") == true) privat = true
             val hier = ausKnoten(k, paket)
             // Mehrere Leisten (voll und schmal): eine mit Seite gewinnt.
             if (hier != null && (gefunden == null || hier is Befund.Seite && gefunden !is Befund.Seite)) gefunden = hier
@@ -157,15 +211,29 @@ object Leiste {
             if (webinhalt(k)) continue
             for (i in 0 until k.kinder) k.kind(i)?.let(schlange::add)
         }
-        return if (privat) Befund.Privat else gefunden ?: Befund.Unbekannt
+        return when {
+            privat -> Befund.Privat
+            gefunden != null -> gefunden
+            ohneLeiste(fenster) -> Befund.Keine
+            else -> Befund.Unbekannt
+        }
+    }
+
+    /** Fenster ohne Adresszeile: installierte Web-Apps, Trusted Web Activities, Custom Tabs ohne Leiste. */
+    internal fun ohneLeiste(fenster: String?): Boolean {
+        val f = fenster?.lowercase() ?: return false
+        return ".webapps." in f || "webapk" in f || "webapp" in f || "customtab" in f || "externalappbrowser" in f || "trustedwebactivity" in f
     }
 
     private fun ausKnoten(k: Knoten, paket: String): Befund? {
         val id = k.id ?: return null
         val compose = id == COMPOSE || id.endsWith(":id/$COMPOSE")
         val alt = id == "$paket:id/$ALT" || id.endsWith(":id/$ALT")
-        if (!compose && !alt) return null
-        if (k.editierbar || k.fokussiert) return Befund.Unbekannt
+        val chrome = id.endsWith(":id/$CHROME_LEISTE")
+        if (id.endsWith(":id/$CHROME_NEUER_TAB")) return Befund.Keine
+        if (!compose && !alt && !chrome) return null
+        // Chromes Leiste ist immer ein EditText – getippt wird dort nur mit Fokus.
+        if (k.fokussiert || (k.editierbar && !chrome)) return Befund.Unbekannt
         return if (compose) ausBeschreibung(k.beschreibung) else domainAus(k.text)?.let(Befund::Seite) ?: Befund.Keine
     }
 
@@ -178,8 +246,10 @@ object Leiste {
         return domainAus(adresse)?.let(Befund::Seite) ?: Befund.Keine
     }
 
+    /** Firefox' Tab-Zähler im privaten Modus, oder Chromes Inkognito-Abzeichen. */
     internal fun privatZaehler(b: CharSequence?): Boolean {
-        val s = b?.toString()?.lowercase() ?: return false
+        val s = b?.toString()?.trim()?.lowercase() ?: return false
+        if (s == "inkognitomodus" || s == "incognito mode") return true
         val privat = "offene private tabs" in s || "private tabs open" in s
         return privat && "non-private" !in s && "nicht private" !in s
     }
@@ -237,6 +307,7 @@ fun seitenZeiten(intervalle: List<Intervall>, beobachtungen: List<Beobachtung>, 
  * mehr, als der Browser lief (sonst anteilig gekürzt). Die Gesamtzeit bleibt.
  */
 fun seitenAbziehen(geteilt: Map<String, Long>, seiten: Map<String, Long>, mindestens: Long = SEITE_MIN_SEKUNDEN): Map<String, Long> {
+    // Chrome: erst sind die Web-Apps abgezogen (aufteilen); die Seiten kommen aus dem Rest.
     val gross = seiten.entries.filter { (k, s) -> s >= maxOf(1L, mindestens) && seiteVon(k) != null }
     if (gross.isEmpty()) return geteilt
     val aus = LinkedHashMap(geteilt)
@@ -250,6 +321,47 @@ fun seitenAbziehen(geteilt: Map<String, Long>, seiten: Map<String, Long>, mindes
         if (rest > 0L) aus[paket] = rest else aus.remove(paket)
     }
     return aus
+}
+
+/**
+ * Welche Domains einzeln stehen: Chrome und Firefox zusammen ab
+ * WEBSEITE_EINZELN_SEKUNDEN in `sekunden` (Seiten-Schlüssel → Sekunden),
+ * dazu `immer` (die gerade angetippte Seite, damit sie in jeder Woche gleich
+ * zählt).
+ */
+fun einzelneDomains(sekunden: Map<String, Long>, immer: String? = null): Set<String> {
+    val jeDomain = HashMap<String, Long>()
+    for ((k, s) in sekunden) seiteVon(k)?.let { (_, d) -> jeDomain[d] = (jeDomain[d] ?: 0L) + s }
+    val aus = jeDomain.filterValues { it >= WEBSEITE_EINZELN_SEKUNDEN }.keys.toMutableSet()
+    if (immer != null && immer.startsWith(WEBSEITE) && immer != SONSTIGE_WEBSEITEN) aus += immer.removePrefix(WEBSEITE)
+    return aus
+}
+
+/** Unter welchem Schlüssel ein Posten gezeigt wird: eine Seite (beide Browser zusammen) oder „Sonstige Webseiten“. */
+fun anzeigeSchluessel(schluessel: String, einzeln: Set<String>): String {
+    val (_, d) = seiteVon(schluessel) ?: return schluessel
+    return if (d in einzeln) WEBSEITE + d else SONSTIGE_WEBSEITEN
+}
+
+/** Ist das eine gezeigte Seite (oder „Sonstige Webseiten“) oder ein Seiten-Posten im Verlauf? */
+fun istWebseite(schluessel: String): Boolean = schluessel.startsWith(WEBSEITE) || seiteVon(schluessel) != null
+
+/**
+ * Die Liste für Widget und App: Seiten aus Chrome und Firefox zusammen, ab
+ * 5 Minuten einzeln, der Rest als „Sonstige Webseiten“. Die Browser selbst
+ * bleiben, wie sie sind (ihre Zeit ohne erkannte Seite).
+ */
+fun webseitenZusammenfassen(posten: List<Posten>): List<Posten> {
+    if (posten.none { seiteVon(it.schluessel) != null }) return posten
+    val einzeln = einzelneDomains(posten.associate { it.schluessel to it.sekunden })
+    val summe = LinkedHashMap<String, Long>()
+    val namen = HashMap<String, String>()
+    for (p in posten) {
+        val k = anzeigeSchluessel(p.schluessel, einzeln)
+        summe[k] = (summe[k] ?: 0L) + p.sekunden
+        namen[k] = anzeigename(k) ?: p.name
+    }
+    return sortiert(summe.map { (k, s) -> Posten(k, namen.getValue(k), s) })
 }
 
 /**

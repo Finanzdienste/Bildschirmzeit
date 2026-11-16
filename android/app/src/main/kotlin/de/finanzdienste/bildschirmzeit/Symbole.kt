@@ -18,7 +18,7 @@ object Symbole {
     /** Das Symbol eines Postens als Drawable: Web-App aus den Ressourcen, sonst vom System. */
     fun drawable(context: Context, posten: Posten): Drawable? {
         posten.webApp?.let { return ContextCompat.getDrawable(context, it.symbol) }
-        if (seiteVon(posten.schluessel) != null) return null
+        if (istWebseite(posten.schluessel)) return null
         return try {
             context.packageManager.getApplicationIcon(posten.schluessel)
         } catch (e: PackageManager.NameNotFoundException) {
@@ -33,7 +33,8 @@ object Symbole {
      * im Netz zu fragen), und klar anders als ein App-Symbol.
      */
     fun bild(context: Context, posten: Posten, groesse: Int): Bitmap {
-        if (seiteVon(posten.schluessel) != null) return buchstabe(posten.name, groesse, SEITE_FARBE)
+        if (posten.schluessel == SONSTIGE_WEBSEITEN) return buchstabe("…", groesse, SEITE_FARBE)
+        if (istWebseite(posten.schluessel)) return buchstabe(posten.name, groesse, SEITE_FARBE)
         return drawable(context, posten)?.toBitmap(groesse, groesse, Bitmap.Config.ARGB_8888) ?: buchstabe(posten.name, groesse)
     }
 
