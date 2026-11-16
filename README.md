@@ -1361,6 +1361,14 @@ spricht mit dem echten Supabase oder GitHub (`Netz.gesperrt`).
   Prüfsumme gleich dem `digest`, Zertifikat `bc6f91b9…759e`, versionCode 11,
   dieselben 9 Rechte. Gilt ab dem Update; was heute davor gezählt wurde,
   bleibt.
+- 16.11.2026, 21:07 (Tobis Screenshot): Das Widget sagt „Update blockiert“ –
+  v11 kam nicht an, die Automatische Sperre war wieder an; Chrome stand ganz
+  oben. Tobi: „Zwei Stunden Chrome?“ Release **v12** (Fassung 1.12, aus
+  a8618f4): Karte 4 schlüsselt die Browserzeit von heute auf (Seiten, ohne
+  Namen, Web-Apps, nicht erfasst). 220 Prüfungen, 47 SQL, 61 Web-Modul grün,
+  Lint ohne Fehler; Prüfsumme gleich dem `digest`, Zertifikat
+  `bc6f91b9…759e`, versionCode 12, dieselben 9 Rechte. Für v12 braucht Tobi
+  einmal die Klickfolge mit der Sperre (oder lässt sie aus).
 - Noch nicht auf dem S24 ausprobiert: Größen des Startbildschirms, Akku-
   Verhalten von One UI (ob es die App trotz Widget schlafen legt), ob
   Chrome den Verbinden-Link in der installierten Web-App oder als Tab
