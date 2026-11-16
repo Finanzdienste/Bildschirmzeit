@@ -1339,6 +1339,15 @@ spricht mit dem echten Supabase oder GitHub (`Netz.gesperrt`).
   dieselben 9 Rechte. Auf dem S24 noch offen: ob Chromes Leiste so heißt wie in
   den Quellen (Karte 4 zeigt dann eine Chrome-Seite unter „Zuletzt erkannt“),
   und ob One UI die eingeschaltete Bedienungshilfe nach dem Update behält.
+- 16.11.2026, 12:29 (Tobis Screenshot, Widget mit v10): Seiten und „Sonstige
+  Seiten“ erscheinen, aber noch „Chrome 7 Min.“ – Tobi: „Eigentlich dürften
+  Chrome und Firefox ja garnicht mehr auftauchen oder?“ Release **v11**
+  (Fassung 1.11, aus 8987e58): Seiten ohne erkennbaren Namen zählen zu
+  „Sonstige Webseiten“, der Browser bleibt nur, wo kein Web ist; Karte 4 je
+  Browser. 219 Prüfungen, 47 SQL, 61 Web-Modul grün, Lint ohne Fehler;
+  Prüfsumme gleich dem `digest`, Zertifikat `bc6f91b9…759e`, versionCode 11,
+  dieselben 9 Rechte. Gilt ab dem Update; was heute davor gezählt wurde,
+  bleibt.
 - Noch nicht auf dem S24 ausprobiert: Größen des Startbildschirms, Akku-
   Verhalten von One UI (ob es die App trotz Widget schlafen legt), ob
   Chrome den Verbinden-Link in der installierten Web-App oder als Tab
