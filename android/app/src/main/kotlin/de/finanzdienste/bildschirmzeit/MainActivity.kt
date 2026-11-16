@@ -526,15 +526,16 @@ class MainActivity : Activity(), UpdateBeobachter {
     }
 
     /**
-     * „Läuft. Zuletzt erkannt: o2mail.de in Firefox, 19:46; in Chrome noch
+     * „Läuft. Zuletzt erkannt: spiegel.de in Firefox, 19:46; in Chrome noch
      * keine Seite.“ – je Browser, damit man sieht, ob beide gelesen werden.
      */
     private fun zuletztText(b: Beobachtungen, jetzt: Long): String {
         val teile = listOf("Firefox" to FIREFOXE, "Chrome" to CHROMES).map { (name, pakete) ->
             b.zuletztErkannt(pakete)?.let { "${it.domain} in $name, ${zeitpunktText(it.zeit, jetzt)}" } ?: "in $name noch keine Seite"
         }
-        if (teile.all { it.startsWith("in ") }) return getString(R.string.schritt4_noch_nichts)
-        return getString(R.string.schritt4_zuletzt, teile.joinToString("; "))
+        val zuletzt = if (teile.all { it.startsWith("in ") }) getString(R.string.schritt4_noch_nichts) else getString(R.string.schritt4_zuletzt, teile.joinToString("; "))
+        val heute = Instant.ofEpochMilli(jetzt).atZone(ZoneId.systemDefault()).toLocalDate()
+        return listOfNotNull(zuletzt, aufschluesselungText(b.aufschluesselung(heute))).joinToString("\n")
     }
 
     private fun webZeilenAnlegen() {
@@ -722,4 +723,24 @@ fun webStandText(web: WebDaten, app: String, jetzt: Long): String {
         "heute ${dauerText(web.heute[app] ?: 0L)}, zuletzt ${zeitpunktText(zuletzt, jetzt)}"
     }
     return if (web.ohneNetz) "$text · ohne Netz" else text
+}
+/**
+ * „Chrome heute 2 Std. 4 Min.: 1 Std. 30 Min. Seiten, 10 Min. ohne Namen,
+ * 24 Min. nicht erfasst.“ – je Browser (ab einer Minute), Teile ab einer
+ * Minute; null, wenn heute kein Browser lief. Tobi, 16.11.: „Zwei Stunden Chrome?“
+ */
+fun aufschluesselungText(zeiten: Map<String, BrowserZeit>): String? {
+    val zeilen = ArrayList<String>()
+    var nichtErfasst = false
+    for ((name, pakete) in listOf("Firefox" to FIREFOXE, "Chrome" to CHROMES)) {
+        val z = zeiten.filterKeys { it in pakete }.values.fold(BrowserZeit()) { a, b -> a + b }
+        if (z.gesamt < 60) continue
+        val teile = listOf(z.seiten to "Seiten", z.ohneName to "ohne Namen", z.keinWeb to "Web-Apps", z.nichtErfasst to "nicht erfasst")
+            .filter { it.first >= 60 }.map { (s, was) -> "${dauerText(s)} $was" }
+        if (z.nichtErfasst >= 60) nichtErfasst = true
+        zeilen += "$name heute ${dauerText(z.gesamt)}: ${teile.joinToString(", ").ifEmpty { "alles unter einer Minute" }}."
+    }
+    if (zeilen.isEmpty()) return null
+    if (nichtErfasst) zeilen += "„Nicht erfasst“: Die Bedienungshilfe lief da nicht oder hat den Browser nicht erkannt."
+    return zeilen.joinToString("\n")
 }

@@ -76,7 +76,11 @@ object Rechner {
                 if (p in BROWSER) browser += Intervall(p, a, e)
             }
             android = nieWeniger(roh, bisher)
-            seiten = seitenZeiten(browser, Beobachtungen(context).lesen(mitternacht, jetzt))
+            val beobachtungen = Beobachtungen(context)
+            val liste = beobachtungen.lesen(mitternacht, jetzt)
+            seiten = seitenZeiten(browser, liste)
+            // Für Karte 4: wie die Browserzeit von heute aufgeteilt war (nur Sekunden).
+            beobachtungen.aufschluesselungMerken(heute, browserZeiten(browser, liste))
             nachtragen(context, verlauf, speicher, heute, zone, jetzt, launcher, home, name)
         } catch (e: SecurityException) {
             // Gerade eben in den Einstellungen wieder abgeschaltet.

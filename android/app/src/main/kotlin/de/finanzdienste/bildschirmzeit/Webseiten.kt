@@ -63,7 +63,7 @@ const val WEB_APPS_DOMAIN = "finanzdienste.github.io"
 /**
  * „Eine Seite, aber ohne erkennbare Domain“: neuer Tab, Suchbegriffe statt
  * Adresse, about:, private und Inkognito-Tabs. Zählt zu „Sonstige Webseiten“,
- * nie einzeln – Tobi, 16.11., Widget mit „Chrome 7 Min.“: „Eigentlich dürften
+ * nie einzeln – Tobi, 16.11., Widget mit Chrome als eigenem Eintrag: „Eigentlich dürften
  * Chrome und Firefox ja garnicht mehr auftauchen oder?“
  */
 const val OHNE_DOMAIN = "?"
@@ -295,10 +295,54 @@ data class Beobachtung(val zeit: Long, val paket: String, val domain: String?)
  * nichts – das bleibt Firefox. Zusammen nie mehr als die Intervalle.
  */
 fun seitenZeiten(intervalle: List<Intervall>, beobachtungen: List<Beobachtung>, gilt: Long = BEOBACHTUNG_GILT_MS): Map<String, Long> {
-    if (intervalle.isEmpty() || beobachtungen.isEmpty()) return emptyMap()
+    val ms = HashMap<String, Long>()
+    stuecke(intervalle, beobachtungen, gilt) { paket, b, dauer ->
+        val domain = b?.domain
+        if (domain != null) {
+            val k = seitenSchluessel(paket, domain)
+            ms[k] = (ms[k] ?: 0L) + dauer
+        }
+    }
+    return ms.mapValues { it.value / 1000 }.filterValues { it > 0 }
+}
+
+/**
+ * Wie die Vordergrundzeit eines Browsers aufgeteilt war (Sekunden) – für
+ * Karte 4, damit „2 Std. Chrome“ (Tobi, 16.11.: „Zwei Stunden Chrome?“) nicht
+ * geraten werden muss: Seiten mit Namen, Seiten ohne Namen (neuer Tab, Suche,
+ * privat), kein Web (Web-Apps, Custom Tabs ohne Leiste), nicht erfasst
+ * (Bedienungshilfe lief nicht, oder der Browser wurde nie erkannt).
+ */
+data class BrowserZeit(val seiten: Long = 0, val ohneName: Long = 0, val keinWeb: Long = 0, val nichtErfasst: Long = 0) {
+    val gesamt: Long get() = seiten + ohneName + keinWeb + nichtErfasst
+
+    operator fun plus(o: BrowserZeit) = BrowserZeit(seiten + o.seiten, ohneName + o.ohneName, keinWeb + o.keinWeb, nichtErfasst + o.nichtErfasst)
+}
+
+/** Dieselben Stücke wie seitenZeiten, nach Art des Stands je Browser-Paket (Sekunden). */
+fun browserZeiten(intervalle: List<Intervall>, beobachtungen: List<Beobachtung>, gilt: Long = BEOBACHTUNG_GILT_MS): Map<String, BrowserZeit> {
+    val ms = HashMap<String, LongArray>()
+    for (iv in intervalle) ms.getOrPut(iv.paket) { LongArray(4) }
+    stuecke(intervalle, beobachtungen, gilt) { paket, b, dauer ->
+        val art = when {
+            b == null || b.paket == ALLE -> 3
+            b.domain == null -> 2
+            b.domain == OHNE_DOMAIN -> 1
+            else -> 0
+        }
+        ms.getValue(paket)[art] += dauer
+    }
+    return ms.mapValues { (_, a) -> BrowserZeit(a[0] / 1000, a[1] / 1000, a[2] / 1000, a[3] / 1000) }
+}
+
+/**
+ * Jedes Vordergrund-Intervall eines Browsers an den Beobachtungen teilen: `je`
+ * bekommt Paket, die dann geltende Beobachtung (null: keine oder älter als
+ * `gilt`) und die Dauer in ms. Zusammen genau die Intervalle.
+ */
+private inline fun stuecke(intervalle: List<Intervall>, beobachtungen: List<Beobachtung>, gilt: Long, je: (String, Beobachtung?, Long) -> Unit) {
     val fuerAlle = beobachtungen.filter { it.paket == ALLE }
     val jePaket = HashMap<String, List<Beobachtung>>()
-    val ms = HashMap<String, Long>()
     for (iv in intervalle) {
         if (iv.bis <= iv.von) continue
         val liste = jePaket.getOrPut(iv.paket) { (beobachtungen.filter { it.paket == iv.paket } + fuerAlle).sortedBy { it.zeit } }
@@ -309,18 +353,13 @@ fun seitenZeiten(intervalle: List<Intervall>, beobachtungen: List<Beobachtung>, 
         while (t < iv.bis) {
             val naechste = liste.getOrNull(j)?.takeIf { it.zeit < iv.bis }
             val ende = naechste?.zeit ?: iv.bis
-            val domain = aktuell?.domain
-            if (domain != null && ende > t) {
-                val k = seitenSchluessel(iv.paket, domain)
-                ms[k] = (ms[k] ?: 0L) + (ende - t)
-            }
+            if (ende > t) je(iv.paket, aktuell, ende - t)
             if (naechste == null) break
             aktuell = naechste
             t = maxOf(t, naechste.zeit)
             j++
         }
     }
-    return ms.mapValues { it.value / 1000 }.filterValues { it > 0 }
 }
 
 /**
@@ -438,7 +477,41 @@ class Beobachtungen(context: Context) {
 
     fun loeschen() = synchronized(SPERRE) {
         datei.delete()
+        aufschluesselung.delete()
         letzte = null
+    }
+
+    private val aufschluesselung = File(datei.parentFile, "heute.json")
+
+    /** Die Aufschlüsselung von heute je Browser-Paket merken (nur Sekunden, keine Seiten). */
+    fun aufschluesselungMerken(tag: java.time.LocalDate, zeiten: Map<String, BrowserZeit>) = synchronized(SPERRE) {
+        val o = org.json.JSONObject().put("tag", tag.toString())
+        val p = org.json.JSONObject()
+        for ((paket, z) in zeiten) p.put(paket, org.json.JSONArray(listOf(z.seiten, z.ohneName, z.keinWeb, z.nichtErfasst)))
+        try {
+            aufschluesselung.parentFile?.mkdirs()
+            aufschluesselung.writeText(o.put("pakete", p).toString())
+        } catch (e: IOException) {
+            // beim nächsten Mal
+        }
+    }
+
+    /** Die Aufschlüsselung, wenn sie von `tag` ist; sonst leer. */
+    fun aufschluesselung(tag: java.time.LocalDate): Map<String, BrowserZeit> = synchronized(SPERRE) {
+        try {
+            if (!aufschluesselung.isFile) return@synchronized emptyMap()
+            val o = org.json.JSONObject(aufschluesselung.readText())
+            if (o.optString("tag") != tag.toString()) return@synchronized emptyMap()
+            val p = o.optJSONObject("pakete") ?: return@synchronized emptyMap()
+            p.keys().asSequence().associateWith { k ->
+                val a = p.getJSONArray(k)
+                BrowserZeit(a.optLong(0), a.optLong(1), a.optLong(2), a.optLong(3))
+            }
+        } catch (e: IOException) {
+            emptyMap()
+        } catch (e: org.json.JSONException) {
+            emptyMap()
+        }
     }
 
     private fun alleLesen(): List<Beobachtung> {

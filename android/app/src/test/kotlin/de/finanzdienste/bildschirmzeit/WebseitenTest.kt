@@ -280,7 +280,7 @@ class WebseitenTest {
         assertEquals(200L, auswerten(Zeitraum.um(Reiter.TAG, mo), verlauf, mo.plusDays(1), mo, nur = SONSTIGE_WEBSEITEN).gesamt)
     }
     /**
-     * Tobi, 16.11. (Widget mit „Chrome 7 Min.“): „Eigentlich dürften Chrome und
+     * Tobi, 16.11. (Widget mit Chrome als eigenem Eintrag): „Eigentlich dürften Chrome und
      * Firefox ja garnicht mehr auftauchen oder?“ – Browserzeit ohne erkennbaren
      * Namen (neuer Tab, Suchbegriffe, privat, Inkognito) zählt zu „Sonstige
      * Webseiten“; nur Web-Apps (kein Web) bleiben beim Browser.
@@ -299,5 +299,35 @@ class WebseitenTest {
         )
         assertEquals(listOf("Sonstige Webseiten" to 1000L, "Chrome" to 60L), gezeigt.map { it.name to it.sekunden })
         assertEquals(SONSTIGE_NAME, anzeigename(seitenSchluessel(ff, OHNE_DOMAIN)))
+    }
+    /** Tobi, 16.11.: „Zwei Stunden Chrome?“ – wie die Browserzeit aufgeteilt war, für Karte 4. */
+    @Test
+    fun browserZeitAufgeschluesselt() {
+        val iv = listOf(Intervall(CHROME, 0L, 60 * min), Intervall(ff, 0L, 5 * min))
+        val b = listOf(
+            Beobachtung(0L, CHROME, "youtube.com"),
+            Beobachtung(10 * min, CHROME, OHNE_DOMAIN),
+            Beobachtung(20 * min, CHROME, null),
+            Beobachtung(30 * min, ALLE, null),
+        )
+        val z = browserZeiten(iv, b)
+        assertEquals(BrowserZeit(seiten = 600, ohneName = 600, keinWeb = 600, nichtErfasst = 1800), z[CHROME])
+        assertEquals(BrowserZeit(nichtErfasst = 300), z[ff])
+        assertEquals(3600L, z.getValue(CHROME).gesamt)
+        // Zusammen genau die Zeit der Intervalle, und seitenZeiten zählt dasselbe.
+        assertEquals(600L + 600L, seitenZeiten(iv, b).values.sum())
+        assertEquals(
+            "Chrome heute 1 Std.: 10 Min. Seiten, 10 Min. ohne Namen, 10 Min. Web-Apps, 30 Min. nicht erfasst.\n" +
+                "„Nicht erfasst“: Die Bedienungshilfe lief da nicht oder hat den Browser nicht erkannt.",
+            aufschluesselungText(mapOf(CHROME to z.getValue(CHROME))),
+        )
+        assertEquals(
+            "Firefox heute 5 Min.: 5 Min. nicht erfasst.\nChrome heute 1 Std.: 10 Min. Seiten, 10 Min. ohne Namen, 10 Min. Web-Apps, 30 Min. nicht erfasst.\n" +
+                "„Nicht erfasst“: Die Bedienungshilfe lief da nicht oder hat den Browser nicht erkannt.",
+            aufschluesselungText(z),
+        )
+        // Alles erkannt: keine Erklärung; unter einer Minute Browser: nichts.
+        assertEquals("Chrome heute 30 Min.: 30 Min. Seiten.", aufschluesselungText(mapOf(CHROME to BrowserZeit(seiten = 1800))))
+        assertNull(aufschluesselungText(mapOf(CHROME to BrowserZeit(seiten = 30))))
     }
 }

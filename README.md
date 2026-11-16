@@ -77,7 +77,7 @@ der Statistik, mit dem Weg über die eingeschränkte Einstellung).
   bleibt „Firefox“ bzw. „Chrome“; Tobis Web-Apps zählen in Chrome weiter als
   Boxenstopp, Freizeit und Workout, nicht als Seite.
 - „Eigentlich dürften Chrome und Firefox ja garnicht mehr auftauchen oder?“
-  (16.11., 12:29, Widget mit „Chrome 7 Min.“) – seit v11 zählt Browserzeit
+  (16.11., 12:29, Widget mit Chrome als eigenem Eintrag) – seit v11 zählt Browserzeit
   ohne erkennbaren Namen (neuer Tab, Suchbegriffe statt Adresse, about:,
   privat, Inkognito) zu „Sonstige Webseiten“. „Chrome“/„Firefox“ bleibt nur
   für installierte Web-Apps (kein Web; bei Tobis Web-Apps die Zeit, die sie
@@ -868,7 +868,7 @@ Bilder `vorschau-app-eine-hell.png` / `-dunkel.png`.
 > „Das gleiche für Chrome. Aber würde sagen lass mal machen dass alles unter
 > fünf min unter sonstige websiten zusammengefasst wird oder? Also Chrome und
 > Firefox addiert“ – Tobi, 16.11. (nach dem ersten Abend mit v9: „Zuletzt
-> erkannt: o2mail.de“, die Firefox-Zeit von vorher noch ganz „Firefox“).
+> erkannt: …“ mit einer Seite, die Firefox-Zeit von vorher noch ganz „Firefox“).
 
 **v10 – Chrome, zusammen, ab 5 Minuten:**
 - Der Dienst sieht auch Chrome (`com.android.chrome`, `com.chrome.beta`,
@@ -971,6 +971,19 @@ Geprüft: `WebseitenTest.wasDerDienstSichMerkt` (die drei Arten, `?` nie
 einzeln), `WebseitenGeraetTest.chromeUndFirefoxZusammenKleineUnterSonstige`
 (Suche → Sonstige, Web-App → Chrome, Summe gleich),
 `karteVierAusAnUndWasZuletztKam` (je Browser, `?` zählt nicht als erkannt).
+
+**v12 – woher die Browserzeit kommt:** Tobi, 16.11., 21:07 (Widget mit
+v10: „Update blockiert“, Chrome ganz oben): „Zwei Stunden Chrome?“ Die
+Web-Apps hatten an dem Tag kaum Zeit gemeldet, daran lag es also nicht. Damit das nicht geraten werden muss, teilt dieselbe Rechnung
+(`stuecke`, gemeinsam mit `seitenZeiten`) jede Browserzeit von heute auf
+(`browserZeiten`): Seiten mit Namen, ohne Namen, Web-Apps (kein Web), nicht
+erfasst (die Bedienungshilfe lief nicht oder hat den Browser nie erkannt).
+`Rechner` merkt sie bei jeder Rechnung in `webseiten/heute.json` (nur
+Sekunden je Browser, keine Seiten; „Alle Daten löschen“ nimmt sie mit), Karte
+4 zeigt sie: „Chrome heute 2 Std. 4 Min.: 1 Std. 30 Min. Seiten, 10 Min.
+ohne Namen, 24 Min. nicht erfasst.“ Geprüft: `WebseitenTest.browserZeitAufgeschluesselt`,
+`WebseitenGeraetTest.chromeUndFirefoxZusammenKleineUnterSonstige` (die Aufteilung
+nach einer echten Rechnung).
 
 **Geprüft (v10):** `WebseitenTest.chromeLeiste` (url_bar mit und ohne Fokus,
 Suchbegriffe, neuer Tab, Inkognito, Web-App, Custom Tab, Vollbild),
@@ -1326,7 +1339,7 @@ spricht mit dem echten Supabase oder GitHub (`Netz.gesperrt`).
   wie in den Quellen, sagt Karte 4 („Zuletzt erkannt: …“).
 - 15.11.2026, 19:47 (Tobis Screenshots): v9 kam von selbst („Zuletzt
   aktualisiert: 19:45 auf 1.9“), und der Dienst liest Tobis Firefox: Karte 4
-  „Läuft. Zuletzt erkannt: o2mail.de, 19:46.“ Die Firefox-Zeit von heute
+  „Läuft. Zuletzt erkannt: …, 19:46.“ (eine echte Seite) Die Firefox-Zeit von heute
   stand trotzdem noch ganz unter „Firefox“ – sie war fast ganz von vor dem
   Einschalten (gezählt wird erst ab dann, früher hat niemand mitgeschrieben,
   welche Seite offen war), und eine Seite wird erst ab 1 Minute am Tag ein
@@ -1340,7 +1353,7 @@ spricht mit dem echten Supabase oder GitHub (`Netz.gesperrt`).
   den Quellen (Karte 4 zeigt dann eine Chrome-Seite unter „Zuletzt erkannt“),
   und ob One UI die eingeschaltete Bedienungshilfe nach dem Update behält.
 - 16.11.2026, 12:29 (Tobis Screenshot, Widget mit v10): Seiten und „Sonstige
-  Seiten“ erscheinen, aber noch „Chrome 7 Min.“ – Tobi: „Eigentlich dürften
+  Seiten“ erscheinen, aber noch Chrome als eigener Eintrag – Tobi: „Eigentlich dürften
   Chrome und Firefox ja garnicht mehr auftauchen oder?“ Release **v11**
   (Fassung 1.11, aus 8987e58): Seiten ohne erkennbaren Namen zählen zu
   „Sonstige Webseiten“, der Browser bleibt nur, wo kein Web ist; Karte 4 je

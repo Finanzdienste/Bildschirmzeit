@@ -216,6 +216,11 @@ class WebseitenGeraetTest {
             listOf("youtube.com" to 50 * 60L, "Chrome" to 18 * 60L, "spiegel.de" to 15 * 60L, "Chat" to 10 * 60L, "Sonstige Webseiten" to 7 * 60L),
             e.posten.map { it.name to it.sekunden },
         )
+        // Für Karte 4: wie die Browserzeit aufgeteilt war (nur Sekunden).
+        val z = Beobachtungen(kontext).aufschluesselung(heute)
+        assertEquals(BrowserZeit(seiten = 12 * 60L, keinWeb = 18 * 60L), z[CHROME])
+        assertEquals(BrowserZeit(seiten = 55 * 60L, ohneName = 5 * 60L), z[ff])
+        assertTrue(Beobachtungen(kontext).aufschluesselung(heute.plusDays(1)).isEmpty())
         // Im Verlauf je Browser (für nieWeniger), auch die kleine Seite.
         val tag = Verlauf(kontext).lesen(heute)!!
         assertEquals(120L, tag.posten.single { it.schluessel == seitenSchluessel(CHROME, "klein.de") }.sekunden)
