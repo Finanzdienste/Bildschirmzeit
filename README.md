@@ -28,7 +28,7 @@ noch nicht eingerichtet, dunkel eingerichtet), `vorschau-app-monat-*.png`
 (ein Monat mit Lücken), `vorschau-app-tag-hell.png` (der Reiter Tag),
 `vorschau-app-eine-hell.png` / `-dunkel.png` (eine App angetippt: ihre Woche),
 `vorschau-webseiten-dunkel.png` (das Widget mit youtube.com und wikipedia.org
-als eigene Einträge und „Sonstige Seiten“, Kachel der Seiten blau),
+als eigene Einträge und „Sonstiges“, Kachel der Seiten blau),
 `vorschau-app-einrichten-hell.png` (die App ohne Erlaubnis: deren Karte vor
 der Statistik, mit dem Weg über die eingeschränkte Einstellung).
 
@@ -83,9 +83,12 @@ der Statistik, mit dem Weg über die eingeschränkte Einstellung).
   für installierte Web-Apps (kein Web; bei Tobis Web-Apps die Zeit, die sie
   noch nicht an Supabase gemeldet haben) und für Zeit, in der die
   Bedienungshilfe nicht lief.
-- Diskret (17.11.): bestimmte Seiten nie mit Namen – das Widget steht auf dem
-  Startbildschirm, den jeder sieht. Erotikseiten erkennt die App selbst, jede
-  andere legt Tobi mit einem Tipp unter „Sonstige“ (unten „Diskret“).
+- Diskret (17.11.): bestimmte Seiten und Apps nie mit Namen – das Widget steht
+  auf dem Startbildschirm, den jeder sieht. Erotikseiten sowie Dating-Apps und
+  -Seiten erkennt die App selbst, alles andere legt Tobi mit einem Tipp unter
+  „Sonstiges“ (unten „Diskret“). Seit v14 heißt der Sammeleintrag „Sonstiges“
+  statt „Sonstige Webseiten“: Er nimmt auch Apps auf; ein eigener Eintrag
+  „Sonstige Apps“ hätte verraten, dass dort eine App steckt.
 - „Ich will auch auf ne eigene App klicken und dann deren verteilung zb über
   die Woche sehen können“ (15.11., 17:21, Screenshot der Woche in v7) – ein
   Tipp auf eine App in der Statistik zeigt nur sie, je Tag (unten „Eine App
@@ -892,10 +895,11 @@ Bilder `vorschau-app-eine-hell.png` / `-dunkel.png`.
   Seite. Gezeigt wird zusammengefasst (`webseitenZusammenfassen`, in der
   Statistik `auswerten`): dieselbe Domain aus beiden Browsern addiert
   (`webseite:<domain>`), einzeln ab 5 Minuten im Tag (Widget) bzw. im
-  Zeitraum (Tag, Woche, Monat), der Rest als „Sonstige Webseiten“ (blaue
-  Kachel „…“; im Widget „Sonstige Seiten“, die volle Fassung war in Tobis
-  4×2 abgeschnitten). Eine angetippte Seite zählt in jeder Woche einzeln,
-  „Sonstige Webseiten“ lässt sich auch antippen. Die Gesamtzeit ändert sich nie.
+  Zeitraum (Tag, Woche, Monat), der Rest als „Sonstiges“ (blaue Kachel „…“;
+  bis v13 „Sonstige Webseiten“, im Widget „Sonstige Seiten“ – die volle
+  Fassung war in Tobis 4×2 abgeschnitten). Eine angetippte Seite zählt in
+  jeder Woche einzeln, „Sonstiges“ lässt sich auch antippen. Die Gesamtzeit
+  ändert sich nie.
 
 ![Widget mit Webseiten, dunkel](docs/vorschau-webseiten-dunkel.png)
 
@@ -1023,7 +1027,7 @@ ob ihre Beschreibung so aussieht wie in den Quellen (sonst bleibt alles
 Screenshot); ob One UI den Dienst in Ruhe lässt (Akku); ob Firefox mit
 eingeschalteter Bedienungshilfe spürbar langsamer wird.
 
-## Diskret: manche Seiten nie mit Namen (v13)
+## Diskret: manche Seiten und Apps nie mit Namen (v13, v14)
 
 **Warum:** Das Widget steht auf dem Startbildschirm, den jeder sieht – manche
 Seiten sollen dort (und in der Statistik) nie mit Namen erscheinen. Auf
@@ -1035,27 +1039,50 @@ Tobis Wunsch vom 17.11.
   Endungen nur für Erwachsene (.xxx, .porn, .adult, .sex, .sexy), eine kleine
   Liste bekannter Seiten ohne solches Wort, und „sex“ nur am Anfang eines
   Teils (so nicht sussex.ac.uk, essex.gov.uk). Ändert sich die Erkennung,
-  `Erotik.STAND` erhöhen.
-- **Verborgen**: Jede andere Seite legt Tobi in der Statistik selbst dazu –
-  Seite antippen → „Unter „Sonstige“ zusammenfassen“ → Rückfrage. Die Liste
-  liegt in `noBackupFilesDir/webseiten/verborgen.txt` (nie in der Sicherung,
-  nie im Netz). Karte 4 sagt, wie viele es sind, „Wieder einzeln zeigen“
-  leert die Liste (gilt nur für die Zukunft). „Alle Daten löschen“ leert sie
-  auch.
-- Solche Seiten zählen immer zu „Sonstige Webseiten“: Der Dienst merkt sich
+  `DISKRET_STAND` erhöhen.
+- **Verborgen**: Jede andere Seite oder App legt Tobi in der Statistik selbst
+  dazu – antippen → unten in der Karte „Unter „Sonstiges“ zusammenfassen“ →
+  Rückfrage. Die Liste liegt in `noBackupFilesDir/webseiten/verborgen.txt`
+  (nie in der Sicherung, nie im Netz). Die Karte „Diskret“ sagt, wie viele es
+  sind, „Wieder einzeln zeigen“ leert die Liste (gilt nur für die Zukunft).
+  „Alle Daten löschen“ leert sie auch.
+- Solche Seiten zählen immer zu „Sonstiges“: Der Dienst merkt sich
   für sie nur „eine Seite ohne Namen“ (`zuMerken(…, verborgen)` → `?`), die
-  Anzeige legt sie unter „Sonstige“ (`einzelneDomains(…, verborgen)`), und was
+  Anzeige legt sie unter „Sonstiges“ (`einzelneDomains(…, verborgen)`), und was
   schon mit Namen gespeichert war, wird umgeschrieben (`namenEntfernen`:
   jeder Tag im Verlauf und die Beobachtungen; die Zeiten bleiben, `androidTeil`
   ist gleich, also zählt `nieWeniger` nichts doppelt). Für die Erkennung
   passiert das einmal beim ersten Lauf nach dem Update (`Speicher.erotikStand`),
   für eine selbst zusammengelegte Seite sofort (unter `Aktualisierung.allein`).
 
+**v14 – Dating, mehr Seiten, „Sonstiges“** (Tobi, 17.11.: Dating-Apps
+sollen auch dorthin; eine Erotikseite war nicht erkannt):
+- **Partnersuche** erkennt Dating-Apps am Paket (`com.tinder` …), am Namen
+  der App (genau: „Tinder“, „Lovoo“, „Parship“ …) oder an Wörtern („dating“,
+  „partnersuche“, „singleb“, „flirt“), Dating-Seiten an der Domain. Apps
+  zählen nur in der Anzeige zu „Sonstiges“ (Widget, Statistik); im Verlauf
+  bleiben sie mit Paket – Android kennt sie ohnehin, und `nieWeniger`
+  braucht die Pakete.
+- Die Liste bekannter Erotikseiten ist größer und steht nur als Prüfsumme im
+  Code (die ersten 16 Zeichen von SHA-256 der Domain, `Erotik.pruefsumme`) –
+  das öffentliche Repo trägt keine Seitennamen. `DISKRET_STAND` = 2: Die
+  nächste Rechnung schreibt Gespeichertes neu erkannter Seiten einmal um.
+- Jede App lässt sich selbst zusammenlegen (Statistik → App antippen →
+  unten in der Karte „Unter „Sonstiges“ zusammenfassen“; in der Liste als
+  `app:<paket>`). Der Knopf stand in v13 groß oben unter dem Namen, jetzt
+  leise am Ende der Karte. Die
+  Hinweise und „Wieder einzeln zeigen“ stehen jetzt in einer eigenen Karte
+  „Diskret“ (nicht mehr in Karte 4, sie gilt auch ohne Bedienungshilfe).
+- Der Sammeleintrag heißt überall „Sonstiges“ (Widget wie App).
+Geprüft: `DiskretTest.datingAppsUndSeiten`, `appsUnterSonstiges`,
+`bekannteSeitenNurAlsPruefsumme`; `DiskretGeraetTest.datingAppNurAlsSonstiges`,
+`eineAppSelbstZusammenfassen`.
+
 **Geprüft:** `DiskretTest` (Erkennung mit Fehltreffer-Proben, der Dienst
-merkt keinen Namen, Anzeige und Statistik nur „Sonstige“, ein Tag ohne Namen
-mit gleicher Zeit) und `DiskretGeraetTest` (nach dem Update ohne Namen in
-Widget, Verlauf und Beobachtungen; eine Seite selbst zusammenfassen mit
-Rückfrage, Karte 4, „Wieder einzeln zeigen“; „Alle Daten löschen“).
+merkt keinen Namen, Anzeige und Statistik nur „Sonstiges“, ein Tag ohne
+Namen mit gleicher Zeit) und `DiskretGeraetTest` (nach dem Update ohne Namen
+in Widget, Verlauf und Beobachtungen; eine Seite selbst zusammenfassen mit
+Rückfrage, Karte „Diskret“, „Wieder einzeln zeigen“; „Alle Daten löschen“).
 
 ## Der Vertrag zwischen Widget-App, Supabase und Web-Apps
 
@@ -1158,7 +1185,7 @@ android/                     Gradle-Projekt (Kotlin DSL)
     Statistik.kt             Tag, Woche, Monat: Zeiträume, Titel, Summen (rein)
     Webseiten.kt             Seiten in Firefox und Chrome: Domain, Adresszeile, Aufteilung, Zusammenfassen (rein), Beobachtungen, Schalter
     WebseitenDienst.kt       die Bedienungshilfe „Bildschirmzeit: Webseiten“ (nur die Browser), Drossel
-    Diskret.kt               Seiten nie mit Namen: Erotik-Erkennung, eigene Liste, Namen aus dem Gespeicherten löschen
+    Diskret.kt               nie mit Namen: Erotik (Prüfsummen), Partnersuche, eigene Liste, Namen aus dem Gespeicherten löschen
     Balken.kt                das Balkendiagramm der Statistik (Canvas)
     Ziel.kt                  wohin das Widget die App öffnet (Extra an MainActivity: statistik, update)
     WidgetAnsicht.kt         WidgetRaster (wie viele Apps in welche Größe, rein), RemoteViews

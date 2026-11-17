@@ -116,8 +116,8 @@ class DiskretGeraetTest {
 
         val e = Rechner.berechnen(kontext, netz = false, jetzt = um(21, 30))
         // Gleich lang: nach Name (sortiert).
-        assertEquals(listOf("Sonstige Webseiten" to 30 * 60L, "youtube.com" to 30 * 60L), e.posten.map { it.name to it.sekunden })
-        assertEquals(Erotik.STAND, Speicher(kontext).erotikStand)
+        assertEquals(listOf("Sonstiges" to 30 * 60L, "youtube.com" to 30 * 60L), e.posten.map { it.name to it.sekunden })
+        assertEquals(DISKRET_STAND, Speicher(kontext).erotikStand)
         assertFalse(beobachtungenText().contains("porno"))
         val alt = Verlauf(kontext).lesen(gestern)!!
         assertEquals(960L, alt.gesamt)
@@ -151,22 +151,63 @@ class DiskretGeraetTest {
         ShadowAlertDialog.getLatestAlertDialog().getButton(DialogInterface.BUTTON_POSITIVE).performClick()
         warten()
         assertEquals(setOf("meine-seite.de"), Verborgen(kontext).eigene())
-        assertTrue(namen().toString(), "meine-seite.de" !in namen() && "Sonstige Webseiten" in namen())
+        assertTrue(namen().toString(), "meine-seite.de" !in namen() && "Sonstiges" in namen())
         assertFalse(beobachtungenText().contains("meine-seite"))
         assertTrue(Verlauf(kontext).lesen(heute)!!.posten.none { "meine-seite" in it.schluessel })
-        // Karte 4 sagt es und kann es zurücknehmen (für die Zukunft).
-        a.schritt4Zeigen()
-        assertTrue(a.findViewById<TextView>(R.id.schritt4_diskret).text.toString().endsWith("Von dir zusammengefasst: 1."))
-        val zeigen = a.findViewById<View>(R.id.schritt4_wieder_zeigen)
+        // Die Karte „Diskret“ sagt es und kann es zurücknehmen (für die Zukunft).
+        assertEquals("Von dir zusammengefasst: 1.", a.findViewById<TextView>(R.id.diskret_eigene).text.toString())
+        val zeigen = a.findViewById<View>(R.id.diskret_wieder_zeigen)
         assertEquals(View.VISIBLE, zeigen.visibility)
         zeigen.performClick()
         warten()
         assertTrue(Verborgen(kontext).eigene().isEmpty())
         assertEquals(View.GONE, zeigen.visibility)
-        // „Sonstige Webseiten“ selbst hat keinen solchen Knopf.
-        (0 until liste.childCount).map { liste.getChildAt(it) }.first { it.findViewById<TextView>(R.id.name).text == "Sonstige Webseiten" }.performClick()
+        // „Sonstiges“ selbst hat keinen solchen Knopf.
+        (0 until liste.childCount).map { liste.getChildAt(it) }.first { it.findViewById<TextView>(R.id.name).text == "Sonstiges" }.performClick()
         warten()
         assertEquals(View.GONE, a.findViewById<View>(R.id.seite_zusammenfassen).visibility)
+    }
+
+    /** Eine Dating-App aus Androids Ereignissen steht im Widget nur unter „Sonstiges“. */
+    @Test
+    fun datingAppNurAlsSonstiges() {
+        val pm = shadowOf(kontext.packageManager)
+        pm.installPackage(PackageInfo().apply { packageName = "com.tinder"; applicationInfo = ApplicationInfo().apply { packageName = "com.tinder"; nonLocalizedLabel = "Tinder" } })
+        val k = ComponentName("com.tinder", "com.tinder.Haupt")
+        pm.addActivityIfNotPresent(k)
+        pm.addIntentFilterForActivity(k, IntentFilter(Intent.ACTION_MAIN).apply { addCategory(Intent.CATEGORY_LAUNCHER) })
+        benutzt("com.tinder", um(20), um(20, 20))
+        benutzt("com.beispiel.chat", um(21), um(21, 10))
+        val e = Rechner.berechnen(kontext, netz = false, jetzt = um(21, 30))
+        assertEquals(listOf("Sonstiges" to 20 * 60L, "Chat" to 10 * 60L), e.posten.map { it.name to it.sekunden })
+    }
+
+    /** Eine beliebige App selbst unter „Sonstiges“ legen – und zurück. */
+    @Test
+    fun eineAppSelbstZusammenfassen() {
+        shadowOf(kontext.getSystemService(AppOpsManager::class.java))
+            .setMode(AppOpsManager.OPSTR_GET_USAGE_STATS, Process.myUid(), kontext.packageName, AppOpsManager.MODE_IGNORED)
+        Verlauf(kontext).schreiben(
+            Tag(heute, sortiert(listOf(Posten("com.beispiel.spiel", "Spiel", 1800L), Posten("com.beispiel.chat", "Chat", 600L))), fertig = false),
+        )
+        val a = Robolectric.buildActivity(MainActivity::class.java).setup().get()
+        a.uhrStellen { um(21, 40) }
+        a.findViewById<View>(R.id.reiter_tag).performClick()
+        warten()
+        val liste = a.findViewById<ViewGroup>(R.id.app_liste)
+        fun namen() = (0 until liste.childCount).map { liste.getChildAt(it).findViewById<TextView>(R.id.name).text.toString() }
+        (0 until liste.childCount).map { liste.getChildAt(it) }.first { it.findViewById<TextView>(R.id.name).text == "Spiel" }.performClick()
+        warten()
+        a.findViewById<View>(R.id.seite_zusammenfassen).performClick()
+        ShadowAlertDialog.getLatestAlertDialog().getButton(DialogInterface.BUTTON_POSITIVE).performClick()
+        warten()
+        assertEquals(setOf(Verborgen.APP + "com.beispiel.spiel"), Verborgen(kontext).eigene())
+        assertEquals(listOf("Sonstiges", "Chat"), namen())
+        // Der Verlauf bleibt bei Apps, wie er ist (Android kennt die App ohnehin); nur die Anzeige fasst zusammen.
+        assertTrue(Verlauf(kontext).lesen(heute)!!.posten.any { it.schluessel == "com.beispiel.spiel" })
+        a.findViewById<View>(R.id.diskret_wieder_zeigen).performClick()
+        warten()
+        assertEquals(listOf("Spiel", "Chat"), namen())
     }
 
     @Test

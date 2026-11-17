@@ -194,7 +194,7 @@ class WebseitenGeraetTest {
      * youtube.com, 15 Min. spiegel.de, 5 Min. Suche ohne Adresse), Chrome
      * 21:00–21:30 (10 Min. youtube.com, 2 Min. klein.de, dann eine Web-App),
      * Chat 10 Min.: youtube.com 50 Min., Chrome 18 (nur die Web-App), spiegel.de
-     * 15, Chat 10, „Sonstige Webseiten“ 7 (Suche und klein.de) – zusammen 100.
+     * 15, Chat 10, „Sonstiges“ 7 (Suche und klein.de) – zusammen 100.
      */
     @Test
     fun chromeUndFirefoxZusammenKleineUnterSonstige() {
@@ -204,7 +204,7 @@ class WebseitenGeraetTest {
         val b = Beobachtungen(kontext)
         b.merken(Beobachtung(um(20), ff, "youtube.com"))
         b.merken(Beobachtung(um(20, 40), ff, "spiegel.de"))
-        // Ab 20:55 eine Google-Suche (Suchbegriffe statt Adresse): „Sonstige Webseiten“.
+        // Ab 20:55 eine Google-Suche (Suchbegriffe statt Adresse): „Sonstiges“.
         b.merken(Beobachtung(um(20, 55), ff, zuMerken(ff, Befund.Keine).second))
         b.merken(Beobachtung(um(21), CHROME, "youtube.com"))
         b.merken(Beobachtung(um(21, 10), CHROME, "klein.de"))
@@ -213,7 +213,7 @@ class WebseitenGeraetTest {
         val e = Rechner.berechnen(kontext, netz = false, jetzt = um(21, 40))
         assertEquals(100 * 60L, e.gesamt)
         assertEquals(
-            listOf("youtube.com" to 50 * 60L, "Chrome" to 18 * 60L, "spiegel.de" to 15 * 60L, "Chat" to 10 * 60L, "Sonstige Webseiten" to 7 * 60L),
+            listOf("youtube.com" to 50 * 60L, "Chrome" to 18 * 60L, "spiegel.de" to 15 * 60L, "Chat" to 10 * 60L, "Sonstiges" to 7 * 60L),
             e.posten.map { it.name to it.sekunden },
         )
         // Für Karte 4: wie die Browserzeit aufgeteilt war (nur Sekunden).

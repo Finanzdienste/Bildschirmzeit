@@ -152,6 +152,7 @@ fun auswerten(
     datenSeit: LocalDate?,
     nur: String? = null,
     verborgen: (String) -> Boolean = { false },
+    appVerborgen: (String, String) -> Boolean = { _, _ -> false },
 ): Auswertung {
     val summe = HashMap<String, Long>()
     val namen = HashMap<String, String>()
@@ -163,18 +164,21 @@ fun auswerten(
         }
     }
     val einzeln = einzelneDomains(summe, immer = nur, verborgen = verborgen)
+    // Seiten zusammen (ab 5 Minuten einzeln), Apps, die nie mit Namen erscheinen, zu „Sonstiges“ (Diskret.kt).
+    fun gruppe(k: String, name: String): String =
+        if (seiteVon(k) == null && appVerborgen(k, name)) SONSTIGE_WEBSEITEN else anzeigeSchluessel(k, einzeln)
     val tage = z.tage.map { d ->
         val tag = verlauf[d]
         when {
             d > heute -> Tageswert(d, null, zukunft = true)
             tag == null -> Tageswert(d, null)
             nur == null -> Tageswert(d, tag.gesamt)
-            else -> Tageswert(d, tag.posten.filter { anzeigeSchluessel(it.schluessel, einzeln) == nur }.sumOf { it.sekunden })
+            else -> Tageswert(d, tag.posten.filter { gruppe(it.schluessel, it.name) == nur }.sumOf { it.sekunden })
         }
     }
     val gruppiert = HashMap<String, Long>()
     for ((k, s) in summe) {
-        val g = anzeigeSchluessel(k, einzeln)
+        val g = gruppe(k, namen[k] ?: k)
         gruppiert[g] = (gruppiert[g] ?: 0L) + s
     }
     val alle = sortiert(gruppiert.map { (k, s) -> Posten(k, anzeigename(k) ?: namen[k] ?: k, s) })

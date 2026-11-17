@@ -246,7 +246,7 @@ class WebseitenTest {
         )
         val gezeigt = webseitenZusammenfassen(posten)
         assertEquals(
-            listOf("youtube.com" to 2700L, "Chat" to 900L, "Firefox" to 600L, "Chrome" to 300L, "geteilt.de" to 300L, "Sonstige Webseiten" to 220L),
+            listOf("youtube.com" to 2700L, "Chat" to 900L, "Firefox" to 600L, "Chrome" to 300L, "geteilt.de" to 300L, "Sonstiges" to 220L),
             gezeigt.map { it.name to it.sekunden },
         )
         assertEquals(posten.sumOf { it.sekunden }, gezeigt.sumOf { it.sekunden })
@@ -268,15 +268,15 @@ class WebseitenTest {
         )
         val woche = auswerten(Zeitraum.um(Reiter.WOCHE, mo), verlauf, mo.plusDays(1), mo)
         assertEquals(mapOf("youtube.com" to 400L, "Firefox" to 100L, "Chrome" to 50L), woche.apps.associate { it.name to it.sekunden })
-        // Am Montag allein nur 200 s: „Sonstige Webseiten“.
+        // Am Montag allein nur 200 s: „Sonstiges“.
         val montag = auswerten(Zeitraum.um(Reiter.TAG, mo), verlauf, mo.plusDays(1), mo)
-        assertEquals(mapOf("Sonstige Webseiten" to 200L, "Firefox" to 100L), montag.apps.associate { it.name to it.sekunden })
+        assertEquals(mapOf("Sonstiges" to 200L, "Firefox" to 100L), montag.apps.associate { it.name to it.sekunden })
         // youtube.com angetippt: an beiden Tagen ihre Zeit (Firefox und Chrome), auch am Montag allein.
         val yt = auswerten(Zeitraum.um(Reiter.WOCHE, mo), verlauf, mo.plusDays(1), mo, nur = WEBSEITE + "youtube.com")
         assertEquals(listOf(200L, 200L), yt.tage.take(2).map { it.sekunden })
         assertEquals(400L, yt.gesamt)
         assertEquals(200L, auswerten(Zeitraum.um(Reiter.TAG, mo), verlauf, mo.plusDays(1), mo, nur = WEBSEITE + "youtube.com").gesamt)
-        // „Sonstige Webseiten“ angetippt: am Montag die 200 s.
+        // „Sonstiges“ angetippt: am Montag die 200 s.
         assertEquals(200L, auswerten(Zeitraum.um(Reiter.TAG, mo), verlauf, mo.plusDays(1), mo, nur = SONSTIGE_WEBSEITEN).gesamt)
     }
     /**
@@ -297,7 +297,7 @@ class WebseitenTest {
         val gezeigt = webseitenZusammenfassen(
             listOf(Posten(seitenSchluessel(CHROME, OHNE_DOMAIN), "?", 900L), Posten(seitenSchluessel(ff, "youtube.com"), "youtube.com", 100L), Posten(CHROME, "Chrome", 60L)),
         )
-        assertEquals(listOf("Sonstige Webseiten" to 1000L, "Chrome" to 60L), gezeigt.map { it.name to it.sekunden })
+        assertEquals(listOf("Sonstiges" to 1000L, "Chrome" to 60L), gezeigt.map { it.name to it.sekunden })
         assertEquals(SONSTIGE_NAME, anzeigename(seitenSchluessel(ff, OHNE_DOMAIN)))
     }
     /** Tobi, 16.11.: „Zwei Stunden Chrome?“ – wie die Browserzeit aufgeteilt war, für Karte 4. */

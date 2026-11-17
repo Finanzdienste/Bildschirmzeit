@@ -117,10 +117,11 @@ class MainActivity : Activity(), UpdateBeobachter {
         findViewById<Button>(R.id.schritt4_knopf).setOnClickListener {
             einstellungOeffnen(listOf(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS), Intent(Settings.ACTION_SETTINGS)))
         }
-        findViewById<Button>(R.id.schritt4_wieder_zeigen).setOnClickListener {
+        findViewById<Button>(R.id.diskret_wieder_zeigen).setOnClickListener {
             Verborgen(this).alleZeigen()
-            schritt4Zeigen()
+            diskretZeigen()
             statistikNeu()
+            faeden.execute { Aktualisierung.neuZeichnen(applicationContext) }
         }
         findViewById<Button>(R.id.update_knopf).setOnClickListener { updateKnopf(it.tag as? UpdateKnopf) }
         findViewById<Button>(R.id.update_knopf2).setOnClickListener { updateKnopf(it.tag as? UpdateKnopf) }
@@ -345,6 +346,7 @@ class MainActivity : Activity(), UpdateBeobachter {
             add(findViewById<View>(R.id.widget_karte))
             add(findViewById<View>(R.id.webseiten_karte))
             if (!updateOben) add(update)
+            add(findViewById<View>(R.id.diskret_karte))
             add(findViewById<View>(R.id.loeschen))
             add(findViewById<View>(R.id.version))
         }
@@ -411,7 +413,8 @@ class MainActivity : Activity(), UpdateBeobachter {
         val nr = ++auftrag
         faeden.execute {
             val tage = verlauf.lesen(z.von, minOf(z.bis, heute))
-            val a = auswerten(z, tage, heute, verlauf.erster(), nur, Verborgen(applicationContext)::ist)
+            val v = Verborgen(applicationContext)
+            val a = auswerten(z, tage, heute, verlauf.erster(), nur, v::ist, v::app)
             imVordergrund {
                 if (nr == auftrag) {
                     statistikZeigen(a)
@@ -455,11 +458,10 @@ class MainActivity : Activity(), UpdateBeobachter {
             findViewById<ImageView>(R.id.app_kopf_symbol).setImageBitmap(Symbole.bild(this, Posten(gewaehlt.schluessel, name, 0L), (28 * dichte).roundToInt()))
             findViewById<TextView>(R.id.app_kopf_name).text = name
             liste.visibility = View.GONE
-            // Eine Webseite (nicht „Sonstige“): die lässt sich unter „Sonstige“ legen.
-            val seite = gewaehlt.schluessel.takeIf { it.startsWith(WEBSEITE) && it != SONSTIGE_WEBSEITEN }?.removePrefix(WEBSEITE)
+            // Eine Seite oder App (nicht „Sonstiges“ selbst): lässt sich unter „Sonstiges“ legen.
             val knopf = findViewById<Button>(R.id.seite_zusammenfassen)
-            knopf.visibility = if (seite != null) View.VISIBLE else View.GONE
-            knopf.setOnClickListener { if (seite != null) zusammenfassenFragen(seite) }
+            knopf.visibility = if (gewaehlt.schluessel != SONSTIGE_WEBSEITEN) View.VISIBLE else View.GONE
+            knopf.setOnClickListener { zusammenfassenFragen(gewaehlt.schluessel, name) }
         } else {
             kopf.visibility = View.GONE
             findViewById<View>(R.id.seite_zusammenfassen).visibility = View.GONE
@@ -534,34 +536,51 @@ class MainActivity : Activity(), UpdateBeobachter {
             else -> zuletztText(Beobachtungen(this), jetzt())
         }
         textSetzen(R.id.schritt4_stand, stand)
-        val eigene = Verborgen(this).eigene().size
-        textSetzen(R.id.schritt4_diskret, if (!an) null else if (eigene == 0) getString(R.string.schritt4_diskret) else getString(R.string.schritt4_diskret_eigene, getString(R.string.schritt4_diskret), eigene))
-        findViewById<View>(R.id.schritt4_wieder_zeigen).visibility = if (an && eigene > 0) View.VISIBLE else View.GONE
+        diskretZeigen()
     }
 
-    /** Eine Webseite unter „Sonstige“ legen – nach Rückfrage, weil ihr Name dabei aus dem Verlauf gelöscht wird. */
-    private fun zusammenfassenFragen(domain: String) {
+    /** Die Karte „Diskret“: was nie mit Namen erscheint, wie viel Tobi selbst dazugelegt hat, „Wieder einzeln zeigen“. */
+    internal fun diskretZeigen() {
+        val eigene = Verborgen(this).eigene().size
+        textSetzen(R.id.diskret_eigene, if (eigene == 0) null else getString(R.string.diskret_eigene, eigene))
+        findViewById<View>(R.id.diskret_wieder_zeigen).visibility = if (eigene > 0) View.VISIBLE else View.GONE
+    }
+
+    /**
+     * Eine Seite oder App unter „Sonstiges“ legen – nach Rückfrage (bei einer
+     * Seite wird ihr Name dabei auch aus dem Verlauf gelöscht).
+     */
+    private fun zusammenfassenFragen(schluessel: String, name: String) {
+        val seite = schluessel.startsWith(WEBSEITE)
         AlertDialog.Builder(this)
-            .setTitle(getString(R.string.seite_zusammenfassen_titel, domain))
-            .setMessage(R.string.seite_zusammenfassen_text)
-            .setPositiveButton(R.string.seite_zusammenfassen_ja) { _, _ -> zusammenfassen(domain) }
+            .setTitle(getString(R.string.seite_zusammenfassen_titel, name))
+            .setMessage(if (seite) R.string.seite_zusammenfassen_text else R.string.app_zusammenfassen_text)
+            .setPositiveButton(R.string.seite_zusammenfassen_ja) { _, _ -> zusammenfassen(schluessel, name) }
             .setNegativeButton(R.string.abbrechen, null)
             .show()
     }
 
-    /** Merken, die Namen aus Verlauf und Beobachtungen löschen (unter der Sperre der Rechnung), Widget neu, zurück zu allen Apps. */
-    internal fun zusammenfassen(domain: String) {
+    /**
+     * Merken; bei einer Seite die Namen aus Verlauf und Beobachtungen löschen
+     * (unter der Sperre der Rechnung). Widget neu, zurück zu allen Apps.
+     */
+    internal fun zusammenfassen(schluessel: String, name: String) {
         val ctx = applicationContext
+        val domain = schluessel.takeIf { it.startsWith(WEBSEITE) }?.removePrefix(WEBSEITE)
         faeden.execute {
             Aktualisierung.allein {
-                Verborgen(ctx).hinzufuegen(domain)
-                namenEntfernen(ctx) { it == domain }
+                if (domain != null) {
+                    Verborgen(ctx).hinzufuegen(domain)
+                    namenEntfernen(ctx) { it == domain }
+                } else {
+                    Verborgen(ctx).hinzufuegen(Verborgen.APP + schluessel)
+                }
             }
             Aktualisierung.neuZeichnen(ctx)
             imVordergrund {
-                Toast.makeText(this, getString(R.string.seite_zusammengefasst, domain), Toast.LENGTH_SHORT).show()
+                Toast.makeText(this, getString(R.string.seite_zusammengefasst, name), Toast.LENGTH_SHORT).show()
                 alleAppsZeigen()
-                schritt4Zeigen()
+                diskretZeigen()
             }
         }
     }

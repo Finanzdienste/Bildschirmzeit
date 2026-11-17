@@ -49,10 +49,10 @@ const val WEBSEITE = "webseite:"
 
 /** Alle kleineren Seiten zusammen. */
 const val SONSTIGE_WEBSEITEN = "webseite:*"
-const val SONSTIGE_NAME = "Sonstige Webseiten"
+const val SONSTIGE_NAME = "Sonstiges"
 
 /** Im Widget ist neben der Zeit weniger Platz: dort so (die blaue Kachel „…“ sagt, dass es Seiten sind). */
-const val SONSTIGE_KURZ = "Sonstige Seiten"
+const val SONSTIGE_KURZ = "Sonstiges"
 
 /**
  * Hier liegen Tobis Web-Apps (Boxenstopp, Freizeit, Workout). In Chrome zählen
@@ -415,13 +415,18 @@ fun istWebseite(schluessel: String): Boolean = schluessel.startsWith(WEBSEITE) |
  * 5 Minuten einzeln, der Rest als „Sonstige Webseiten“. Die Browser selbst
  * bleiben, wie sie sind (ihre Zeit ohne erkannte Seite).
  */
-fun webseitenZusammenfassen(posten: List<Posten>, verborgen: (String) -> Boolean = { false }): List<Posten> {
-    if (posten.none { seiteVon(it.schluessel) != null }) return posten
+fun webseitenZusammenfassen(
+    posten: List<Posten>,
+    verborgen: (String) -> Boolean = { false },
+    appVerborgen: (String, String) -> Boolean = { _, _ -> false },
+): List<Posten> {
+    if (posten.none { seiteVon(it.schluessel) != null || appVerborgen(it.schluessel, it.name) }) return posten
     val einzeln = einzelneDomains(posten.associate { it.schluessel to it.sekunden }, verborgen = verborgen)
     val summe = LinkedHashMap<String, Long>()
     val namen = HashMap<String, String>()
     for (p in posten) {
-        val k = anzeigeSchluessel(p.schluessel, einzeln)
+        // Eine App, die nie mit Namen erscheint (Dating, selbst zusammengelegt): auch „Sonstiges“.
+        val k = if (seiteVon(p.schluessel) == null && appVerborgen(p.schluessel, p.name)) SONSTIGE_WEBSEITEN else anzeigeSchluessel(p.schluessel, einzeln)
         summe[k] = (summe[k] ?: 0L) + p.sekunden
         namen[k] = anzeigename(k) ?: p.name
     }

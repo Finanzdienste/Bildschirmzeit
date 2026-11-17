@@ -138,7 +138,7 @@ class VorschauTest {
     @Config(qualifiers = "+night")
     fun webseitenDunkel() = speichern("webseiten-dunkel", mitSeiten(), 400f, 201f, nacht = true)
 
-    /** In Tobis 4×2 steht „Sonstige Seiten“ ganz da (in der App: „Sonstige Webseiten“). */
+    /** In Tobis 4×2 steht „Sonstiges“ ganz da. */
     @Test
     fun sonstigeSeitenGanzImWidget() {
         val v = aufgebaut(mitSeiten(), 400f, 201f)
