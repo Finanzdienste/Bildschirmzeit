@@ -1440,6 +1440,12 @@ spricht mit dem echten Supabase oder GitHub (`Netz.gesperrt`).
   `bc6f91b9…759e`, versionCode 13, dieselben 9 Rechte. Tobis Widget um 18:01
   zeigte Seiten aus Chrome und Firefox und keine Zeile „Chrome“ mehr – v11/v12
   sind also angekommen, und Chrome wird erkannt.
+- 17.11.2026: Release **v14** (Fassung 1.14, aus c5dd520) – Dating-Apps und
+  -Seiten und mehr Erotikseiten unter „Sonstiges“, jede App lässt sich selbst
+  dazulegen, eigene Karte „Diskret“ (Abschnitt „Diskret“). 232 Prüfungen, 47
+  SQL, 61 Web-Modul grün, Lint ohne Fehler; Prüfsumme gleich dem `digest`,
+  Zertifikat `bc6f91b9…759e`, versionCode 14, dieselben 9 Rechte. Die erste
+  Rechnung nach dem Update schreibt schon Gespeichertes einmal ohne Namen um.
 - Noch nicht auf dem S24 ausprobiert: Größen des Startbildschirms, Akku-
   Verhalten von One UI (ob es die App trotz Widget schlafen legt), ob
   Chrome den Verbinden-Link in der installierten Web-App oder als Tab
