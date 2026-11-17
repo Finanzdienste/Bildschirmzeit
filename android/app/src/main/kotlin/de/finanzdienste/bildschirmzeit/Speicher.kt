@@ -100,6 +100,13 @@ class Speicher(context: Context) {
             p.edit { putString(REITER, wert) }
         }
 
+    /** Mit welchem Stand der Erotik-Erkennung das Gespeicherte zuletzt umgeschrieben wurde (Diskret.kt); 0 = noch nie. */
+    var erotikStand: Int
+        get() = p.getInt(EROTIK_STAND, 0)
+        set(wert) {
+            p.edit { putInt(EROTIK_STAND, wert) }
+        }
+
     /** (gelesen, zeilen) oder null. */
     fun zwischengespeichert(): Pair<Long, List<Zeile>>? {
         val text = p.getString(ZWISCHENSPEICHER, null) ?: return null
@@ -119,6 +126,7 @@ class Speicher(context: Context) {
         const val NETZ_VERSUCH = "netz_versuch"
         const val NETZ_FEHLT = "netz_fehlt"
         const val REITER = "reiter"
+        const val EROTIK_STAND = "erotikStand"
         val SPERRE = Any()
     }
 }

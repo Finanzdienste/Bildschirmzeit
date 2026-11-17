@@ -147,6 +147,14 @@
                     android:textSize="14sp" />
             </LinearLayout>
 
+            <!-- Eine Webseite gewählt: sie nie mehr mit Namen zeigen (Diskret.kt). -->
+            <Button
+                android:id="@+id/seite_zusammenfassen"
+                style="@style/Knopf.Leise"
+                android:layout_marginTop="8dp"
+                android:text="@string/seite_zusammenfassen"
+                android:visibility="gone" />
+
             <TextView
                 android:id="@+id/gesamt"
                 android:layout_width="match_parent"
@@ -296,6 +304,18 @@
                 android:id="@+id/schritt4_anleitung"
                 style="@style/Hinweis"
                 android:text="@string/schritt4_anleitung" />
+
+            <!-- Diskret: was nie mit Namen erscheint, und „Wieder einzeln zeigen“ für die eigene Liste. -->
+            <TextView
+                android:id="@+id/schritt4_diskret"
+                style="@style/Hinweis"
+                android:visibility="gone" />
+
+            <Button
+                android:id="@+id/schritt4_wieder_zeigen"
+                style="@style/Knopf.Leise"
+                android:text="@string/wieder_einzeln_zeigen"
+                android:visibility="gone" />
         </LinearLayout>
 
         <LinearLayout

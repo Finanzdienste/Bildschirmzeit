@@ -83,6 +83,9 @@ der Statistik, mit dem Weg über die eingeschränkte Einstellung).
   für installierte Web-Apps (kein Web; bei Tobis Web-Apps die Zeit, die sie
   noch nicht an Supabase gemeldet haben) und für Zeit, in der die
   Bedienungshilfe nicht lief.
+- Diskret (17.11.): bestimmte Seiten nie mit Namen – das Widget steht auf dem
+  Startbildschirm, den jeder sieht. Erotikseiten erkennt die App selbst, jede
+  andere legt Tobi mit einem Tipp unter „Sonstige“ (unten „Diskret“).
 - „Ich will auch auf ne eigene App klicken und dann deren verteilung zb über
   die Woche sehen können“ (15.11., 17:21, Screenshot der Woche in v7) – ein
   Tipp auf eine App in der Statistik zeigt nur sie, je Tag (unten „Eine App
@@ -1020,6 +1023,40 @@ ob ihre Beschreibung so aussieht wie in den Quellen (sonst bleibt alles
 Screenshot); ob One UI den Dienst in Ruhe lässt (Akku); ob Firefox mit
 eingeschalteter Bedienungshilfe spürbar langsamer wird.
 
+## Diskret: manche Seiten nie mit Namen (v13)
+
+**Warum:** Das Widget steht auf dem Startbildschirm, den jeder sieht – manche
+Seiten sollen dort (und in der Statistik) nie mit Namen erscheinen. Auf
+Tobis Wunsch vom 17.11.
+
+**Jetzt** (`Diskret.kt`):
+- **Erotik** erkennt Erotikseiten am Namen, ohne Netz und ohne Liste aus dem
+  Netz: Wörter im Namen („porn“, „xxx“, „hentai“ und die großen Seiten),
+  Endungen nur für Erwachsene (.xxx, .porn, .adult, .sex, .sexy), eine kleine
+  Liste bekannter Seiten ohne solches Wort, und „sex“ nur am Anfang eines
+  Teils (so nicht sussex.ac.uk, essex.gov.uk). Ändert sich die Erkennung,
+  `Erotik.STAND` erhöhen.
+- **Verborgen**: Jede andere Seite legt Tobi in der Statistik selbst dazu –
+  Seite antippen → „Unter „Sonstige“ zusammenfassen“ → Rückfrage. Die Liste
+  liegt in `noBackupFilesDir/webseiten/verborgen.txt` (nie in der Sicherung,
+  nie im Netz). Karte 4 sagt, wie viele es sind, „Wieder einzeln zeigen“
+  leert die Liste (gilt nur für die Zukunft). „Alle Daten löschen“ leert sie
+  auch.
+- Solche Seiten zählen immer zu „Sonstige Webseiten“: Der Dienst merkt sich
+  für sie nur „eine Seite ohne Namen“ (`zuMerken(…, verborgen)` → `?`), die
+  Anzeige legt sie unter „Sonstige“ (`einzelneDomains(…, verborgen)`), und was
+  schon mit Namen gespeichert war, wird umgeschrieben (`namenEntfernen`:
+  jeder Tag im Verlauf und die Beobachtungen; die Zeiten bleiben, `androidTeil`
+  ist gleich, also zählt `nieWeniger` nichts doppelt). Für die Erkennung
+  passiert das einmal beim ersten Lauf nach dem Update (`Speicher.erotikStand`),
+  für eine selbst zusammengelegte Seite sofort (unter `Aktualisierung.allein`).
+
+**Geprüft:** `DiskretTest` (Erkennung mit Fehltreffer-Proben, der Dienst
+merkt keinen Namen, Anzeige und Statistik nur „Sonstige“, ein Tag ohne Namen
+mit gleicher Zeit) und `DiskretGeraetTest` (nach dem Update ohne Namen in
+Widget, Verlauf und Beobachtungen; eine Seite selbst zusammenfassen mit
+Rückfrage, Karte 4, „Wieder einzeln zeigen“; „Alle Daten löschen“).
+
 ## Der Vertrag zwischen Widget-App, Supabase und Web-Apps
 
 **Supabase** – Projekt `vjyohppohmvhhxgwouti` („Finanzdienste's Project“),
@@ -1121,6 +1158,7 @@ android/                     Gradle-Projekt (Kotlin DSL)
     Statistik.kt             Tag, Woche, Monat: Zeiträume, Titel, Summen (rein)
     Webseiten.kt             Seiten in Firefox und Chrome: Domain, Adresszeile, Aufteilung, Zusammenfassen (rein), Beobachtungen, Schalter
     WebseitenDienst.kt       die Bedienungshilfe „Bildschirmzeit: Webseiten“ (nur die Browser), Drossel
+    Diskret.kt               Seiten nie mit Namen: Erotik-Erkennung, eigene Liste, Namen aus dem Gespeicherten löschen
     Balken.kt                das Balkendiagramm der Statistik (Canvas)
     Ziel.kt                  wohin das Widget die App öffnet (Extra an MainActivity: statistik, update)
     WidgetAnsicht.kt         WidgetRaster (wie viele Apps in welche Größe, rein), RemoteViews

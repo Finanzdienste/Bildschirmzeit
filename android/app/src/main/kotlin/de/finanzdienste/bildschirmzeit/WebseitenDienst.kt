@@ -83,7 +83,7 @@ class WebseitenDienst : AccessibilityService() {
         }
         val (paket, b) = befund
         val jetzt = System.currentTimeMillis()
-        val (merken, domain) = zuMerken(paket, b)
+        val (merken, domain) = zuMerken(paket, b, Verborgen(this)::ist)
         if (merken) Beobachtungen(this).merken(Beobachtung(jetzt, paket, domain))
     }
 

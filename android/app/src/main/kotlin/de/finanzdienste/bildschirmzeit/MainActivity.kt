@@ -117,6 +117,11 @@ class MainActivity : Activity(), UpdateBeobachter {
         findViewById<Button>(R.id.schritt4_knopf).setOnClickListener {
             einstellungOeffnen(listOf(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS), Intent(Settings.ACTION_SETTINGS)))
         }
+        findViewById<Button>(R.id.schritt4_wieder_zeigen).setOnClickListener {
+            Verborgen(this).alleZeigen()
+            schritt4Zeigen()
+            statistikNeu()
+        }
         findViewById<Button>(R.id.update_knopf).setOnClickListener { updateKnopf(it.tag as? UpdateKnopf) }
         findViewById<Button>(R.id.update_knopf2).setOnClickListener { updateKnopf(it.tag as? UpdateKnopf) }
         findViewById<Button>(R.id.loeschen).setOnClickListener { loeschenFragen() }
@@ -406,7 +411,7 @@ class MainActivity : Activity(), UpdateBeobachter {
         val nr = ++auftrag
         faeden.execute {
             val tage = verlauf.lesen(z.von, minOf(z.bis, heute))
-            val a = auswerten(z, tage, heute, verlauf.erster(), nur)
+            val a = auswerten(z, tage, heute, verlauf.erster(), nur, Verborgen(applicationContext)::ist)
             imVordergrund {
                 if (nr == auftrag) {
                     statistikZeigen(a)
@@ -450,8 +455,14 @@ class MainActivity : Activity(), UpdateBeobachter {
             findViewById<ImageView>(R.id.app_kopf_symbol).setImageBitmap(Symbole.bild(this, Posten(gewaehlt.schluessel, name, 0L), (28 * dichte).roundToInt()))
             findViewById<TextView>(R.id.app_kopf_name).text = name
             liste.visibility = View.GONE
+            // Eine Webseite (nicht „Sonstige“): die lässt sich unter „Sonstige“ legen.
+            val seite = gewaehlt.schluessel.takeIf { it.startsWith(WEBSEITE) && it != SONSTIGE_WEBSEITEN }?.removePrefix(WEBSEITE)
+            val knopf = findViewById<Button>(R.id.seite_zusammenfassen)
+            knopf.visibility = if (seite != null) View.VISIBLE else View.GONE
+            knopf.setOnClickListener { if (seite != null) zusammenfassenFragen(seite) }
         } else {
             kopf.visibility = View.GONE
+            findViewById<View>(R.id.seite_zusammenfassen).visibility = View.GONE
             liste.visibility = View.VISIBLE
             val symbolPx = (30 * dichte).roundToInt()
             for (p in a.apps) {
@@ -523,6 +534,36 @@ class MainActivity : Activity(), UpdateBeobachter {
             else -> zuletztText(Beobachtungen(this), jetzt())
         }
         textSetzen(R.id.schritt4_stand, stand)
+        val eigene = Verborgen(this).eigene().size
+        textSetzen(R.id.schritt4_diskret, if (!an) null else if (eigene == 0) getString(R.string.schritt4_diskret) else getString(R.string.schritt4_diskret_eigene, getString(R.string.schritt4_diskret), eigene))
+        findViewById<View>(R.id.schritt4_wieder_zeigen).visibility = if (an && eigene > 0) View.VISIBLE else View.GONE
+    }
+
+    /** Eine Webseite unter „Sonstige“ legen – nach Rückfrage, weil ihr Name dabei aus dem Verlauf gelöscht wird. */
+    private fun zusammenfassenFragen(domain: String) {
+        AlertDialog.Builder(this)
+            .setTitle(getString(R.string.seite_zusammenfassen_titel, domain))
+            .setMessage(R.string.seite_zusammenfassen_text)
+            .setPositiveButton(R.string.seite_zusammenfassen_ja) { _, _ -> zusammenfassen(domain) }
+            .setNegativeButton(R.string.abbrechen, null)
+            .show()
+    }
+
+    /** Merken, die Namen aus Verlauf und Beobachtungen löschen (unter der Sperre der Rechnung), Widget neu, zurück zu allen Apps. */
+    internal fun zusammenfassen(domain: String) {
+        val ctx = applicationContext
+        faeden.execute {
+            Aktualisierung.allein {
+                Verborgen(ctx).hinzufuegen(domain)
+                namenEntfernen(ctx) { it == domain }
+            }
+            Aktualisierung.neuZeichnen(ctx)
+            imVordergrund {
+                Toast.makeText(this, getString(R.string.seite_zusammengefasst, domain), Toast.LENGTH_SHORT).show()
+                alleAppsZeigen()
+                schritt4Zeigen()
+            }
+        }
     }
 
     /**
@@ -531,7 +572,7 @@ class MainActivity : Activity(), UpdateBeobachter {
      */
     private fun zuletztText(b: Beobachtungen, jetzt: Long): String {
         val teile = listOf("Firefox" to FIREFOXE, "Chrome" to CHROMES).map { (name, pakete) ->
-            b.zuletztErkannt(pakete)?.let { "${it.domain} in $name, ${zeitpunktText(it.zeit, jetzt)}" } ?: "in $name noch keine Seite"
+            b.zuletztErkannt(pakete, Verborgen(this)::ist)?.let { "${it.domain} in $name, ${zeitpunktText(it.zeit, jetzt)}" } ?: "in $name noch keine Seite"
         }
         val zuletzt = if (teile.all { it.startsWith("in ") }) getString(R.string.schritt4_noch_nichts) else getString(R.string.schritt4_zuletzt, teile.joinToString("; "))
         val heute = Instant.ofEpochMilli(jetzt).atZone(ZoneId.systemDefault()).toLocalDate()

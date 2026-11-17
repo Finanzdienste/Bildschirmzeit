@@ -170,8 +170,9 @@ fun gemerkteDomain(paket: String, domain: String): String? = if (paket in CHROME
  * (eine Seite ohne Namen), null (kein Web, die Zeit bleibt beim Browser) –
  * oder gar nichts (Unbekannt: das Bisherige gilt weiter, Rückgabe `false`).
  */
-fun zuMerken(paket: String, befund: Befund): Pair<Boolean, String?> = when (befund) {
-    is Befund.Seite -> true to gemerkteDomain(paket, befund.domain)
+fun zuMerken(paket: String, befund: Befund, verborgen: (String) -> Boolean = { false }): Pair<Boolean, String?> = when (befund) {
+    // Eine Seite, die nie mit Namen erscheinen soll (Diskret.kt): nur „eine Seite ohne Namen“.
+    is Befund.Seite -> true to gemerkteDomain(paket, befund.domain)?.let { if (verborgen(it)) OHNE_DOMAIN else it }
     Befund.Keine, Befund.Privat -> true to OHNE_DOMAIN
     Befund.KeinWeb -> true to null
     Befund.Unbekannt -> false to null
@@ -391,11 +392,12 @@ fun seitenAbziehen(geteilt: Map<String, Long>, seiten: Map<String, Long>, mindes
  * dazu `immer` (die gerade angetippte Seite, damit sie in jeder Woche gleich
  * zählt).
  */
-fun einzelneDomains(sekunden: Map<String, Long>, immer: String? = null): Set<String> {
+fun einzelneDomains(sekunden: Map<String, Long>, immer: String? = null, verborgen: (String) -> Boolean = { false }): Set<String> {
     val jeDomain = HashMap<String, Long>()
-    for ((k, s) in sekunden) seiteVon(k)?.let { (_, d) -> if (d != OHNE_DOMAIN) jeDomain[d] = (jeDomain[d] ?: 0L) + s }
+    for ((k, s) in sekunden) seiteVon(k)?.let { (_, d) -> if (d != OHNE_DOMAIN && !verborgen(d)) jeDomain[d] = (jeDomain[d] ?: 0L) + s }
     val aus = jeDomain.filterValues { it >= WEBSEITE_EINZELN_SEKUNDEN }.keys.toMutableSet()
-    if (immer != null && immer.startsWith(WEBSEITE) && immer != SONSTIGE_WEBSEITEN && immer != WEBSEITE + OHNE_DOMAIN) aus += immer.removePrefix(WEBSEITE)
+    val angetippt = immer?.takeIf { it.startsWith(WEBSEITE) && it != SONSTIGE_WEBSEITEN && it != WEBSEITE + OHNE_DOMAIN }?.removePrefix(WEBSEITE)
+    if (angetippt != null && !verborgen(angetippt)) aus += angetippt
     return aus
 }
 
@@ -413,9 +415,9 @@ fun istWebseite(schluessel: String): Boolean = schluessel.startsWith(WEBSEITE) |
  * 5 Minuten einzeln, der Rest als „Sonstige Webseiten“. Die Browser selbst
  * bleiben, wie sie sind (ihre Zeit ohne erkannte Seite).
  */
-fun webseitenZusammenfassen(posten: List<Posten>): List<Posten> {
+fun webseitenZusammenfassen(posten: List<Posten>, verborgen: (String) -> Boolean = { false }): List<Posten> {
     if (posten.none { seiteVon(it.schluessel) != null }) return posten
-    val einzeln = einzelneDomains(posten.associate { it.schluessel to it.sekunden })
+    val einzeln = einzelneDomains(posten.associate { it.schluessel to it.sekunden }, verborgen = verborgen)
     val summe = LinkedHashMap<String, Long>()
     val namen = HashMap<String, String>()
     for (p in posten) {
@@ -458,8 +460,8 @@ class Beobachtungen(context: Context) {
     }
 
     /** Die letzte erkannte Seite (mit Namen) – für „zuletzt erkannt: youtube.com in Firefox, 16:40“; `pakete`: nur diese Browser. */
-    fun zuletztErkannt(pakete: Set<String> = BROWSER): Beobachtung? = synchronized(SPERRE) {
-        alleLesen().lastOrNull { it.domain != null && it.domain != OHNE_DOMAIN && it.paket in pakete }
+    fun zuletztErkannt(pakete: Set<String> = BROWSER, verborgen: (String) -> Boolean = { false }): Beobachtung? = synchronized(SPERRE) {
+        alleLesen().lastOrNull { it.domain != null && it.domain != OHNE_DOMAIN && it.paket in pakete && !verborgen(it.domain) }
     }
 
     /** Ältere als BEOBACHTUNG_BEHALTEN_MS weg – sie gelten ohnehin nicht mehr (BEOBACHTUNG_GILT_MS). */
@@ -478,6 +480,19 @@ class Beobachtungen(context: Context) {
     fun loeschen() = synchronized(SPERRE) {
         datei.delete()
         aufschluesselung.delete()
+        letzte = null
+    }
+
+    /** Die Namen der Seiten, für die `weg` gilt, durch „?“ ersetzen (Diskret.kt); die Zeiten bleiben. */
+    fun namenErsetzen(weg: (String) -> Boolean) = synchronized(SPERRE) {
+        val alle = alleLesen()
+        if (alle.none { it.domain != null && it.domain != OHNE_DOMAIN && weg(it.domain) }) return@synchronized
+        val neu = alle.map { if (it.domain != null && it.domain != OHNE_DOMAIN && weg(it.domain)) it.copy(domain = OHNE_DOMAIN) else it }
+        try {
+            datei.writeText(neu.joinToString("") { "${it.zeit}\t${it.paket}\t${it.domain ?: "-"}\n" })
+        } catch (e: IOException) {
+            // beim nächsten Mal
+        }
         letzte = null
     }
 

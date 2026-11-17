@@ -145,7 +145,14 @@ data class Auswertung(
  * Webseiten“. `nur` ist ein gezeigter Schlüssel (auch „webseite:…“); eine
  * angetippte Seite zählt in jedem Zeitraum einzeln.
  */
-fun auswerten(z: Zeitraum, verlauf: Map<LocalDate, Tag>, heute: LocalDate, datenSeit: LocalDate?, nur: String? = null): Auswertung {
+fun auswerten(
+    z: Zeitraum,
+    verlauf: Map<LocalDate, Tag>,
+    heute: LocalDate,
+    datenSeit: LocalDate?,
+    nur: String? = null,
+    verborgen: (String) -> Boolean = { false },
+): Auswertung {
     val summe = HashMap<String, Long>()
     val namen = HashMap<String, String>()
     for (d in z.tage.sorted()) {
@@ -155,7 +162,7 @@ fun auswerten(z: Zeitraum, verlauf: Map<LocalDate, Tag>, heute: LocalDate, daten
             namen[p.schluessel] = p.name
         }
     }
-    val einzeln = einzelneDomains(summe, immer = nur)
+    val einzeln = einzelneDomains(summe, immer = nur, verborgen = verborgen)
     val tage = z.tage.map { d ->
         val tag = verlauf[d]
         when {

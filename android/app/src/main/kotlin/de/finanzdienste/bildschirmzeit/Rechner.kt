@@ -64,6 +64,12 @@ object Rechner {
         val namen = HashMap<String, String>()
         val name = { k: String -> namen.getOrPut(k) { Nutzungsdaten.name(pm, k) } }
         val verlauf = Verlauf(context)
+        // Diskret.kt: Ändert sich die Erkennung der Erotikseiten, einmal alles Gespeicherte umschreiben.
+        if (speicher.erotikStand != Erotik.STAND) {
+            namenEntfernen(context, Erotik::ist)
+            speicher.erotikStand = Erotik.STAND
+        }
+        val verborgen = Verborgen(context)
         val bisher = verlauf.lesen(heute)
         val android: Map<String, Long>
         val seiten: Map<String, Long>
@@ -91,7 +97,7 @@ object Rechner {
         val tag = tagAus(heute, android, web.daten.heute, web.daten.gelesen, fertig = false, seiten = seiten, name = mitAltenNamen(bisher, name))
         verlauf.schreiben(tag)
         // Gezeigt werden die Seiten zusammengefasst (beide Browser, ab 5 Minuten einzeln); im Verlauf je Browser.
-        return Ergebnis(erlaubt = true, posten = webseitenZusammenfassen(tag.posten), stand = jetzt, web = web.daten)
+        return Ergebnis(erlaubt = true, posten = webseitenZusammenfassen(tag.posten, verborgen::ist), stand = jetzt, web = web.daten)
     }
 
     private fun ohneErlaubnis(speicher: Speicher, heute: LocalDate, netz: Boolean, jetzt: Long) = Ergebnis(
@@ -240,6 +246,7 @@ object Rechner {
         if (ok) {
             Verlauf(context).loeschen(Instant.ofEpochMilli(jetzt).atZone(ZoneId.systemDefault()).toLocalDate())
             Beobachtungen(context).loeschen()
+            Verborgen(context).alleZeigen()
             val neu = speicher.neueKennungSetzen()
             try {
                 if (Supabase.anmelden(neu)) speicher.angemeldet = true
