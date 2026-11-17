@@ -1407,6 +1407,12 @@ spricht mit dem echten Supabase oder GitHub (`Netz.gesperrt`).
   Lint ohne Fehler; Prüfsumme gleich dem `digest`, Zertifikat
   `bc6f91b9…759e`, versionCode 12, dieselben 9 Rechte. Für v12 braucht Tobi
   einmal die Klickfolge mit der Sperre (oder lässt sie aus).
+- 17.11.2026: Release **v13** (Fassung 1.13, aus bdba188) – Diskret: manche
+  Seiten nie mit Namen (Abschnitt „Diskret“). 227 Prüfungen, 47 SQL, 61
+  Web-Modul grün, Lint ohne Fehler; Prüfsumme gleich dem `digest`, Zertifikat
+  `bc6f91b9…759e`, versionCode 13, dieselben 9 Rechte. Tobis Widget um 18:01
+  zeigte Seiten aus Chrome und Firefox und keine Zeile „Chrome“ mehr – v11/v12
+  sind also angekommen, und Chrome wird erkannt.
 - Noch nicht auf dem S24 ausprobiert: Größen des Startbildschirms, Akku-
   Verhalten von One UI (ob es die App trotz Widget schlafen legt), ob
   Chrome den Verbinden-Link in der installierten Web-App oder als Tab
