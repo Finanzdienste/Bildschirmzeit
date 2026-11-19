@@ -1481,6 +1481,13 @@ spricht mit dem echten Supabase oder GitHub (`Netz.gesperrt`).
   Fehler; Prüfsumme gleich dem `digest`, Zertifikat `bc6f91b9…759e`,
   versionCode 15, dieselben 9 Rechte. Offen bei Tobi: in der App bei
   „Bewerbungen“ einmal „Verbinden“.
+- 19.11.2026: Release **v16** (Fassung 1.16, aus 8337f47) – der Hintergrund
+  fragt GitHub jede Stunde statt alle 4 Stunden (Tobi: „Jo app aktualisiert
+  sich ja nur alle vier Stunden“, Abschnitt „Updates von selbst“). 234
+  Prüfungen grün, Lint ohne Fehler; Prüfsumme gleich dem `digest`,
+  Zertifikat `bc6f91b9…759e`, versionCode 16, dieselben 9 Rechte. Die Stunde
+  gilt erst ab v16 – bis dahin holt das Öffnen der App das Update (Karte
+  „Neue Version installieren“).
 - Noch nicht auf dem S24 ausprobiert: Größen des Startbildschirms, Akku-
   Verhalten von One UI (ob es die App trotz Widget schlafen legt), ob
   Chrome den Verbinden-Link in der installierten Web-App oder als Tab
