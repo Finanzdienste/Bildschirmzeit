@@ -96,6 +96,9 @@ class SelbstupdateTest {
 
     @After
     fun aufraeumen() {
+        // Erst ausklingen lassen: Jede offene App fragt beim Nach-vorn-Kommen GitHub (eigener Faden) –
+        // käme das erst im nächsten Test an, zählte es dort mit (Selbstupdate.fragen ist für alle gleich).
+        warten()
         Selbstupdate.fragen = altFragen
         Selbstupdate.laden = altLaden
         Selbstupdate.beobachter = null
@@ -488,6 +491,40 @@ class SelbstupdateTest {
         assertEquals(eigene, s.erfolg)
         assertNull(s.fehler)
         assertEquals(0, File(kontext.noBackupFilesDir, "update").listFiles().orEmpty().size)
+    }
+
+    /**
+     * Tobi, 19.11., 16:44 (Screenshot): die App auf 1.14, v16 draußen, „Zuletzt nachgesehen:
+     * 13:52“ und kein Knopf – die App war noch offen, gefragt wurde nur beim ersten Start.
+     */
+    @Test
+    fun nachVornFragtDieAppGithubAuchOhneNeustart() {
+        // Gezählt am eigenen Speicher, nicht an Selbstupdate.fragen: WorkManager-Läufe anderer
+        // Tests (eigener Kontext) können dort mitzählen.
+        val s = UpdateSpeicher(kontext)
+        // Vor einer halben Stunde gefragt: fällig für die App (10 Minuten), nicht für den Hintergrund (eine Stunde).
+        s.geprueft = System.currentTimeMillis() - 30 * minute
+        val steuerung = Robolectric.buildActivity(MainActivity::class.java).setup()
+        val aktivitaet = steuerung.get()
+        warten()
+        assertTrue("beim Start gefragt", System.currentTimeMillis() - s.geprueft < minute)
+        steuerung.pause().stop()
+
+        // Eine Viertelstunde später kommt die noch offene App wieder nach vorn (Startbildschirm, Widget).
+        val vorher = System.currentTimeMillis() - 15 * minute
+        s.geprueft = vorher
+        steuerung.restart().start().resume()
+        warten()
+        assertTrue("nach vorn wieder gefragt", s.geprueft > vorher)
+        val knopf = aktivitaet.findViewById<Button>(R.id.update_knopf)
+        assertEquals("Neue Version installieren", knopf.text.toString())
+        assertTrue(aktivitaet.findViewById<TextView>(R.id.update_text).text.contains("Version 1.$neu ist da"))
+
+        // Gleich noch einmal nach vorn: GitHub höchstens alle 10 Minuten.
+        val zuletzt = s.geprueft
+        steuerung.pause().resume()
+        warten()
+        assertEquals(zuletzt, s.geprueft)
     }
 
     @Test

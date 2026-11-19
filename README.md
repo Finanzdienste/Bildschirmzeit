@@ -481,9 +481,13 @@ oft erst nach dem Ausschalten der Automatischen Sperre).
 WorkManager-Lauf (alle 15 Minuten) fragt GitHub höchstens jede Stunde
 (`releases/latest`, ohne Token 60 Anfragen je Stunde und Adresse – im
 Mobilfunk teilen sich viele eine Adresse; trifft es die Grenze, klappt es in
-der nächsten Stunde), das Öffnen der App höchstens alle 10 Minuten. Bis v15
-fragte der Hintergrund nur alle 4 Stunden – Tobi, 19.11.: „Jo app
-aktualisiert sich ja nur alle vier Stunden“. Hat das Öffnen die neue Fassung
+der nächsten Stunde), und jedes Mal, wenn die App nach vorn kommt,
+höchstens alle 10 Minuten (`onResume`, auch aus dem Hintergrund und vom
+Widget). Bis v15 fragte der Hintergrund nur alle 4 Stunden – Tobi, 19.11.:
+„Jo app aktualisiert sich ja nur alle vier Stunden“. Bis v16 fragte die App
+nur beim ersten Start (`onCreate`): War sie noch offen und kam nur nach vorn,
+blieb die Karte beim alten Stand – Tobis Screenshot vom 19.11., 16:44: auf
+1.14, „Zuletzt nachgesehen: 13:52“, v16 draußen, kein Knopf. Hat das Öffnen die neue Fassung
 schon gefunden, installiert sie der nächste Lauf, sobald die App zu ist (die
 Karte: „Sie kommt bald von selbst, wenn die App zu ist – oder jetzt.“), der
 Knopf „Neue Version installieren“ sofort. Ist das
@@ -610,7 +614,9 @@ Hintergrund (je rund 4 KB, also unter 100 KB), dazu beim Öffnen der App; die AP
 Text, die Karte, wann das Widget Bescheid sagt), `SelbstupdateTest` (der
 ganze Weg auf einem nachgebauten Gerät: installiert ohne Rückfrage, falsche Prüfsumme →
 nichts, ohne Erlaubnis kein Download, nie gleich alt oder älter, GitHub
-höchstens jede Stunde, kein zweites Update während eines laufenden,
+höchstens jede Stunde, nach vorn wieder gefragt
+(`nachVornFragtDieAppGithubAuchOhneNeustart`, gegen v16 rot), kein zweites
+Update während eines laufenden,
 Wartezeit nach Fehlern, Rückfrage im Hintergrund verworfen und im
 Vordergrund nur nach dem Knopf gezeigt, Androids „abgebrochen“ nach dem
 eigenen Verwerfen zählt nicht, Tobis „Abbrechen“ im Dialog schon, Karte →

@@ -134,10 +134,6 @@ class MainActivity : Activity(), UpdateBeobachter {
         if (savedInstanceState == null || !zustandLesen(savedInstanceState)) zielBehandeln(intent)
 
         Aktualisierung.einplanen(this)
-        faeden.execute {
-            Selbstupdate.pruefenFuerApp(applicationContext)
-            imVordergrund { updateKarteNeu() }
-        }
     }
 
     override fun onSaveInstanceState(outState: Bundle) {
@@ -213,6 +209,21 @@ class MainActivity : Activity(), UpdateBeobachter {
         neuLaden()
         // Zurück aus „Unbekannte Apps installieren“: Die Karte zeigt gleich, ob es jetzt erlaubt ist.
         updateKarteNeu()
+        updateFragen()
+    }
+
+    /**
+     * Jedes Mal, wenn die App nach vorn kommt, GitHub fragen (höchstens alle 10
+     * Minuten) und die Karte nachziehen. Bis v16 nur beim ersten Start: Kam die
+     * App aus dem Hintergrund zurück, blieb die Karte beim alten Stand (Tobi,
+     * 19.11., 16:44: auf 1.14, „Zuletzt nachgesehen: 13:52“, kein Knopf).
+     */
+    private fun updateFragen() {
+        if (faeden.isShutdown) return
+        faeden.execute {
+            Selbstupdate.pruefenFuerApp(applicationContext)
+            imVordergrund { updateKarteNeu() }
+        }
     }
 
     override fun onPause() {
