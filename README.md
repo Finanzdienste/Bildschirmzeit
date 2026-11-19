@@ -184,7 +184,7 @@ Einmal, alles am Handy:
    installieren“ für Bildschirmzeit → Schalter („Diese Quelle zulassen“,
    bei Android selbst „Dieser Quelle vertrauen“) ein → zurück. Die Karte
    zeigt dann „Automatische Updates ✓“. Ab da installiert die App neue
-   Versionen selbst (sie fragt GitHub alle 4 Stunden; die App schließt sich
+   Versionen selbst (sie fragt GitHub jede Stunde; die App schließt sich
    dabei kurz, Einstellungen, Verbindungen und Widget bleiben). Will Android
    ein Update doch einmal bestätigt haben, steht dort „Neue Version
    installieren“ → antippen → „Aktualisieren“. Klappt es nicht, sagt die
@@ -478,9 +478,15 @@ Update, keine Rechte zum Installieren) und ist jetzt grün.
 oft erst nach dem Ausschalten der Automatischen Sperre).
 
 **Jetzt** (`Selbstupdate.kt`, Regeln in `UpdateRegeln`): Der
-WorkManager-Lauf fragt GitHub höchstens alle 4 Stunden (`releases/latest`,
-ohne Token 60 Anfragen je Stunde und Adresse – im Mobilfunk teilen sich
-viele eine Adresse), das Öffnen der App höchstens alle 10 Minuten. Ist das
+WorkManager-Lauf (alle 15 Minuten) fragt GitHub höchstens jede Stunde
+(`releases/latest`, ohne Token 60 Anfragen je Stunde und Adresse – im
+Mobilfunk teilen sich viele eine Adresse; trifft es die Grenze, klappt es in
+der nächsten Stunde), das Öffnen der App höchstens alle 10 Minuten. Bis v15
+fragte der Hintergrund nur alle 4 Stunden – Tobi, 19.11.: „Jo app
+aktualisiert sich ja nur alle vier Stunden“. Hat das Öffnen die neue Fassung
+schon gefunden, installiert sie der nächste Lauf, sobald die App zu ist (die
+Karte: „Sie kommt bald von selbst, wenn die App zu ist – oder jetzt.“), der
+Knopf „Neue Version installieren“ sofort. Ist das
 Release neuer und Schritt 9 eingerichtet, lädt die App die APK, prüft sie
 und installiert sie über eine `PackageInstaller`-Sitzung – ohne Rückfrage.
 Nicht, solange die App offen ist (die Installation schließt sie), nicht
@@ -596,15 +602,15 @@ Update-Karte. Bis v6 gab es ihn unter 150 dp Höhe und im 2×2 nicht. Was es kos
 Zeichnen ein Blick in den eigenen Speicher, nichts übers Netz. Vorher stand
 das nur auf der Karte (Prüfer, 15.11.).
 
-**Was es kostet:** höchstens 6 Anfragen an GitHub am Tag aus dem
-Hintergrund (je rund 4 KB), dazu beim Öffnen der App; die APK (rund
+**Was es kostet:** höchstens 24 Anfragen an GitHub am Tag aus dem
+Hintergrund (je rund 4 KB, also unter 100 KB), dazu beim Öffnen der App; die APK (rund
 0,75 MB) einmal je Release.
 
 **Geprüft:** `UpdateRegelnTest` (Prüfsumme, Fassung, Wartezeit, Status →
 Text, die Karte, wann das Widget Bescheid sagt), `SelbstupdateTest` (der
 ganze Weg auf einem nachgebauten Gerät: installiert ohne Rückfrage, falsche Prüfsumme →
 nichts, ohne Erlaubnis kein Download, nie gleich alt oder älter, GitHub
-höchstens alle 4 Stunden, kein zweites Update während eines laufenden,
+höchstens jede Stunde, kein zweites Update während eines laufenden,
 Wartezeit nach Fehlern, Rückfrage im Hintergrund verworfen und im
 Vordergrund nur nach dem Knopf gezeigt, Androids „abgebrochen“ nach dem
 eigenen Verwerfen zählt nicht, Tobis „Abbrechen“ im Dialog schon, Karte →

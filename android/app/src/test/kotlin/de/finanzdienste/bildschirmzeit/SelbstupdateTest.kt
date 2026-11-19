@@ -228,17 +228,18 @@ class SelbstupdateTest {
     }
 
     @Test
-    fun githubHoechstensAlleVierStundenBeimOeffnenAlleZehnMinuten() {
+    fun githubHoechstensJedeStundeBeimOeffnenAlleZehnMinuten() {
         darf(false)
         Selbstupdate.imHintergrund(kontext, t)
-        Selbstupdate.imHintergrund(kontext, t + stunde)
-        Selbstupdate.imHintergrund(kontext, t + 3 * stunde + 59 * minute)
+        Selbstupdate.imHintergrund(kontext, t + 15 * minute)
+        Selbstupdate.imHintergrund(kontext, t + 59 * minute)
         assertEquals(1, gefragt)
-        Selbstupdate.imHintergrund(kontext, t + 4 * stunde)
+        // Bis v15 erst nach 4 Stunden (Tobi, 19.11.: „Jo app aktualisiert sich ja nur alle vier Stunden“).
+        Selbstupdate.imHintergrund(kontext, t + stunde)
         assertEquals(2, gefragt)
-        Selbstupdate.pruefenFuerApp(kontext, t + 4 * stunde + 9 * minute)
+        Selbstupdate.pruefenFuerApp(kontext, t + stunde + 9 * minute)
         assertEquals(2, gefragt)
-        Selbstupdate.pruefenFuerApp(kontext, t + 4 * stunde + 10 * minute)
+        Selbstupdate.pruefenFuerApp(kontext, t + stunde + 10 * minute)
         assertEquals(3, gefragt)
     }
 

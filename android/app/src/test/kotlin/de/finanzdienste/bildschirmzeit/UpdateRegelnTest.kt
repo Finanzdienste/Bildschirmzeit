@@ -76,13 +76,14 @@ class UpdateRegelnTest {
         assertFalse(freigabe(8).copy(groesse = NeueVersion.HOECHSTENS_BYTES + 1).installierbar)
     }
 
+    /** Tobi, 19.11.: „Jo app aktualisiert sich ja nur alle vier Stunden“ – seit v16 jede Stunde. */
     @Test
-    fun githubHoechstensAlleVierStunden() {
+    fun githubHoechstensJedeStunde() {
         assertTrue(UpdateRegeln.githubFaellig(0, jetzt, UpdateRegeln.FRAGEN_MS))
-        assertFalse(UpdateRegeln.githubFaellig(jetzt - 3 * stunde, jetzt, UpdateRegeln.FRAGEN_MS))
-        assertTrue(UpdateRegeln.githubFaellig(jetzt - 4 * stunde, jetzt, UpdateRegeln.FRAGEN_MS))
-        // Höchstens 6 Anfragen am Tag aus dem Hintergrund – weit unter den 60 je Stunde ohne Token.
-        assertEquals(6L, 24 * stunde / UpdateRegeln.FRAGEN_MS)
+        assertFalse(UpdateRegeln.githubFaellig(jetzt - 59 * 60_000L, jetzt, UpdateRegeln.FRAGEN_MS))
+        assertTrue(UpdateRegeln.githubFaellig(jetzt - stunde, jetzt, UpdateRegeln.FRAGEN_MS))
+        // Höchstens 24 Anfragen am Tag aus dem Hintergrund – weit unter den 60 je Stunde ohne Token.
+        assertEquals(24L, 24 * stunde / UpdateRegeln.FRAGEN_MS)
     }
 
     @Test
@@ -187,6 +188,11 @@ class UpdateRegelnTest {
         // Ohne Prüfsumme bei GitHub: nicht von selbst, nur der Weg über den Browser.
         val ohne = UpdateRegeln.anzeige(lage(freigabe = freigabe(8).copy(sha256 = null)))
         assertEquals(UpdateKnopf.BROWSER, ohne.knopf)
+
+        // Bekannt und still: kommt, sobald die App zu ist (der nächste Lauf), oder jetzt über den Knopf.
+        val wartet = UpdateRegeln.anzeige(lage())
+        assertEquals(UpdateKnopf.INSTALLIEREN, wartet.knopf)
+        assertTrue(wartet.text, wartet.text.startsWith("Version 1.8 ist da (du hast 1.7). Sie kommt bald von selbst, wenn die App zu ist – oder jetzt."))
 
         // Unter Android 12 fragt Android jedes Mal.
         val alt = UpdateRegeln.anzeige(lage().copy(still = false))
@@ -312,7 +318,7 @@ class UpdateRegelnTest {
         val a = UpdateRegeln.anzeige(lage(freigabe = freigabe(7)))
         assertEquals("Automatische Updates ✓", a.titel)
         assertNull(a.knopf)
-        assertEquals("Neue Versionen installiert die App von selbst – sie fragt GitHub alle 4 Stunden. Zuletzt nachgesehen: 08:43.", a.text)
+        assertEquals("Neue Versionen installiert die App von selbst – sie fragt GitHub jede Stunde und beim Öffnen. Zuletzt nachgesehen: 08:43.", a.text)
         val danach = UpdateRegeln.anzeige(lage(freigabe = freigabe(7), erfolg = 7))
         assertTrue(danach.text, danach.text.contains("Zuletzt aktualisiert: 08:00 auf 1.7."))
         // Ein alter Fehler zu einer Fassung, die nicht neuer ist, zeigt nichts mehr.

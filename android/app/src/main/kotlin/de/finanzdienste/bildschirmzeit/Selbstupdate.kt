@@ -131,8 +131,13 @@ data class UpdateLage(
 
 /** Die Regeln fürs Update – rein, getestet in UpdateRegelnTest. */
 object UpdateRegeln {
-    /** GitHub höchstens alle 4 Stunden fragen (ohne Token 60 Anfragen je Stunde und Adresse – beim Mobilfunk teilen sich viele eine). */
-    const val FRAGEN_MS = 4 * 3_600_000L
+    /**
+     * GitHub höchstens jede Stunde fragen: 24 Anfragen am Tag, weit unter den 60 je Stunde
+     * und Adresse ohne Token (beim Mobilfunk teilen sich viele eine; trifft es die Grenze,
+     * klappt es eben in der nächsten Stunde). Bis v15 alle 4 Stunden – Tobi, 19.11.:
+     * „Jo app aktualisiert sich ja nur alle vier Stunden“.
+     */
+    const val FRAGEN_MS = 3_600_000L
 
     /** Beim Öffnen der App höchstens alle 10 Minuten. */
     const val FRAGEN_APP_MS = 10 * 60_000L
@@ -372,14 +377,14 @@ object UpdateRegeln {
             !l.still -> UpdateAnzeige("Neue Version verfügbar", ist + "„Neue Version installieren“, dann „Aktualisieren“ – deine Einstellungen bleiben.", UpdateKnopf.INSTALLIEREN)
             else -> UpdateAnzeige(
                 "Neue Version verfügbar",
-                ist + "Sie kommt in den nächsten Stunden von selbst – oder jetzt. Die App schließt sich dabei kurz; Widget und Verbindungen bleiben.",
+                ist + "Sie kommt bald von selbst, wenn die App zu ist – oder jetzt. Die App schließt sich dabei kurz; Widget und Verbindungen bleiben.",
                 UpdateKnopf.INSTALLIEREN,
             )
         }
     }
 
     private fun anText(l: UpdateLage): String {
-        val teile = mutableListOf("Neue Versionen installiert die App von selbst – sie fragt GitHub alle 4 Stunden.")
+        val teile = mutableListOf("Neue Versionen installiert die App von selbst – sie fragt GitHub jede Stunde und beim Öffnen.")
         if (l.erfolg > 0 && l.erfolg == l.eigene && l.erfolgUm > 0) {
             teile += "Zuletzt aktualisiert: ${zeitpunktText(l.erfolgUm, l.jetzt, l.zone)} auf ${l.eigeneName}."
         }
@@ -553,7 +558,7 @@ object Selbstupdate {
     }
 
     /**
-     * Der WorkManager-Lauf: GitHub höchstens alle 4 Stunden; ist eine neuere
+     * Der WorkManager-Lauf: GitHub höchstens jede Stunde; ist eine neuere
      * Fassung da und alles eingerichtet, ohne Rückfrage installieren. Nicht,
      * solange die App vorn ist (die Installation schließt sie), nicht während
      * einer laufenden Installation, nicht vor Ablauf der Wartezeit nach einem

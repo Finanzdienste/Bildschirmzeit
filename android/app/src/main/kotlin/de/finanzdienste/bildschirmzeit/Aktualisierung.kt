@@ -122,7 +122,7 @@ object Aktualisierung {
         context.getSystemService(PowerManager::class.java)?.isInteractive ?: true
 }
 
-/** Der 15-Minuten-Lauf: das Widget, danach (höchstens alle 4 Stunden bei GitHub) das Update. */
+/** Der 15-Minuten-Lauf: das Widget, danach (höchstens jede Stunde bei GitHub) das Update. */
 class WidgetArbeit(context: Context, parameter: WorkerParameters) : Worker(context, parameter) {
     override fun doWork(): Result {
         try {
