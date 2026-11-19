@@ -1492,8 +1492,15 @@ spricht mit dem echten Supabase oder GitHub (`Netz.gesperrt`).
   sich ja nur alle vier Stunden“, Abschnitt „Updates von selbst“). 234
   Prüfungen grün, Lint ohne Fehler; Prüfsumme gleich dem `digest`,
   Zertifikat `bc6f91b9…759e`, versionCode 16, dieselben 9 Rechte. Die Stunde
-  gilt erst ab v16 – bis dahin holt das Öffnen der App das Update (Karte
-  „Neue Version installieren“).
+  gilt erst ab v16.
+- 19.11.2026, 16:44 (Tobis Screenshot): die App noch auf 1.14, „Zuletzt
+  nachgesehen: 13:52“, kein Knopf – sie war noch offen, und gefragt wurde nur
+  beim ersten Start. Release **v17** (Fassung 1.17, aus 451e2ef): fragt
+  jedes Mal, wenn sie nach vorn kommt (höchstens alle 10 Minuten). 235
+  Prüfungen grün, Lint ohne Fehler; Prüfsumme gleich dem `digest`,
+  Zertifikat `bc6f91b9…759e`, versionCode 17, dieselben 9 Rechte. Für 1.14
+  bis 1.16 gilt noch: App aus den zuletzt benutzten Apps wegwischen und neu
+  öffnen, dann fragt sie (oder der Browser-Link oben).
 - Noch nicht auf dem S24 ausprobiert: Größen des Startbildschirms, Akku-
   Verhalten von One UI (ob es die App trotz Widget schlafen legt), ob
   Chrome den Verbinden-Link in der installierten Web-App oder als Tab
