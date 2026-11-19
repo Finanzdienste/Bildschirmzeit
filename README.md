@@ -1464,6 +1464,17 @@ spricht mit dem echten Supabase oder GitHub (`Netz.gesperrt`).
   SQL, 61 Web-Modul grün, Lint ohne Fehler; Prüfsumme gleich dem `digest`,
   Zertifikat `bc6f91b9…759e`, versionCode 14, dieselben 9 Rechte. Die erste
   Rechnung nach dem Update schreibt schon Gespeichertes einmal ohne Namen um.
+- 19.11.2026: Release **v15** (Fassung 1.15, aus cacb335) – die
+  Bewerbungszentrale ist die vierte Web-App, im Widget „Bewerbungen“ (oben
+  „Tobis Entscheidungen“, „Der Vertrag …“). Supabase live als Migration
+  „bildschirmzeit_bewerbungszentrale“: md5 der Funktionen gleich einem
+  PGlite-Lauf der Datei, `bildschirmzeit_melden` nimmt `bewerbungszentrale`
+  an, `chrome` weiter nicht. Das Modul liegt byte-gleich live in der
+  Bewerbungszentrale (sw v35, neu angebunden), Boxenstopp v87, Freizeit v45
+  und Workout v265. 234 Prüfungen, 53 SQL, 64 Web-Modul grün, Lint ohne
+  Fehler; Prüfsumme gleich dem `digest`, Zertifikat `bc6f91b9…759e`,
+  versionCode 15, dieselben 9 Rechte. Offen bei Tobi: in der App bei
+  „Bewerbungen“ einmal „Verbinden“.
 - Noch nicht auf dem S24 ausprobiert: Größen des Startbildschirms, Akku-
   Verhalten von One UI (ob es die App trotz Widget schlafen legt), ob
   Chrome den Verbinden-Link in der installierten Web-App oder als Tab

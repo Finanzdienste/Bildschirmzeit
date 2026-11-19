@@ -34,9 +34,11 @@ Tobi, 15.11.: „Sowas sollst du immer konkret mit angeben“. Was läuft, zeigt
 ## Das Projekt
 Tobis Bildschirmzeit-Widget für sein Samsung Galaxy S24: eine kleine
 Android-App (Kotlin, `android/`), die Androids Nutzungsdaten liest und die Zeit
-von Boxenstopp, Freizeit und Workout von Chrome abzieht. Die drei Web-Apps
-melden ihre Minuten an Supabase (`supabase/bildschirmzeit.sql`), über das
-Modul `web/bildschirmzeit.js`. Alles Weitere – Rechnung, Vertrag, Einrichten,
+von Boxenstopp, Freizeit, Workout und der Bewerbungszentrale (seit v15, im
+Widget „Bewerbungen“) von Chrome abzieht. Die vier Web-Apps melden ihre
+Minuten an Supabase (`supabase/bildschirmzeit.sql`), über das Modul
+`web/bildschirmzeit.js`. Eine neue Web-App: README „Der Vertrag …“ (vier
+Stellen, `tests/test-web.mjs` prüft sie). Alles Weitere – Rechnung, Vertrag, Einrichten,
 Signatur, Bauen – steht in README.md: vor einer Änderung den passenden
 Abschnitt lesen.
 
@@ -58,8 +60,9 @@ Abschnitt lesen.
    committen; die Bilder für die Widget-Auswahl von Hand aus
    `android/app/build/vorschau/` kopieren.
 3. `web/bildschirmzeit.js` ist die Quelle: nur hier ändern, dann byte-gleich
-   als `js/bildschirmzeit.js` nach Boxenstopp, Freizeit und Workout kopieren –
-   dort jeweils nach deren CLAUDE.md (Service-Worker-Version, Tests, README).
+   als `js/bildschirmzeit.js` nach Boxenstopp, Freizeit, Workout und
+   Bewerbungszentrale kopieren – dort jeweils nach deren CLAUDE.md
+   (Service-Worker-Version, Tests, README).
 4. SQL: `supabase/bildschirmzeit.sql` ist die Quelle; nach grünem
    test-sql nur die geänderten Teile als Migration über den
    Supabase-Connector einspielen (Projekt vjyohppohmvhhxgwouti).
