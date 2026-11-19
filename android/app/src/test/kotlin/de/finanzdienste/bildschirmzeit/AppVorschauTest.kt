@@ -181,8 +181,9 @@ class AppVorschauTest {
         warten()
         aktivitaet.zeigen(beispiel().copy(web = WebDaten.LEER))
         val liste = aktivitaet.findViewById<ViewGroup>(R.id.web_liste)
-        assertEquals(3, liste.childCount)
-        for (i in 0 until 3) {
+        assertEquals(WebApp.entries.map { it.anzeigename }, (0 until liste.childCount).map { liste.getChildAt(it).findViewById<TextView>(R.id.name).text.toString() })
+        assertEquals(listOf("Boxenstopp", "Freizeit", "Workout", "Bewerbungen"), WebApp.entries.map { it.anzeigename })
+        for (i in 0 until liste.childCount) {
             assertEquals("noch nicht verbunden", liste.getChildAt(i).findViewById<TextView>(R.id.stand).text.toString())
         }
     }

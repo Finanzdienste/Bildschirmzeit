@@ -9,8 +9,9 @@
 
 Eine kleine Android-App mit Widget: oben die Bildschirmzeit aller Apps von
 heute, darunter die Top-Apps (so viele hineinpassen, bis zu 8) – und
-Boxenstopp, Freizeit und Workout stehen dort unter eigenem Namen und mit
-eigenem Symbol statt als „Chrome“. Antippen öffnet die App mit der Statistik.
+Boxenstopp, Freizeit, Workout und die Bewerbungszentrale (im Widget
+„Bewerbungen“, seit v15) stehen dort unter eigenem Namen und mit eigenem
+Symbol statt als „Chrome“. Antippen öffnet die App mit der Statistik.
 
 ![Widget 4×2, hell](docs/vorschau-gross-hell.png)
 ![Widget 4×2, dunkel](docs/vorschau-gross-dunkel.png)
@@ -83,6 +84,14 @@ der Statistik, mit dem Weg über die eingeschränkte Einstellung).
   für installierte Web-Apps (kein Web; bei Tobis Web-Apps die Zeit, die sie
   noch nicht an Supabase gemeldet haben) und für Zeit, in der die
   Bedienungshilfe nicht lief.
+- „Hab nh zusätzliche App die noch nicht connected ist. Geht um die Bewerbungs
+  app“ (19.11.) – seit v15 ist die Bewerbungszentrale die vierte Web-App: im
+  Widget „Bewerbungen“ (wie auf dem Startbildschirm, `short_name` ihres
+  Manifests) mit ihrem Symbol, Schlüssel `bewerbungszentrale`, verbunden in
+  Schritt 2 wie die anderen. Bis dahin zählte sie als „Chrome“. Die Liste der
+  Web-Apps steht an vier Stellen (`BZ_APPS` im Modul, Tabelle und
+  `bildschirmzeit_melden` in Supabase, `WebApp` in der App);
+  `tests/test-web.mjs` prüft, dass alle gleich sind (unten „Der Vertrag“).
 - Diskret (17.11.): bestimmte Seiten und Apps nie mit Namen – das Widget steht
   auf dem Startbildschirm, den jeder sieht. Erotikseiten sowie Dating-Apps und
   -Seiten erkennt die App selbst, alles andere legt Tobi mit einem Tipp unter
@@ -153,10 +162,11 @@ Einmal, alles am Handy:
       1. und 2. wiederholen, danach die Sperre wieder ein. So der Stand am
       15.11. um 08:24 – auch nach dem Antippen kein ⋮, die Sperre war nach
       der Installation wieder an (wie Schritt 3 damals sagte).
-6. **Schritt 2** – dreimal: bei Boxenstopp „Verbinden“ → die Web-App öffnet
+6. **Schritt 2** – viermal: bei Boxenstopp „Verbinden“ → die Web-App öffnet
    sich in Chrome (als installierte App oder als Tab, beides teilt sich den
    Speicher) und meldet „Bildschirmzeit verbunden …“ → zurückwischen zur
-   Bildschirmzeit-App. Dasselbe für Freizeit und Workout. Danach steht dort
+   Bildschirmzeit-App. Dasselbe für Freizeit, Workout und Bewerbungen (die
+   Bewerbungszentrale, seit v15). Danach steht dort
    „heute … Min., zuletzt 21:40“. Der Link geht ausdrücklich an Chrome, auch
    wenn Samsung Internet der Standardbrowser ist: Sonst landete die Kennung
    im Speicher von Samsung Internet, und die Web-Apps in Chrome blieben
@@ -702,8 +712,8 @@ neu – Antippen bringt also weiter frische Zahlen.
   (hell und dunkel), heute im vollen Akzent, höchstens drei leise Linien mit
   runden Stunden. Ein Tipp auf einen Balken zeigt diesen Tag im Reiter Tag.
 - Darunter alle Apps des Zeitraums nach Zeit, mit Symbol, Zeit und Anteil in
-  %. Boxenstopp, Freizeit und Workout stehen unter eigenem Namen, Chrome nur
-  mit dem Rest; „Stand 21:40“, solange der Zeitraum heute enthält.
+  %. Die Web-Apps (Boxenstopp, Freizeit, Workout, Bewerbungen) stehen unter
+  eigenem Namen, Chrome nur mit dem Rest; „Stand 21:40“, solange der Zeitraum heute enthält.
 - Tage ohne Daten: im Diagramm ein kleiner leerer Kreis statt eines Balkens,
   darunter „Keine Daten: 7.–8. Nov.“, im Reiter Tag „keine Daten“ – nie 0.
   Beginnt der Verlauf erst im Zeitraum: „Daten seit 3. Nov.“. Ein Tag mit
@@ -888,8 +898,8 @@ Bilder `vorschau-app-eine-hell.png` / `-dunkel.png`.
   und Custom Tabs ohne Leiste sind „keine Seite“ (nicht „das Bisherige“):
   Der Dienst merkt sich die Activity des letzten Fensterwechsels. Tobis
   Web-Apps auf `finanzdienste.github.io` zählen in Chrome nie als Seite – sie
-  kommen über Supabase als Boxenstopp, Freizeit und Workout (in Firefox
-  zählen sie als Seite, dort sind sie nicht verbunden).
+  kommen über Supabase unter eigenem Namen (in Firefox zählen sie als Seite,
+  dort sind sie nicht verbunden).
 - Im Verlauf steht jede erkannte Seite je Browser als Posten (`seite:<paket>/<domain>`,
   auch unter einer Minute), die Browser behalten nur ihre Zeit ohne erkannte
   Seite. Gezeigt wird zusammengefasst (`webseitenZusammenfassen`, in der
@@ -1096,7 +1106,7 @@ kein `Authorization` (es ist kein JWT).
 | Funktion (`POST /rest/v1/rpc/…`) | Wer | Eingabe | Antwort |
 |---|---|---|---|
 | `bildschirmzeit_anmelden` | Widget-App | `p_kennung` | `true` |
-| `bildschirmzeit_melden` | Web-Apps | `p_kennung`, `p_app` (`boxenstopp`/`freizeit`/`workout`), `p_tage` `{"JJJJ-MM-TT": sekunden}` | `true`; `false` = Kennung nicht (mehr) angemeldet |
+| `bildschirmzeit_melden` | Web-Apps | `p_kennung`, `p_app` (`boxenstopp`/`freizeit`/`workout`/`bewerbungszentrale`), `p_tage` `{"JJJJ-MM-TT": sekunden}` | `true`; `false` = Kennung nicht (mehr) angemeldet |
 | `bildschirmzeit_lesen` | Widget-App | `p_kennung`, `p_von`, `p_bis` (≤ 62 Tage) | `[{app, tag, sekunden, aktualisiert}]` |
 | `bildschirmzeit_loeschen` | Widget-App | `p_kennung` | `true`/`false`; danach meldet `melden` `false` |
 
@@ -1113,15 +1123,23 @@ verbinden.
 
 **Verbinden-Link** (öffnet die Web-App, die sich dann an die Kennung bindet):
 `https://finanzdienste.github.io/Boxenstopp/#bildschirmzeit=<Kennung>`,
-dasselbe mit `/Freizeit/` und `/Workout/`. Alle drei liegen auf
-`finanzdienste.github.io` und teilen sich den localStorage. Vor dem Öffnen
+dasselbe mit `/Freizeit/`, `/Workout/` und `/Bewerbungszentrale/`. Alle vier
+liegen auf `finanzdienste.github.io` und teilen sich den localStorage. Vor dem Öffnen
 stellt die App sicher, dass `bildschirmzeit_anmelden` durch ist.
 
 **Mess-Modul der Web-Apps:** `web/bildschirmzeit.js`, geprüft von
-`tests/test-web.mjs` (ohne Browser). Boxenstopp, Freizeit und Workout haben je
-eine **byte-gleiche** Kopie als `js/bildschirmzeit.js` – geändert wird nur
-hier, dann in alle drei kopiert (dort jeweils die Service-Worker-Version
-hochzählen und die Browsertests laufen lassen). Ohne Link ist es völlig
+`tests/test-web.mjs` (ohne Browser). Boxenstopp, Freizeit, Workout und die
+Bewerbungszentrale haben je eine **byte-gleiche** Kopie als
+`js/bildschirmzeit.js` – geändert wird nur hier, dann in alle vier kopiert
+(dort jeweils die Service-Worker-Version hochzählen und die Browsertests
+laufen lassen). Die Bewerbungszentrale ist ein klassisches Skript
+(`index.html`): Dort startet `js/bildschirmzeit-start.js` das Modul, und ihr
+`route()` lässt den Link stehen, bis das Modul ihn herausnimmt; Stand und
+„Trennen“ stehen unter „Profil & Daten“. **Eine neue Web-App:** ihr Name in
+`BZ_APPS`, in beide Listen von `supabase/bildschirmzeit.sql` (als Migration
+einspielen) und in `WebApp` (Symbol = ihr `icon-192.png` unter
+`drawable-nodpi/symbol_<name>.png`) – `tests/test-web.mjs` sagt, wenn eine
+Stelle fehlt. Ohne Link ist es völlig
 still. Mit Link misst es nur sichtbare Zeit (Takt 15 s, Lücke höchstens
 60 s), teilt an Mitternacht, schickt alle 5 Minuten, beim Zurückkommen und
 beim Wegschalten (keepalive), gleich nach dem Verbinden auch heute = 0 –
@@ -1162,7 +1180,7 @@ ein Push auf `main`), bringt Code auf Tobis Handy, ohne dass er tippt. Das
 war vorher auch so, nur mit Tobis „Aktualisieren“ dazwischen. Die App hat
 Nutzungsdaten, Internet und darf (nach Schritt 9) Apps installieren – sie
 installiert nur sich selbst, aber eine untergeschobene Fassung könnte diese
-Nutzungsdaten lesen, die Kennung (also die Minuten der drei Web-Apps) kennen
+Nutzungsdaten lesen, die Kennung (also die Minuten der Web-Apps) kennen
 und andere APKs zur Installation anbieten. Wird der Schlüssel je getauscht, muss Tobi die App einmal
 deinstallieren und neu installieren (neue Kennung, neu verbinden).
 
@@ -1175,7 +1193,7 @@ android/                     Gradle-Projekt (Kotlin DSL)
   signatur/bildschirmzeit.p12  der offene Signaturschlüssel
   app/src/main/kotlin/de/finanzdienste/bildschirmzeit/
     Nutzung.kt               die Rechnung über Androids Ereignisse (rein)
-    Aufteilung.kt            Chrome kürzen, die drei Web-Apps (rein)
+    Aufteilung.kt            Chrome kürzen, die Web-Apps (rein)
     Texte.kt                 Zeiten, Kennung (rein)
     Nutzungsdaten.kt         UsageStatsManager, Launcher, HOME, Erlaubnis
     Netz.kt                  HttpURLConnection + org.json, Supabase, Zeilen
@@ -1197,7 +1215,7 @@ android/                     Gradle-Projekt (Kotlin DSL)
   app/src/test/…             JUnit + Robolectric (Vorschau mit nativer Grafik)
 docs/vorschau-*.png          gezeichnet von den Tests
 supabase/bildschirmzeit.sql  die vier Funktionen
-web/bildschirmzeit.js        das Mess-Modul der drei Web-Apps
+web/bildschirmzeit.js        das Mess-Modul der Web-Apps
 tests/                       test-sql.mjs (PGlite), test-web.mjs
 .github/workflows/apk.yml    pruefen → apk → Release v<Laufnummer>
 ```

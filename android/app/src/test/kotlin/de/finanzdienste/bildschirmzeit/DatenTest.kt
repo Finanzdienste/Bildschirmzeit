@@ -40,6 +40,14 @@ class DatenTest {
         assertEquals(emptyList<Zeile>(), zeilenAus("[]"))
     }
 
+    /** Seit 19.11.2026 meldet auch die Bewerbungszentrale – ihre Zeilen fallen nicht mehr als unbekannt weg. */
+    @Test
+    fun zeilenDerBewerbungszentrale() {
+        val z = zeilenAus("""[{"app":"bewerbungszentrale","tag":"2026-11-19","sekunden":900,"aktualisiert":"2026-11-19T12:00:00+00:00"}]""")
+        assertEquals(listOf("bewerbungszentrale" to 900L), z.map { it.app to it.sekunden })
+        assertEquals(mapOf("bewerbungszentrale" to 900L), webDaten(z, "2026-11-19", ohneNetz = false, gelesen = 5L).heute)
+    }
+
     @Test(expected = IOException::class)
     fun unlesbareAntwortIstEinFehler() {
         zeilenAus("""{"message":"Kennung ungültig"}""")

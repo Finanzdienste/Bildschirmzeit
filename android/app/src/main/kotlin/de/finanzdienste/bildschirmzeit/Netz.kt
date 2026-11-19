@@ -189,7 +189,7 @@ fun zeilenAusJson(a: JSONArray): List<Zeile> = (0 until a.length()).map { i ->
 }
 
 /**
- * Was die Widget-App über die drei Web-Apps weiß: Sekunden heute, wann jede
+ * Was die Widget-App über die Web-Apps weiß: Sekunden heute, wann jede
  * zuletzt gemeldet hat (nur wer in den letzten acht Tagen gemeldet hat, steht
  * drin – das heißt „verbunden“), ob das gerade aus dem Netz kam oder aus dem
  * Zwischenspeicher (`ohneNetz`) und wann zuletzt gelesen wurde.

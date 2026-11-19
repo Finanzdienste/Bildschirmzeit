@@ -9,6 +9,9 @@
  * der Test sie auslöst. Die Browsertests in Boxenstopp, Freizeit und Workout
  * prüfen dieselbe Datei noch einmal im echten Chromium.
  */
+import { readFileSync } from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { isDeepStrictEqual as gleich } from 'node:util';
 
 let fails = 0;
@@ -258,5 +261,21 @@ speicher.set('bildschirmzeit.workout', JSON.stringify({ kennung: 'kurz' }));
 check(bz.bildschirmzeitStand() === null, 'kaputte Kennung zählt als nicht verbunden');
 
 Date.now = echtesNow;
+// --- Dieselbe Liste der Apps überall: Modul, Supabase, Widget-App (die Bewerbungszentrale kam am 19.11.2026 dazu) ---
+{
+  let geworfen = null;
+  try { bz.bildschirmzeitStarten('bewerbungszentrale'); } catch (e) { geworfen = e; }
+  check(geworfen === null, `die Bewerbungszentrale darf starten (${geworfen?.message || 'kein Fehler'})`);
+  const wurzel = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+  const sql = readFileSync(path.join(wurzel, 'supabase', 'bildschirmzeit.sql'), 'utf8');
+  const sqlListen = [...sql.matchAll(/app (?:not )?in \(([^)]*)\)/g)].map((m) => [...m[1].matchAll(/'([a-z]+)'/g)].map((x) => x[1]));
+  check(sqlListen.length === 3 && sqlListen.every((l) => gleich(l, bz.BZ_APPS)),
+    `Supabase lässt genau die Apps aus BZ_APPS zu (Tabelle beim Anlegen und danach, bildschirmzeit_melden: ${JSON.stringify(sqlListen)})`);
+  const kt = readFileSync(path.join(wurzel, 'android/app/src/main/kotlin/de/finanzdienste/bildschirmzeit/Aufteilung.kt'), 'utf8');
+  const von = kt.indexOf('enum class WebApp');
+  const widget = [...kt.slice(von, kt.indexOf(';', von)).matchAll(/^\s+[A-Z_]+\("([a-z]+)"/gm)].map((m) => m[1]);
+  check(gleich(widget, bz.BZ_APPS), `die Widget-App kennt genau die Apps aus BZ_APPS (WebApp: ${widget.join(', ')})`);
+}
+
 console.log(`\n${oks} OK, ${fails} FAIL`);
 process.exit(fails ? 1 : 0);

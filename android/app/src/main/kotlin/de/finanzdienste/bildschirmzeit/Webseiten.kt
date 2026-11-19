@@ -55,7 +55,7 @@ const val SONSTIGE_NAME = "Sonstiges"
 const val SONSTIGE_KURZ = "Sonstiges"
 
 /**
- * Hier liegen Tobis Web-Apps (Boxenstopp, Freizeit, Workout). In Chrome zählen
+ * Hier liegen Tobis Web-Apps (WebApp, etwa Workout). In Chrome zählen
  * sie über Supabase unter eigenem Namen – dort also keine Seite.
  */
 const val WEB_APPS_DOMAIN = "finanzdienste.github.io"
@@ -161,7 +161,7 @@ sealed interface Befund {
 
 /**
  * Was der Dienst sich merkt: die Domain – außer Tobis Web-Apps in Chrome (die
- * zählen über Supabase als Boxenstopp, Freizeit, Workout).
+ * zählen über Supabase unter eigenem Namen).
  */
 fun gemerkteDomain(paket: String, domain: String): String? = if (paket in CHROMES && domain == WEB_APPS_DOMAIN) null else domain
 

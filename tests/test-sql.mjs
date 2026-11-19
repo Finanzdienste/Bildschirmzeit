@@ -31,7 +31,7 @@ const check = (c, m) => {
 
 const db = await PGlite.create();
 
-await db.exec(`
+const ROLLEN = `
   create role anon nologin noinherit;
   create role authenticated nologin noinherit;
   create role service_role nologin noinherit bypassrls;
@@ -41,7 +41,8 @@ await db.exec(`
   alter default privileges for role besitzer in schema public grant all on tables to anon, authenticated, service_role;
   alter default privileges for role besitzer in schema public grant all on functions to anon, authenticated, service_role;
   alter default privileges for role besitzer in schema public grant all on sequences to anon, authenticated, service_role;
-`);
+`;
+await db.exec(ROLLEN);
 
 async function einspielen() {
   await db.exec('set role besitzer');
@@ -132,6 +133,14 @@ zeilen = await lesen(K1, HEUTE, HEUTE);
 const je = Object.fromEntries(zeilen.map((z) => [z.app, z.sekunden]));
 check(je.boxenstopp === 86400 && je.freizeit === 0 && je.workout === 300, `Werte auf 0 … 86400 begrenzt (${JSON.stringify(je)})`);
 
+// Die Bewerbungszentrale kam am 19.11.2026 dazu.
+check(await melden(K1, 'bewerbungszentrale', { [HEUTE]: 42 }) === true, 'melden: die Bewerbungszentrale → true');
+zeilen = await lesen(K1, HEUTE, HEUTE);
+check(zeilen.some((z) => z.app === 'bewerbungszentrale' && z.sekunden === 42), 'lesen: die Bewerbungszentrale mit ihren Sekunden');
+const pruefungen = await su(`select pg_get_constraintdef(oid) as d from pg_constraint
+  where conrelid = 'public.bildschirmzeit'::regclass and contype = 'c' and pg_get_constraintdef(oid) like '%app%'`);
+check(pruefungen.length === 1 && pruefungen[0].d.includes('bewerbungszentrale'), `genau eine Prüfung der Apps an der Tabelle (${pruefungen.map((p) => p.d).join(' | ')})`);
+
 const vorher = (await su('select count(*)::int as n from bildschirmzeit'))[0].n;
 await melden(K1, 'freizeit', { [tag(-30)]: 10, [tag(5)]: 10, '2026-02-30': 10, nichtdatum: 10, [GESTERN]: 'viel', [tag(-2)]: null });
 check((await su('select count(*)::int as n from bildschirmzeit'))[0].n === vorher,
@@ -175,6 +184,39 @@ check(await loeschen(K1) === false, 'noch einmal loeschen → false');
 check((await su('select count(*)::int as n from bildschirmzeit where geraet = $1', [sha(K1)]))[0].n === 0, 'loeschen nimmt alle Zahlen dieser Kennung mit');
 check(await melden(K1, 'workout', { [HEUTE]: 400 }) === false, 'nach dem Löschen: melden → false (die Web-App trennt sich dann)');
 check((await lesen(K2, HEUTE, HEUTE)).length === 1, 'die andere Kennung behält ihre Zahlen');
+
+// --- Eingespielt über den Stand vor dem 19.11.2026 (so wie live): die Tabelle schon da, mit der alten Liste ---
+{
+  const alt = await PGlite.create();
+  await alt.exec(ROLLEN);
+  await alt.exec(`set role besitzer;
+    create table public.bildschirmzeit_geraet (geraet text primary key, angelegt timestamptz not null default now(), gelesen timestamptz);
+    create table public.bildschirmzeit (
+      geraet text not null references public.bildschirmzeit_geraet (geraet) on delete cascade,
+      app text not null check (app in ('boxenstopp', 'freizeit', 'workout')),
+      tag date not null,
+      sekunden integer not null check (sekunden between 0 and 86400),
+      aktualisiert timestamptz not null default now(),
+      primary key (geraet, app, tag)
+    );
+    insert into public.bildschirmzeit_geraet (geraet) values ('${sha(K1)}');
+    insert into public.bildschirmzeit (geraet, app, tag, sekunden) values ('${sha(K1)}', 'workout', current_date, 99);
+    reset role;`);
+  await alt.exec('set role besitzer');
+  try { await alt.exec(SQL); } finally { await alt.exec('reset role'); }
+  await alt.exec('set role anon');
+  let r;
+  try {
+    r = (await alt.query('select bildschirmzeit_melden(p_kennung => $1, p_app => $2, p_tage => $3::text::jsonb) as r',
+      [K1, 'bewerbungszentrale', JSON.stringify({ [HEUTE]: 7 })])).rows[0].r;
+  } finally { await alt.exec('reset role'); }
+  check(r === true, 'über die alte Tabelle eingespielt: die Bewerbungszentrale darf melden');
+  const da = (await alt.query('select app, sekunden from public.bildschirmzeit order by app')).rows.map((z) => [z.app, z.sekunden]);
+  check(gleich(da, [['bewerbungszentrale', 7], ['workout', 99]]), `… und die alten Zahlen bleiben (${JSON.stringify(da)})`);
+  const p = (await alt.query(`select pg_get_constraintdef(oid) as d from pg_constraint
+    where conrelid = 'public.bildschirmzeit'::regclass and contype = 'c' and pg_get_constraintdef(oid) like '%app%'`)).rows;
+  check(p.length === 1 && p[0].d.includes('bewerbungszentrale'), '… mit genau einer Prüfung der Apps, der neuen');
+}
 
 console.log(`\n${oks} OK, ${fails} FAIL`);
 process.exit(fails ? 1 : 0);

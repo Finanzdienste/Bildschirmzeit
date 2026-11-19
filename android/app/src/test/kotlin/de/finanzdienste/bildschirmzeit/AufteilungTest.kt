@@ -6,7 +6,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 import kotlin.random.Random
 
-/** Chrome um Boxenstopp, Freizeit und Workout kürzen (Aufteilung.kt). */
+/** Chrome um Tobis Web-Apps kürzen (Aufteilung.kt). */
 class AufteilungTest {
 
     @Test
@@ -100,12 +100,23 @@ class AufteilungTest {
 
     @Test
     fun webAppsHabenNameSymbolUndLink() {
-        assertEquals(listOf("boxenstopp", "freizeit", "workout"), WebApp.entries.map { it.schluessel })
+        assertEquals(listOf("boxenstopp", "freizeit", "workout", "bewerbungszentrale"), WebApp.entries.map { it.schluessel })
         assertEquals("Workout", Posten("workout", "Workout", 1).webApp?.anzeigename)
+        assertEquals("Bewerbungen", Posten("bewerbungszentrale", "Bewerbungszentrale", 1).webApp?.anzeigename)
+        assertEquals(R.drawable.symbol_bewerbungszentrale, WebApp.BEWERBUNGSZENTRALE.symbol)
         assertNull(Posten(CHROME, "Chrome", 1).webApp)
         val k = "A".repeat(43)
         assertEquals("https://finanzdienste.github.io/Boxenstopp/#bildschirmzeit=$k", WebApp.BOXENSTOPP.link(k))
         assertEquals("https://finanzdienste.github.io/Freizeit/#bildschirmzeit=$k", WebApp.FREIZEIT.link(k))
         assertEquals("https://finanzdienste.github.io/Workout/#bildschirmzeit=$k", WebApp.WORKOUT.link(k))
+        assertEquals("https://finanzdienste.github.io/Bewerbungszentrale/#bildschirmzeit=$k", WebApp.BEWERBUNGSZENTRALE.link(k))
+        assertEquals("Boxenstopp, Freizeit, Workout und Bewerbungen", webAppsText())
+    }
+
+    /** Tobi, 19.11.: „Hab ne zusätzliche App die noch nicht connected ist. Geht um die Bewerbungs app“. */
+    @Test
+    fun bewerbungszentraleZaehltNichtMehrAlsChrome() {
+        val z = aufteilen(mapOf(CHROME to 3600L), mapOf("bewerbungszentrale" to 900L, "workout" to 300L))
+        assertEquals(mapOf("workout" to 300L, "bewerbungszentrale" to 900L, CHROME to 2400L), z)
     }
 }

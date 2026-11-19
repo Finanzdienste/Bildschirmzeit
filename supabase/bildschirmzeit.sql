@@ -1,4 +1,5 @@
--- Bildschirmzeit: wie lange Boxenstopp, Freizeit und Workout heute offen waren.
+-- Bildschirmzeit: wie lange Boxenstopp, Freizeit, Workout und die
+-- Bewerbungszentrale heute offen waren.
 --
 -- Projekt „Finanzdienste's Project“ (vjyohppohmvhhxgwouti), dasselbe wie
 -- Workout und Freizeit. Eingespielt als Migration „bildschirmzeit“; diese Datei
@@ -7,7 +8,7 @@
 -- Wer schreibt, wer liest:
 --   * Die Widget-App (Android) erzeugt einmal eine geheime Kennung (43 Zeichen
 --     base64url) und meldet sie hier an (bildschirmzeit_anmelden).
---   * Ihr „Verbinden“-Knopf öffnet eine der drei Web-Apps mit
+--   * Ihr „Verbinden“-Knopf öffnet eine der vier Web-Apps mit
 --     #bildschirmzeit=<Kennung>. Ab dann meldet diese App ihren Tagesstand
 --     (bildschirmzeit_melden) – Sekunden je Tag, nicht Zuwächse.
 --   * Das Widget liest den Stand mit derselben Kennung (bildschirmzeit_lesen).
@@ -26,12 +27,20 @@ create table if not exists public.bildschirmzeit_geraet (
 
 create table if not exists public.bildschirmzeit (
   geraet       text not null references public.bildschirmzeit_geraet (geraet) on delete cascade,
-  app          text not null check (app in ('boxenstopp', 'freizeit', 'workout')),
+  app          text not null check (app in ('boxenstopp', 'freizeit', 'workout', 'bewerbungszentrale')),
   tag          date not null,                  -- Kalendertag auf dem Handy
   sekunden     integer not null check (sekunden between 0 and 86400),
   aktualisiert timestamptz not null default now(),
   primary key (geraet, app, tag)
 );
+
+-- Welche Apps melden dürfen – auch für eine schon angelegte Tabelle (die
+-- Bewerbungszentrale kam am 19.11.2026 dazu). Dieselbe Liste in
+-- bildschirmzeit_melden, in web/bildschirmzeit.js (BZ_APPS) und in der
+-- Widget-App (WebApp); tests/test-web.mjs prüft, dass alle vier gleich sind.
+alter table public.bildschirmzeit drop constraint if exists bildschirmzeit_app_check;
+alter table public.bildschirmzeit add constraint bildschirmzeit_app_check
+  check (app in ('boxenstopp', 'freizeit', 'workout', 'bewerbungszentrale'));
 
 alter table public.bildschirmzeit_geraet enable row level security;
 alter table public.bildschirmzeit enable row level security;
@@ -85,7 +94,7 @@ declare
   t record;
   d date;
 begin
-  if p_app is null or p_app not in ('boxenstopp', 'freizeit', 'workout') then
+  if p_app is null or p_app not in ('boxenstopp', 'freizeit', 'workout', 'bewerbungszentrale') then
     raise exception 'App unbekannt' using errcode = '22023';
   end if;
   if p_tage is null or jsonb_typeof(p_tage) <> 'object' then

@@ -491,7 +491,7 @@ class MainActivity : Activity(), UpdateBeobachter {
             a.nur == null && a.zeitraum.reiter == Reiter.TAG && a.belegt == 1 && a.apps.isEmpty() ->
                 getString(if (a.zeitraum.von == a.heute) R.string.heute_leer else R.string.tag_leer)
             e == null || !a.zeitraum.enthaelt(a.heute) -> null
-            e.web.verbunden && (a.nur == null || a.nur == CHROME) -> "Chrome ohne Boxenstopp, Freizeit und Workout. ${statistikStand(e)}."
+            e.web.verbunden && (a.nur == null || a.nur == CHROME) -> "Chrome ohne ${webAppsText()}. ${statistikStand(e)}."
             else -> "${statistikStand(e)}."
         }
     }
@@ -763,7 +763,7 @@ class MainActivity : Activity(), UpdateBeobachter {
 }
 
 /**
- * Der Verbinden-Link geht zuerst ausdrücklich an Chrome: Dort laufen die drei
+ * Der Verbinden-Link geht zuerst ausdrücklich an Chrome: Dort laufen die
  * Web-Apps, und nur dort teilen sie sich den localStorage, in den der Link
  * die Kennung legt. Im Standardbrowser (auf Samsung oft Samsung Internet)
  * landete sie im Speicher dieses Browsers, und die Web-Apps in Chrome
@@ -772,6 +772,12 @@ class MainActivity : Activity(), UpdateBeobachter {
 fun verbindenAbsichten(link: String): List<Intent> {
     val uri = link.toUri()
     return listOf(Intent(Intent.ACTION_VIEW, uri).setPackage(CHROME), Intent(Intent.ACTION_VIEW, uri))
+}
+
+/** „Boxenstopp, Freizeit, Workout und Bewerbungen“ – alle Web-Apps mit ihrem Namen im Widget. */
+fun webAppsText(): String {
+    val namen = WebApp.entries.map { it.anzeigename }
+    return if (namen.size < 2) namen.joinToString() else namen.dropLast(1).joinToString(", ") + " und " + namen.last()
 }
 
 /** „heute 23 Min., zuletzt 21:40“ oder „noch nicht verbunden“ – Schritt 2 der App. */

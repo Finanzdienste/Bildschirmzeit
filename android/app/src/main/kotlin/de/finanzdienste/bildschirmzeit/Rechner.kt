@@ -12,7 +12,7 @@ import java.time.ZoneId
 data class Ergebnis(
     /** Nutzungsdatenzugriff erlaubt? Sonst ist `posten` leer. */
     val erlaubt: Boolean,
-    /** Absteigend nach Zeit; die drei Web-Apps statt (eines Teils von) Chrome. */
+    /** Absteigend nach Zeit; die Web-Apps statt (eines Teils von) Chrome. */
     val posten: List<Posten>,
     /** Wann gerechnet wurde (ms). */
     val stand: Long,
@@ -261,7 +261,7 @@ object Rechner {
 /**
  * Was ein Tag im Verlauf schon hatte, geht nicht verloren: je App das Größere
  * aus `bisher` und Androids neuer Rechnung `neu` (Sekunden je Paket, wie
- * heuteJeApp sie liefert). Chrome zählt dabei samt den drei Web-Apps (so
+ * heuteJeApp sie liefert). Chrome zählt dabei samt den Web-Apps (so
  * stand es vor dem Aufteilen). Nötig, weil Android die Ereignisse einer
  * deinstallierten App nicht mehr liefert (AOSP UsageStatsDatabase.onPackageRemoved,
  * IntervalStats.deobfuscateEvents) – und weil es nach einem Neustart auch

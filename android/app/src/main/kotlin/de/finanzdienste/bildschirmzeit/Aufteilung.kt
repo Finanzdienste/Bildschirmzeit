@@ -1,6 +1,6 @@
 package de.finanzdienste.bildschirmzeit
 
-/** Chrome – in ihm laufen Boxenstopp, Freizeit und Workout. */
+/** Chrome – in ihm laufen Tobis Web-Apps (WebApp). */
 const val CHROME = "com.android.chrome"
 
 /**
@@ -21,11 +21,18 @@ fun webApksZuChrome(android: Map<String, Long>): Map<String, Long> {
     return aus
 }
 
-/** Die drei Web-Apps: Schlüssel wie in Supabase (`p_app`), Name und Symbol wie im Widget. */
+/**
+ * Tobis Web-Apps: Schlüssel wie in Supabase (`p_app`) und in BZ_APPS von
+ * web/bildschirmzeit.js (tests/test-web.mjs prüft, dass die Listen gleich
+ * sind), Name und Symbol wie im Widget.
+ */
 enum class WebApp(val schluessel: String, val anzeigename: String, private val pfad: String, val symbol: Int) {
     BOXENSTOPP("boxenstopp", "Boxenstopp", "Boxenstopp", R.drawable.symbol_boxenstopp),
     FREIZEIT("freizeit", "Freizeit", "Freizeit", R.drawable.symbol_freizeit),
     WORKOUT("workout", "Workout", "Workout", R.drawable.symbol_workout),
+
+    // Seit 19.11.2026. Im Widget heißt sie wie auf Tobis Startbildschirm (short_name im Manifest).
+    BEWERBUNGSZENTRALE("bewerbungszentrale", "Bewerbungen", "Bewerbungszentrale", R.drawable.symbol_bewerbungszentrale),
     ;
 
     /** Der Verbinden-Link: öffnet die Web-App, die sich damit an diese Kennung bindet. */
@@ -36,15 +43,15 @@ enum class WebApp(val schluessel: String, val anzeigename: String, private val p
     }
 }
 
-/** Ein Eintrag der Liste: ein Paket oder eine der drei Web-Apps (Schlüssel ohne Punkt). */
+/** Ein Eintrag der Liste: ein Paket oder eine der Web-Apps (Schlüssel ohne Punkt). */
 data class Posten(val schluessel: String, val name: String, val sekunden: Long) {
     val webApp: WebApp? get() = WebApp.von(schluessel)
 }
 
 /**
- * Chrome um die drei Web-Apps kürzen: `android` sind Sekunden je Paket
+ * Chrome um die Web-Apps kürzen: `android` sind Sekunden je Paket
  * (Androids Rechnung), `web` Sekunden je Web-App (was die Apps selbst
- * gemessen haben). Haben die drei zusammen mehr gemeldet, als Chrome lief,
+ * gemessen haben). Haben sie zusammen mehr gemeldet, als Chrome lief,
  * werden sie anteilig auf Chromes Zeit gekürzt – die Gesamtzeit bleibt so
  * immer die von Android. Was von Chrome übrig bleibt, bleibt Chrome.
  * Ergebnis: Sekunden je Schlüssel, nur Einträge über 0.

@@ -36,7 +36,7 @@ data class Tag(
 
     /**
      * Derselbe Tag mit neuen Werten der Web-Apps (sie melden auch verspätet).
-     * Chromes ganze Zeit steckt in „Chrome“ und den drei Web-Apps zusammen
+     * Chromes ganze Zeit steckt in „Chrome“ und den Web-Apps zusammen
      * (aufteilen zieht nur ab), also lässt sie sich neu aufteilen; die
      * Gesamtzeit bleibt die von Android.
      */
@@ -54,7 +54,7 @@ data class Tag(
 
     /**
      * Androids Teil des Tages vor dem Aufteilen: Sekunden je Paket, Chrome
-     * wieder samt den drei Web-Apps, jeder Browser wieder samt seinen Seiten.
+     * wieder samt den Web-Apps, jeder Browser wieder samt seinen Seiten.
      */
     fun androidTeil(): Map<String, Long> {
         val android = LinkedHashMap<String, Long>()
@@ -83,7 +83,7 @@ fun anzeigename(schluessel: String): String? = WebApp.von(schluessel)?.anzeigena
  * Ein Tag aus Androids Rechnung: `android` sind Sekunden je Paket (wie
  * heuteJeApp sie liefert), `web` die Meldungen der Web-Apps für den Tag,
  * `seiten` die Sekunden je Seite und Browser (seitenZeiten). Installierte
- * Web-Apps zählen zu Chrome, Chrome wird um die drei gekürzt, dann jeder
+ * Web-Apps zählen zu Chrome, Chrome wird um Tobis Web-Apps gekürzt, dann jeder
  * Browser um seine Seiten.
  */
 fun tagAus(
