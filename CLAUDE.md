@@ -40,7 +40,11 @@ offline funktionieren.“ Das gilt für jede Änderung und jede neue Funktion:
 - `web/bildschirmzeit.js` misst ohne Netz weiter und schickt den Tagesstand
   nach, sobald es wieder geht – auch den von Tagen, die ohne Netz zu Ende
   gingen.
-- Was nur mit Netz geht, sagt das in einem Satz; der Rest bleibt benutzbar.
+- Was nur mit Netz geht, wird ohne Netz vorgemerkt und läuft von selbst,
+  sobald Netz da ist (Tobi, 22.11.2026: „sowas wie mails senden könnte er sich
+  doch vormerken und dann machen sobald er internet hat“) – sichtbar, nie
+  doppelt. Was sich nicht vormerken lässt, sagt in einem Satz, dass es Netz
+  braucht; der Rest bleibt benutzbar.
 - Neue Funktionen bekommen einen Test ohne Netz.
 
 ## Das Projekt
