@@ -31,6 +31,18 @@ Tobi, 15.11.: „Sowas sollst du immer konkret mit angeben“. Was läuft, zeigt
   der Nachricht.
 - Lieber den Aufwand senken als das Modell wechseln, und nicht hin und her.
 
+## Offline zuerst
+Tobi, 22.11.2026: „Generell sollen all meine Apps auch so weit wie möglich
+offline funktionieren.“ Das gilt für jede Änderung und jede neue Funktion:
+- Das Widget und die App zeigen ohne Netz alles, was Android selbst liefert
+  (Nutzungsdaten), und für die Web-Apps den letzten Stand von Supabase mit
+  dem Hinweis „ohne Netz“ – nie eine leere Fläche oder eine Fehlermeldung.
+- `web/bildschirmzeit.js` misst ohne Netz weiter und schickt den Tagesstand
+  nach, sobald es wieder geht – auch den von Tagen, die ohne Netz zu Ende
+  gingen.
+- Was nur mit Netz geht, sagt das in einem Satz; der Rest bleibt benutzbar.
+- Neue Funktionen bekommen einen Test ohne Netz.
+
 ## Das Projekt
 Tobis Bildschirmzeit-Widget für sein Samsung Galaxy S24: eine kleine
 Android-App (Kotlin, `android/`), die Androids Nutzungsdaten liest und die Zeit
