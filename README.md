@@ -1521,6 +1521,11 @@ spricht mit dem echten Supabase oder GitHub (`Netz.gesperrt`).
   Firefox-Tab doppelt da. Supabase nimmt je Tag den größeren Wert. Meldet
   die Bewerbungszentrale am selben Tag aus Chrome und Firefox, zählt also
   nur der größere der beiden (so am 21.11., dem Tag des Wechsels).
+- 22.11.2026: Release **v18** (Fassung 1.18, aus 950e02b) mit diesem Umbau.
+  236 Prüfungen, 53 SQL, 64 Web-Modul grün, Lint ohne Fehler; geändert sind
+  nur die App-Bilder mit den neuen Texten (Schritt 2, Hinweis unter der
+  Statistik), die Widget-Bilder sind gleich. Offen bei Tobi: in der App bei
+  „Bewerbungen“ einmal „Verbinden“, das öffnet jetzt Firefox.
 - Noch nicht auf dem S24 ausprobiert: Größen des Startbildschirms, Akku-
   Verhalten von One UI (ob es die App trotz Widget schlafen legt), ob
   Chrome den Verbinden-Link in der installierten Web-App oder als Tab
