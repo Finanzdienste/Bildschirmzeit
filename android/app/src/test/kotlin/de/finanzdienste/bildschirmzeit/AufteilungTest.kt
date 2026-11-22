@@ -113,10 +113,28 @@ class AufteilungTest {
         assertEquals("Boxenstopp, Freizeit, Workout und Bewerbungen", webAppsText())
     }
 
-    /** Tobi, 19.11.: „Hab ne zusätzliche App die noch nicht connected ist. Geht um die Bewerbungs app“. */
+    /**
+     * Tobi, 19.11.: „Hab ne zusätzliche App die noch nicht connected ist. Geht um die Bewerbungs app“.
+     * Seit 21.11. läuft sie in Firefox; 22.11.: „hab in der widget app auf verbinden geklickt und dann hat
+     * sich Chrome geöffnet“. Ihre Zeit kommt jetzt aus Firefox, Chrome bleibt um die anderen drei gekürzt.
+     */
     @Test
-    fun bewerbungszentraleZaehltNichtMehrAlsChrome() {
-        val z = aufteilen(mapOf(CHROME to 3600L), mapOf("bewerbungszentrale" to 900L, "workout" to 300L))
-        assertEquals(mapOf("workout" to 300L, "bewerbungszentrale" to 900L, CHROME to 2400L), z)
+    fun bewerbungszentraleWirdVonFirefoxAbgezogen() {
+        assertEquals(FIREFOX, WebApp.BEWERBUNGSZENTRALE.browser)
+        assertEquals(listOf(CHROME, CHROME, CHROME), listOf(WebApp.BOXENSTOPP, WebApp.FREIZEIT, WebApp.WORKOUT).map { it.browser })
+        val z = aufteilen(
+            mapOf(CHROME to 1800L, FIREFOX to 3000L, "com.beispiel.chat" to 60L),
+            mapOf("bewerbungszentrale" to 1200L, "workout" to 600L),
+        )
+        assertEquals(mapOf(CHROME to 1200L, "workout" to 600L, FIREFOX to 1800L, "bewerbungszentrale" to 1200L, "com.beispiel.chat" to 60L), z)
+        assertEquals(4860L, z.values.sum())
+        // Mehr gemeldet, als Firefox lief: auf Firefox' Zeit gekürzt, Chrome bleibt unberührt.
+        val kurz = aufteilen(mapOf(CHROME to 600L, FIREFOX to 300L), mapOf("bewerbungszentrale" to 900L))
+        assertEquals(mapOf(CHROME to 600L, "bewerbungszentrale" to 300L), kurz)
+        // Ohne Firefox zählt sie nicht – auch nicht von Chrome.
+        assertEquals(mapOf(CHROME to 3600L), aufteilen(mapOf(CHROME to 3600L), mapOf("bewerbungszentrale" to 900L)))
+        assertEquals("Chrome ohne Boxenstopp, Freizeit und Workout, Firefox ohne Bewerbungen", browserOhneText())
+        assertEquals("Firefox ohne Bewerbungen", browserOhneText(FIREFOX))
+        assertEquals("Boxenstopp, Freizeit und Workout", webAppsText(CHROME))
     }
 }

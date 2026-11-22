@@ -118,7 +118,7 @@ class AppStatistikTest {
         val namen = (0 until liste.childCount).map { liste.getChildAt(it).findViewById<TextView>(R.id.name).text.toString() }
         assertTrue(namen.containsAll(listOf("Workout", "Boxenstopp", "Freizeit", "Chrome")))
         assertTrue(liste.getChildAt(0).findViewById<TextView>(R.id.anteil).text.endsWith("%"))
-        assertEquals("Chrome ohne Boxenstopp, Freizeit, Workout und Bewerbungen. Stand\u00A021:40.", a.text(R.id.statistik_hinweis))
+        assertEquals("Chrome ohne Boxenstopp, Freizeit und Workout, Firefox ohne Bewerbungen. Stand\u00A021:40.", a.text(R.id.statistik_hinweis))
     }
 
     @Test
@@ -234,7 +234,7 @@ class AppStatistikTest {
         warten()
         assertEquals("Heute", a.text(R.id.zeitraum_titel))
         assertEquals(dauerText(95 * 60L), a.text(R.id.gesamt))
-        assertEquals("Chrome ohne Boxenstopp, Freizeit, Workout und Bewerbungen. Stand\u00A021:40.", a.text(R.id.statistik_hinweis))
+        assertEquals("Chrome ohne Boxenstopp, Freizeit und Workout, Firefox ohne Bewerbungen. Stand\u00A021:40.", a.text(R.id.statistik_hinweis))
     }
 
     /**

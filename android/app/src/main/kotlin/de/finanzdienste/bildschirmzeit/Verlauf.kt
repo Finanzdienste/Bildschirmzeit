@@ -36,9 +36,9 @@ data class Tag(
 
     /**
      * Derselbe Tag mit neuen Werten der Web-Apps (sie melden auch verspätet).
-     * Chromes ganze Zeit steckt in „Chrome“ und den Web-Apps zusammen
-     * (aufteilen zieht nur ab), also lässt sie sich neu aufteilen; die
-     * Gesamtzeit bleibt die von Android.
+     * Die ganze Zeit eines Browsers steckt in ihm und seinen Web-Apps
+     * zusammen (aufteilen zieht nur ab), also lässt sie sich neu aufteilen;
+     * die Gesamtzeit bleibt die von Android.
      */
     fun mitWeb(neu: Map<String, Long>, gelesen: Long): Tag {
         val namen = posten.associate { it.schluessel to it.name }
@@ -46,28 +46,22 @@ data class Tag(
         val seiten = posten.filter { seiteVon(it.schluessel) != null }.associate { it.schluessel to it.sekunden }
         val geteilt = seitenAbziehen(aufteilen(androidTeil(), neu), seiten, mindestens = 0L)
         return copy(
-            posten = sortiert(geteilt.map { (k, s) -> Posten(k, anzeigename(k) ?: namen[k] ?: if (k == CHROME) "Chrome" else k, s) }),
+            posten = sortiert(geteilt.map { (k, s) -> Posten(k, anzeigename(k) ?: namen[k] ?: if (k == CHROME || k == FIREFOX) browserName(k) else k, s) }),
             web = neu.filterValues { it > 0 },
             webGelesen = gelesen,
         )
     }
 
     /**
-     * Androids Teil des Tages vor dem Aufteilen: Sekunden je Paket, Chrome
-     * wieder samt den Web-Apps, jeder Browser wieder samt seinen Seiten.
+     * Androids Teil des Tages vor dem Aufteilen: Sekunden je Paket, jeder
+     * Browser wieder samt seinen Web-Apps und seinen Seiten.
      */
     fun androidTeil(): Map<String, Long> {
         val android = LinkedHashMap<String, Long>()
-        var chrome = 0L
         for (p in posten) {
-            val seite = seiteVon(p.schluessel)
-            when {
-                p.webApp != null || p.schluessel == CHROME -> chrome += p.sekunden
-                seite != null -> android[seite.first] = (android[seite.first] ?: 0L) + p.sekunden
-                else -> android[p.schluessel] = (android[p.schluessel] ?: 0L) + p.sekunden
-            }
+            val paket = p.webApp?.browser ?: seiteVon(p.schluessel)?.first ?: p.schluessel
+            android[paket] = (android[paket] ?: 0L) + p.sekunden
         }
-        if (chrome > 0) android[CHROME] = chrome
         return android
     }
 }
@@ -83,8 +77,8 @@ fun anzeigename(schluessel: String): String? = WebApp.von(schluessel)?.anzeigena
  * Ein Tag aus Androids Rechnung: `android` sind Sekunden je Paket (wie
  * heuteJeApp sie liefert), `web` die Meldungen der Web-Apps für den Tag,
  * `seiten` die Sekunden je Seite und Browser (seitenZeiten). Installierte
- * Web-Apps zählen zu Chrome, Chrome wird um Tobis Web-Apps gekürzt, dann jeder
- * Browser um seine Seiten.
+ * Web-Apps zählen zu Chrome, jeder Browser wird um Tobis Web-Apps gekürzt, die
+ * dort laufen, dann um seine Seiten.
  */
 fun tagAus(
     datum: LocalDate,

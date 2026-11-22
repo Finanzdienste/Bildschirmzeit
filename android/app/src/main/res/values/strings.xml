@@ -26,7 +26,7 @@
     <string name="app_info">App-Info öffnen</string>
 
     <string name="schritt2_titel">2  Web-Apps verbinden</string>
-    <string name="schritt2_text">Android zählt Boxenstopp, Freizeit, Workout und Bewerbungen als „Chrome“. Einmal verbinden: Die App öffnet sich und meldet ab dann ihre Minuten – hier und im Widget stehen sie dann unter eigenem Namen.</string>
+    <string name="schritt2_text">Android zählt Boxenstopp, Freizeit und Workout als „Chrome“, Bewerbungen als „Firefox“. Einmal verbinden: Die App öffnet sich und meldet ab dann ihre Minuten – hier und im Widget stehen sie dann unter eigenem Namen.</string>
     <string name="verbinden">Verbinden</string>
 
     <string name="schritt3_titel">3  Widget hinzufügen</string>

@@ -160,10 +160,13 @@ sealed interface Befund {
 }
 
 /**
- * Was der Dienst sich merkt: die Domain – außer Tobis Web-Apps in Chrome (die
- * zählen über Supabase unter eigenem Namen).
+ * Was der Dienst sich merkt: die Domain – außer Tobis Web-Apps
+ * (finanzdienste.github.io), in Chrome wie in Firefox: Sie zählen über
+ * Supabase unter eigenem Namen (die Bewerbungszentrale seit 21.11.2026 in
+ * Firefox), sonst stünde ihre Zeit doppelt da. Nicht verbundene bleiben so
+ * beim Browser.
  */
-fun gemerkteDomain(paket: String, domain: String): String? = if (paket in CHROMES && domain == WEB_APPS_DOMAIN) null else domain
+fun gemerkteDomain(paket: String, domain: String): String? = if (paket in BROWSER && domain == WEB_APPS_DOMAIN) null else domain
 
 /**
  * Was zu einem Befund in die Beobachtungen kommt: die Domain, OHNE_DOMAIN
@@ -370,7 +373,7 @@ private inline fun stuecke(intervalle: List<Intervall>, beobachtungen: List<Beob
  * mehr, als der Browser lief (sonst anteilig gekürzt). Die Gesamtzeit bleibt.
  */
 fun seitenAbziehen(geteilt: Map<String, Long>, seiten: Map<String, Long>, mindestens: Long = SEITE_MIN_SEKUNDEN): Map<String, Long> {
-    // Chrome: erst sind die Web-Apps abgezogen (aufteilen); die Seiten kommen aus dem Rest.
+    // Browser: erst sind die Web-Apps abgezogen (aufteilen); die Seiten kommen aus dem Rest.
     val gross = seiten.entries.filter { (k, s) -> s >= maxOf(1L, mindestens) && seiteVon(k) != null }
     if (gross.isEmpty()) return geteilt
     val aus = LinkedHashMap(geteilt)

@@ -221,12 +221,16 @@ class WebseitenTest {
         assertEquals(Befund.Unbekannt, Leiste.lesen(ohne, ff, "org.mozilla.fenix.HomeActivity"))
     }
 
-    /** Tobis Web-Apps zählen in Chrome über Supabase (Boxenstopp, Freizeit, Workout) – dort keine Seite. */
+    /**
+     * Tobis Web-Apps zählen über Supabase (Boxenstopp, Freizeit, Workout in Chrome, die Bewerbungszentrale
+     * seit 21.11. in Firefox) – in keinem der beiden eine Seite, sonst stünde ihre Zeit doppelt da.
+     */
     @Test
-    fun webAppsInChromeKeineSeite() {
+    fun webAppsInBeidenBrowsernKeineSeite() {
         assertNull(gemerkteDomain(CHROME, "finanzdienste.github.io"))
-        assertEquals("finanzdienste.github.io", gemerkteDomain(ff, "finanzdienste.github.io"))
+        assertNull(gemerkteDomain(ff, "finanzdienste.github.io"))
         assertEquals("youtube.com", gemerkteDomain(CHROME, "youtube.com"))
+        assertEquals("youtube.com", gemerkteDomain(ff, "youtube.com"))
     }
 
     /** Tobi, 16.11.: „… alles unter fünf min unter sonstige websiten zusammengefasst … Also Chrome und Firefox addiert“. */

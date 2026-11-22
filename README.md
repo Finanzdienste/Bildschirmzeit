@@ -165,12 +165,14 @@ Einmal, alles am Handy:
 6. **Schritt 2** – viermal: bei Boxenstopp „Verbinden“ → die Web-App öffnet
    sich in Chrome (als installierte App oder als Tab, beides teilt sich den
    Speicher) und meldet „Bildschirmzeit verbunden …“ → zurückwischen zur
-   Bildschirmzeit-App. Dasselbe für Freizeit, Workout und Bewerbungen (die
-   Bewerbungszentrale, seit v15). Danach steht dort
-   „heute … Min., zuletzt 21:40“. Der Link geht ausdrücklich an Chrome, auch
-   wenn Samsung Internet der Standardbrowser ist: Sonst landete die Kennung
-   im Speicher von Samsung Internet, und die Web-Apps in Chrome blieben
-   unverbunden. Nur ohne Chrome nimmt die App den Standardbrowser.
+   Bildschirmzeit-App. Dasselbe für Freizeit und Workout. Bei Bewerbungen
+   (die Bewerbungszentrale) öffnet sich seit 22.11.2026 Firefox, dort läuft
+   sie seit dem 21.11. (unten „Stand“). Danach steht dort
+   „heute … Min., zuletzt 21:40“. Der Link geht ausdrücklich an den Browser
+   der Web-App (`WebApp.browser`), auch wenn Samsung Internet der
+   Standardbrowser ist: Sonst landete die Kennung im Speicher eines anderen
+   Browsers, und die Web-App blieb unverbunden. Nur ohne diesen Browser nimmt
+   die App den Standardbrowser.
 7. **Schritt 3** „Widget hinzufügen“ → „Hinzufügen“. Von Hand:
    Startbildschirm lange drücken → „Widgets“ → „Bildschirmzeit“ → antippen →
    „Hinzufügen“. Größe ändern: Widget lange drücken, an den Rändern ziehen
@@ -234,7 +236,10 @@ von lokaler Mitternacht bis jetzt, aus `UsageStatsManager.queryEvents`.
 - Installierte Web-Apps (Pakete `org.chromium.webapk.*`) sind nur ein
   Startknopf für Chrome; ihre Sekunden zählen zu Chrome.
 
-**Chrome kürzen** (`Aufteilung.kt`, `AufteilungTest`): Die Widget-App liest
+**Browser kürzen** (`Aufteilung.kt`, `AufteilungTest`): Jede Web-App wird
+von dem Browser abgezogen, in dem sie läuft (`WebApp.browser`): Boxenstopp,
+Freizeit und Workout von Chrome, die Bewerbungszentrale seit 21.11.2026 von
+Firefox. Für Firefox gilt dasselbe wie unten für Chrome. Die Widget-App liest
 mit `bildschirmzeit_lesen` die letzten acht Tage (einmal nach dem ersten
 Nachtragen des Verlaufs weiter zurück, unten „Statistik und Verlauf“) und
 nimmt für heute, was jede Web-App gemeldet hat. Das wird von Chrome
@@ -910,8 +915,9 @@ Bilder `vorschau-app-eine-hell.png` / `-dunkel.png`.
   und Custom Tabs ohne Leiste sind „keine Seite“ (nicht „das Bisherige“):
   Der Dienst merkt sich die Activity des letzten Fensterwechsels. Tobis
   Web-Apps auf `finanzdienste.github.io` zählen in Chrome nie als Seite – sie
-  kommen über Supabase unter eigenem Namen (in Firefox zählen sie als Seite,
-  dort sind sie nicht verbunden).
+  kommen über Supabase unter eigenem Namen. Seit 22.11.2026 auch in Firefox
+  nicht (dort läuft die Bewerbungszentrale); nicht verbundene bleiben beim
+  Browser.
 - Im Verlauf steht jede erkannte Seite je Browser als Posten (`seite:<paket>/<domain>`,
   auch unter einer Minute), die Browser behalten nur ihre Zeit ohne erkannte
   Seite. Gezeigt wird zusammengefasst (`webseitenZusammenfassen`, in der
@@ -1501,6 +1507,20 @@ spricht mit dem echten Supabase oder GitHub (`Netz.gesperrt`).
   Zertifikat `bc6f91b9…759e`, versionCode 17, dieselben 9 Rechte. Für 1.14
   bis 1.16 gilt noch: App aus den zuletzt benutzten Apps wegwischen und neu
   öffnen, dann fragt sie (oder der Browser-Link oben).
+- 22.11.2026: Die Bewerbungszentrale läuft seit dem 21.11. in Firefox (Tobi:
+  „Wenn ich in unserer App auf den stellenanzeigen link klicke soll sich
+  direkt Firefox öffnen“; von Chrome aus kam jedes Mal Androids Auswahl).
+  Danach: „hab in der widget app auf verbinden geklickt und dann hat sich
+  Chrome geöffnet“. Seitdem hat jede Web-App ihren Browser
+  (`WebApp.browser`): Der Verbinden-Link geht dorthin, und ihre Zeit wird von
+  diesem Browser abgezogen (Bewerbungen von Firefox, die anderen drei
+  weiter von Chrome). Ältere Tage bleiben, wie sie waren: `androidTeil`
+  gibt jeder Web-App ihre Zeit an ihren Browser zurück, `aufteilen` zieht sie
+  dort wieder ab. `finanzdienste.github.io` zählt jetzt auch in Firefox nie
+  als Seite, sonst stünde die Zeit der Bewerbungszentrale in einem normalen
+  Firefox-Tab doppelt da. Supabase nimmt je Tag den größeren Wert. Meldet
+  die Bewerbungszentrale am selben Tag aus Chrome und Firefox, zählt also
+  nur der größere der beiden (so am 21.11., dem Tag des Wechsels).
 - Noch nicht auf dem S24 ausprobiert: Größen des Startbildschirms, Akku-
   Verhalten von One UI (ob es die App trotz Widget schlafen legt), ob
   Chrome den Verbinden-Link in der installierten Web-App oder als Tab
