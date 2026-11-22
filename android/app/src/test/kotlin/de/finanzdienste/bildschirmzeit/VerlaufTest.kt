@@ -120,6 +120,23 @@ class VerlaufTest {
         assertEquals(listOf(CHROME to 120L), webapk.posten.map { it.schluessel to it.sekunden })
     }
 
+    /**
+     * Seit 21.11. läuft die Bewerbungszentrale in Firefox: Ihre Zeit kommt von dort, auch beim Neuaufteilen,
+     * wenn sie verspätet meldet. Ein alter Tag, an dem sie noch aus Chrome kam, bleibt dabei, wie er war.
+     */
+    @Test
+    fun bewerbungszentraleKommtAusFirefox() {
+        val tag = tagAus(heute, mapOf(CHROME to 1800L, FIREFOX to 2400L), mapOf("bewerbungszentrale" to 900L, "workout" to 600L), 5L, false) { "Name $it" }
+        assertEquals(mapOf(CHROME to 1200L, "workout" to 600L, FIREFOX to 1500L, "bewerbungszentrale" to 900L), tag.posten.associate { it.schluessel to it.sekunden })
+        assertEquals(mapOf(CHROME to 1800L, FIREFOX to 2400L), tag.androidTeil())
+        val spaeter = tag.mitWeb(mapOf("bewerbungszentrale" to 1200L, "workout" to 600L), 6L)
+        assertEquals(mapOf(CHROME to 1200L, "workout" to 600L, FIREFOX to 1200L, "bewerbungszentrale" to 1200L), spaeter.posten.associate { it.schluessel to it.sekunden })
+        assertEquals(tag.gesamt, spaeter.gesamt)
+        // So gespeichert, als sie noch in Chrome lief: neu aufgeteilt bleibt der Tag gleich.
+        val alt = Tag(heute.minusDays(3), sortiert(listOf(Posten(CHROME, "Chrome", 1200L), Posten("bewerbungszentrale", "Bewerbungen", 900L))), mapOf("bewerbungszentrale" to 900L), 5L, true)
+        assertEquals(alt.posten.toSet(), alt.mitWeb(mapOf("bewerbungszentrale" to 900L), 6L).posten.toSet())
+    }
+
     @Test
     fun webEintragenNurWasSichAendert() {
         val d = heute.minusDays(2)

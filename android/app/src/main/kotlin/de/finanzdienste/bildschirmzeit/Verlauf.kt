@@ -23,9 +23,9 @@ import java.time.format.DateTimeParseException
 /** Ein Kalendertag im Verlauf. */
 data class Tag(
     val datum: LocalDate,
-    /** Sekunden je App nach dem Abzug der Web-Apps von Chrome, absteigend (wie im Widget). */
+    /** Sekunden je App nach dem Abzug der Web-Apps von ihrem Browser, absteigend (wie im Widget). */
     val posten: List<Posten>,
-    /** Was die Web-Apps für den Tag gemeldet hatten – vor dem Kürzen auf Chromes Zeit. */
+    /** Was die Web-Apps für den Tag gemeldet hatten – vor dem Kürzen auf die Zeit ihres Browsers. */
     val web: Map<String, Long> = emptyMap(),
     /** Wann diese Web-Werte von Supabase gelesen wurden (ms); 0 = noch nie, dann fehlen sie noch. */
     val webGelesen: Long = 0L,
