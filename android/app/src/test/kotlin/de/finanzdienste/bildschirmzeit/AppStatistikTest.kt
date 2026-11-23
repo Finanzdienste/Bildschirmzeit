@@ -105,7 +105,7 @@ class AppStatistikTest {
         assertEquals(listOf(R.id.kopf_titel, R.id.statistik_karte, R.id.erlaubnis_karte, R.id.web_karte, R.id.widget_karte, R.id.webseiten_karte, R.id.update_karte), a.reihe().take(7))
         assertTrue(a.findViewById<View>(R.id.reiter_woche).isSelected)
         assertFalse(a.findViewById<View>(R.id.reiter_tag).isSelected)
-        assertEquals("9.–15. Nov.", a.text(R.id.zeitraum_titel))
+        assertEquals("8.–14. Nov.", a.text(R.id.zeitraum_titel))
         assertEquals(dauerText(summe(9, 10, 11, 12, 13, 14)), a.text(R.id.gesamt))
         assertTrue(a.text(R.id.schnitt).startsWith("Ø je Tag "))
         assertEquals(View.VISIBLE, a.findViewById<View>(R.id.balken).visibility)
@@ -156,12 +156,12 @@ class AppStatistikTest {
         var uhr = stand
         a.uhrStellen { uhr }
         warten()
-        assertEquals("9.–15. Nov.", a.text(R.id.zeitraum_titel))
-        // Montag früh, die App lag offen im Hintergrund: die neue Woche.
+        assertEquals("8.–14. Nov.", a.text(R.id.zeitraum_titel))
+        // Montag früh, die App lag offen im Hintergrund: wieder die sieben Tage bis heute.
         uhr = stand + 34 * 3_600_000L
         steuerung.pause().resume()
         warten()
-        assertEquals("16.–22. Nov.", a.text(R.id.zeitraum_titel))
+        assertEquals("10.–16. Nov.", a.text(R.id.zeitraum_titel))
         // Ein vergangener Tag, den Tobi sich ansieht, bleibt stehen.
         a.tagZeigen(LocalDate.of(2026, 11, 12))
         uhr += 24 * 3_600_000L
@@ -175,8 +175,8 @@ class AppStatistikTest {
         val a = oeffnen().get()
         a.findViewById<View>(R.id.zurueck).performClick()
         warten()
-        assertEquals("2.–8. Nov.", a.text(R.id.zeitraum_titel))
-        assertEquals("Daten seit 3. Nov.\nKeine Daten: 7.–8. Nov.", a.text(R.id.luecken))
+        assertEquals("1.–7. Nov.", a.text(R.id.zeitraum_titel))
+        assertEquals("Daten seit 3. Nov.\nKeine Daten: 7. Nov.", a.text(R.id.luecken))
         assertEquals(dauerText(summe(3, 4, 5, 6)), a.text(R.id.gesamt))
         assertTrue(a.text(R.id.schnitt).endsWith("· 4 von 7 Tagen mit Daten"))
         // Vor dem 3.11. hat der Verlauf nichts: nicht weiter zurück.
@@ -185,8 +185,9 @@ class AppStatistikTest {
         assertEquals(View.GONE, a.findViewById<View>(R.id.statistik_hinweis).visibility)
         a.findViewById<View>(R.id.weiter).performClick()
         warten()
-        assertEquals("9.–15. Nov.", a.text(R.id.zeitraum_titel))
-        assertEquals(View.GONE, a.findViewById<View>(R.id.luecken).visibility)
+        assertEquals("8.–14. Nov.", a.text(R.id.zeitraum_titel))
+        // Der 8.11. hat keine Daten und gehört jetzt zu den sieben Tagen bis heute.
+        assertEquals("Keine Daten: 8. Nov.", a.text(R.id.luecken))
     }
 
     @Test
@@ -213,8 +214,8 @@ class AppStatistikTest {
         assertEquals(Verlauf(kontext).lesen(donnerstag)!!.posten.size, a.findViewById<ViewGroup>(R.id.app_liste).childCount)
         // Gemerkt wird nur ein von Hand gewählter Reiter.
         assertEquals(null, Speicher(kontext).reiter)
-        // Der Sonntag kommt erst: kein Tipp.
-        assertEquals(null, balken.tagBei(balken.width - 1f))
+        // Die Woche sind die sieben Tage bis heute: Der letzte Balken ist heute.
+        assertEquals(heute, balken.tagBei(balken.width - 1f))
     }
 
     @Test
@@ -248,10 +249,10 @@ class AppStatistikTest {
         val steuerung = oeffnen()
         steuerung.get().findViewById<View>(R.id.zurueck).performClick()
         warten()
-        assertEquals("2.–8. Nov.", steuerung.get().text(R.id.zeitraum_titel))
+        assertEquals("1.–7. Nov.", steuerung.get().text(R.id.zeitraum_titel))
         steuerung.recreate()
         warten()
-        assertTrue(steuerung.get().text(R.id.zeitraum_titel), steuerung.get().text(R.id.zeitraum_titel).startsWith("2.–8. Nov."))
+        assertTrue(steuerung.get().text(R.id.zeitraum_titel), steuerung.get().text(R.id.zeitraum_titel).startsWith("1.–7. Nov."))
         assertTrue(steuerung.get().findViewById<View>(R.id.reiter_woche).isSelected)
 
         steuerung.get().tagZeigen(LocalDate.of(2026, 11, 4))
@@ -264,7 +265,7 @@ class AppStatistikTest {
         // Auch nach dem Neubau führt Zurück in die Woche, aus der der Balken kam.
         assertTrue(a.zurueckZumZeitraum())
         warten()
-        assertTrue(a.text(R.id.zeitraum_titel), a.text(R.id.zeitraum_titel).startsWith("2.–8. Nov."))
+        assertTrue(a.text(R.id.zeitraum_titel), a.text(R.id.zeitraum_titel).startsWith("1.–7. Nov."))
 
         // Mit Ziel „update“ geöffnet und dann gedreht: Die Update-Karte bleibt oben.
         val update = oeffnen(ziel(Ziel.UPDATE))
@@ -296,7 +297,7 @@ class AppStatistikTest {
         assertEquals(View.VISIBLE, a.findViewById<View>(R.id.app_kopf).visibility)
         assertEquals("Workout", a.text(R.id.app_kopf_name))
         assertEquals(View.GONE, a.findViewById<View>(R.id.app_liste).visibility)
-        assertEquals("9.–15. Nov.", a.text(R.id.zeitraum_titel))
+        assertEquals("8.–14. Nov.", a.text(R.id.zeitraum_titel))
         assertEquals(dauerText(wochenSumme("workout", 9, 10, 11, 12, 13, 14)), a.text(R.id.gesamt))
         assertTrue(a.text(R.id.schnitt), a.text(R.id.schnitt).startsWith("Ø je Tag "))
         assertTrue(a.text(R.id.schnitt), a.text(R.id.schnitt).endsWith("% deiner Bildschirmzeit"))
@@ -316,7 +317,7 @@ class AppStatistikTest {
         warten()
         a.findViewById<View>(R.id.zurueck).performClick()
         warten()
-        assertEquals("2.–8. Nov.", a.text(R.id.zeitraum_titel))
+        assertEquals("1.–7. Nov.", a.text(R.id.zeitraum_titel))
         assertEquals(dauerText(wochenSumme("workout", 3, 4, 5, 6)), a.text(R.id.gesamt))
 
         // „Alle Apps“: wieder die ganze Liste, kein Kopf.
@@ -343,7 +344,7 @@ class AppStatistikTest {
         assertEquals("WhatsApp", a.text(R.id.app_kopf_name))
         obersterRueckruf(a)!!.onBackInvoked()
         warten()
-        assertEquals("9.–15. Nov.", a.text(R.id.zeitraum_titel))
+        assertEquals("8.–14. Nov.", a.text(R.id.zeitraum_titel))
         assertEquals("WhatsApp", a.text(R.id.app_kopf_name))
         obersterRueckruf(a)!!.onBackInvoked()
         warten()
@@ -391,7 +392,7 @@ class AppStatistikTest {
         assertSame(a.zurueckRuf, ruf)
         ruf!!.onBackInvoked()
         warten()
-        assertEquals("9.–15. Nov.", a.text(R.id.zeitraum_titel))
+        assertEquals("8.–14. Nov.", a.text(R.id.zeitraum_titel))
         assertTrue(a.findViewById<View>(R.id.reiter_woche).isSelected)
         assertNotSame(a.zurueckRuf, obersterRueckruf(a))
         // Ein von Hand gewählter Reiter Tag: Zurück schließt die App wie immer.
@@ -511,7 +512,7 @@ class TitelBreiteTest {
             RuntimeEnvironment.setFontScale(schrift)
             val steuerung = Robolectric.buildActivity(MainActivity::class.java, Intent(kontext, MainActivity::class.java).putExtra(Ziel.EXTRA, Ziel.STATISTIK)).setup()
             val a = steuerung.get()
-            val silvester = ZonedDateTime.of(2026, 12, 30, 20, 0, 0, 0, ZoneId.systemDefault()).toInstant().toEpochMilli()
+            val silvester = ZonedDateTime.of(2027, 1, 3, 20, 0, 0, 0, ZoneId.systemDefault()).toInstant().toEpochMilli() // die sieben Tage bis zum 3.1.
             a.uhrStellen { silvester }
             repeat(20) {
                 Thread.sleep(30)

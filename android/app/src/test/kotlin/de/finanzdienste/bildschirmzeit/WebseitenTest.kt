@@ -270,13 +270,13 @@ class WebseitenTest {
             mo to tag(mo, Posten(seitenSchluessel(ff, "youtube.com"), "youtube.com", 200L), Posten(ff, "Firefox", 100L)),
             mo.plusDays(1) to tag(mo.plusDays(1), Posten(seitenSchluessel(CHROME, "youtube.com"), "youtube.com", 200L), Posten(CHROME, "Chrome", 50L)),
         )
-        val woche = auswerten(Zeitraum.um(Reiter.WOCHE, mo), verlauf, mo.plusDays(1), mo)
+        val woche = auswerten(Zeitraum(Reiter.WOCHE, mo, mo.plusDays(6)), verlauf, mo.plusDays(1), mo)
         assertEquals(mapOf("youtube.com" to 400L, "Firefox" to 100L, "Chrome" to 50L), woche.apps.associate { it.name to it.sekunden })
         // Am Montag allein nur 200 s: „Sonstiges“.
         val montag = auswerten(Zeitraum.um(Reiter.TAG, mo), verlauf, mo.plusDays(1), mo)
         assertEquals(mapOf("Sonstiges" to 200L, "Firefox" to 100L), montag.apps.associate { it.name to it.sekunden })
         // youtube.com angetippt: an beiden Tagen ihre Zeit (Firefox und Chrome), auch am Montag allein.
-        val yt = auswerten(Zeitraum.um(Reiter.WOCHE, mo), verlauf, mo.plusDays(1), mo, nur = WEBSEITE + "youtube.com")
+        val yt = auswerten(Zeitraum(Reiter.WOCHE, mo, mo.plusDays(6)), verlauf, mo.plusDays(1), mo, nur = WEBSEITE + "youtube.com")
         assertEquals(listOf(200L, 200L), yt.tage.take(2).map { it.sekunden })
         assertEquals(400L, yt.gesamt)
         assertEquals(200L, auswerten(Zeitraum.um(Reiter.TAG, mo), verlauf, mo.plusDays(1), mo, nur = WEBSEITE + "youtube.com").gesamt)

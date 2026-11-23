@@ -62,8 +62,10 @@ der Statistik, mit dem Weg über die eingeschränkte Einstellung).
   Monatsnutzung nach App aufgeteilt und so anzeigen lassen können“ (15.11.,
   10:40) – seit v7 öffnet Antippen die App, und ganz oben steht die Statistik:
   Tag, Woche, Monat, je mit allen Apps (unten „Statistik und Verlauf in der
-  App“). Offen gelassen, also entschieden: Woche Montag bis Sonntag, beim
-  ersten Mal der Reiter Woche, danach der zuletzt gewählte.
+  App“). Offen gelassen, also entschieden: beim ersten Mal der Reiter Woche,
+  danach der zuletzt gewählte. Die Woche war erst Montag bis Sonntag; Tobi,
+  23.11.: „Woche bedeutet ja nicht Montag bis Sonntag sondern letzte sieben
+  tage“ – seitdem die sieben Tage bis heute.
 - „Bei Firefox bin ich viel auf Youtube. Kann man sich die größten Webseiten
   als einzelnen Punkt auflisten lassen?“ (15.11.) – seit v9 freiwillig über
   eine Bedienungshilfe (unten „Webseiten in Firefox einzeln“). Entschieden:
@@ -704,9 +706,10 @@ App rechnet beim Öffnen wie bisher sofort mit Netz und zeichnet die Widgets
 neu – Antippen bringt also weiter frische Zahlen.
 
 - Reiter Tag | Woche | Monat, je mit ‹ › – nicht über heute hinaus und nicht
-  vor den Beginn des Verlaufs. Woche Montag bis Sonntag („9.–15. Nov.“, über
-  den Monatswechsel „26. Okt. – 1. Nov.“, übers Jahr „28. Dez. – 3. Jan.
-  2027“ – die Jahreszahl einmal, hinten; mit beiden passte der Titel bei
+  vor den Beginn des Verlaufs. Woche die sieben Tage bis heute (am 23.11.
+  „17.–23. Nov.“, ‹ die sieben davor, › höchstens bis heute; über den
+  Monatswechsel „27. Okt. – 2. Nov.“, übers Jahr „27. Dez. – 2. Jan. 2027“ –
+  die Jahreszahl einmal, hinten; mit beiden passte der Titel bei
   größerer Schrift nicht zwischen ‹ und ›, und passt er trotzdem nicht, wird
   er kleiner statt umbrochen), Monat der Kalendermonat („November 2026“), Tag
   „Heute“, „Gestern“, „Sa., 14. Nov.“. Gemerkt wird der zuletzt von Hand
@@ -1181,7 +1184,7 @@ die Kontakte nur das Handy; dazwischen liegt Supabase (`Kontakte.kt`).
   `tests/test-sql.mjs`; die Bewerbungszentrale prüft ihre Seite in ihren Tests
   `kontakte` und `kontakte-nur-lesen`.
 
-## Anrufer erkennen (nächstes Release)
+## Anrufer erkennen (v22)
 
 Tobi, 23.11.2026: „Geil wärs wenn er während des Telefonats direkt schon die
 Nummer googlet oder so und ich n schriftliches briefing bekomme und der Kontakt
@@ -1664,12 +1667,15 @@ spricht mit dem echten Supabase oder GitHub (`Netz.gesperrt`).
   aus den Bewerbungen (Abschnitt oben). 252 JUnit-/Robolectric-Prüfungen (10 neue in `KontakteTest`),
   86 SQL grün; geändert sind nur die App-Bilder mit der neuen Karte. Die
   Tabelle dazu kam erst in der Fassung je Akte (nächster Eintrag).
-- 23.11.2026: Anrufer erkennen (Abschnitt oben), nächstes Release. 267
+- 23.11.2026: Release **v22** (Fassung 1.22, aus e59c5f5) mit „Anrufer erkennen“ (Abschnitt oben). 267
   JUnit-/Robolectric-Prüfungen (15 neue in `AnruferTest`), 101 SQL, 64
   Web-Modul grün; geändert sind nur die App-Bilder mit der neuen Karte. Die
   Kontakte-Tabelle ist jetzt je Akte (mit Briefing); die erste Fassung vom
   23.11. räumt die Datei beim Einspielen selbst weg. Offen: SQL einspielen,
   dann in der App „Anrufer erkennen“ → „Zulassen“ und „Claude-Schlüssel holen“.
+- 23.11.2026: Woche = die sieben Tage bis heute statt Montag bis Sonntag
+  (Tobi, 23.11.). Gemerkt wird beim Drehen jetzt das Ende des Zeitraums. 267
+  Prüfungen grün; geändert sind nur die App-Bilder (Woche 8.–14. Nov.).
 - Noch nicht auf dem S24 ausprobiert: Größen des Startbildschirms, Akku-
   Verhalten von One UI (ob es die App trotz Widget schlafen legt), ob
   Chrome den Verbinden-Link in der installierten Web-App oder als Tab

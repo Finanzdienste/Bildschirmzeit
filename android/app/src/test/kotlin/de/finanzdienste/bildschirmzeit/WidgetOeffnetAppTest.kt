@@ -108,7 +108,7 @@ class WidgetOeffnetAppTest {
 
         assertEquals(listOf(R.id.kopf_titel, R.id.statistik_karte), a.reihe().take(2))
         assertTrue("beim ersten Mal die Woche", a.findViewById<View>(R.id.reiter_woche).isSelected)
-        assertEquals("9.–15. Nov.", a.text(R.id.zeitraum_titel))
+        assertEquals("8.–14. Nov.", a.text(R.id.zeitraum_titel))
         assertTrue(a.text(R.id.schnitt).startsWith("Ø je Tag "))
         assertEquals(View.VISIBLE, a.findViewById<View>(R.id.balken).visibility)
         val liste = a.findViewById<ViewGroup>(R.id.app_liste)

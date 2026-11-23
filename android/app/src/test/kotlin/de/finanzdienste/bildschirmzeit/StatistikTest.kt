@@ -18,28 +18,32 @@ class StatistikTest {
     private fun tag(datum: LocalDate, vararg posten: Pair<String, Long>) =
         Tag(datum, sortiert(posten.map { (k, s) -> Posten(k, k.substringAfterLast('.').replaceFirstChar { it.uppercase() }, s) }), fertig = true)
 
+    /** Tobi, 23.11.: „Woche bedeutet ja nicht Montag bis Sonntag sondern letzte sieben tage“. */
     @Test
-    fun wocheVonMontagBisSonntag() {
-        val w = Zeitraum.um(Reiter.WOCHE, heute)
-        assertEquals(LocalDate.of(2026, 11, 9), w.von)
-        assertEquals(LocalDate.of(2026, 11, 15), w.bis)
+    fun wocheSindDieLetztenSiebenTage() {
+        val montag = LocalDate.of(2026, 11, 23)
+        val w = Zeitraum.um(Reiter.WOCHE, montag)
+        assertEquals(LocalDate.of(2026, 11, 17), w.von)
+        assertEquals(montag, w.bis)
         assertEquals(7, w.tage.size)
-        assertEquals("9.–15. Nov.", zeitraumTitel(w, heute))
-        // Montag gehört zu seiner eigenen Woche.
-        assertEquals(w, Zeitraum.um(Reiter.WOCHE, LocalDate.of(2026, 11, 9)))
-        // Über den Monatswechsel.
-        val vorher = w.vorher().vorher()
-        assertEquals(LocalDate.of(2026, 10, 26), vorher.von)
-        assertEquals("26. Okt. – 1. Nov.", zeitraumTitel(vorher, heute))
-        // Über den Jahreswechsel: 28.12.2026 bis 3.1.2027.
-        val silvester = Zeitraum.um(Reiter.WOCHE, LocalDate.of(2026, 12, 31))
-        assertEquals(LocalDate.of(2026, 12, 28), silvester.von)
-        assertEquals(LocalDate.of(2027, 1, 3), silvester.bis)
-        assertEquals("28. Dez. – 3. Jan. 2027", zeitraumTitel(silvester, heute))
-        assertEquals("28. Dez. – 3. Jan. 2027", zeitraumTitel(silvester, LocalDate.of(2027, 1, 2)))
+        assertEquals("17.–23. Nov.", zeitraumTitel(w, montag))
+        // Davor die sieben Tage davor, über den Monatswechsel.
+        assertEquals("10.–16. Nov.", zeitraumTitel(w.vorher(), montag))
+        val vorher = w.vorher().vorher().vorher()
+        assertEquals(LocalDate.of(2026, 10, 27), vorher.von)
+        assertEquals("27. Okt. – 2. Nov.", zeitraumTitel(vorher, montag))
+        // Über den Jahreswechsel: 27.12.2026 bis 2.1.2027.
+        val neujahr = Zeitraum.um(Reiter.WOCHE, LocalDate.of(2027, 1, 2))
+        assertEquals(LocalDate.of(2026, 12, 27), neujahr.von)
+        assertEquals("27. Dez. – 2. Jan. 2027", zeitraumTitel(neujahr, montag))
+        assertEquals("27. Dez. – 2. Jan. 2027", zeitraumTitel(neujahr, LocalDate.of(2027, 1, 2)))
         assertEquals("Keine Daten: 30. Dez. – 2. Jan. 2027", "Keine Daten: " + spanne(LocalDate.of(2026, 12, 30), LocalDate.of(2027, 1, 2), heute))
         // Eine Woche aus dem Vorjahr nennt das Jahr.
-        assertEquals("10.–16. Nov. 2025", zeitraumTitel(Zeitraum.um(Reiter.WOCHE, LocalDate.of(2025, 11, 12)), heute))
+        assertEquals("6.–12. Nov. 2025", zeitraumTitel(Zeitraum.um(Reiter.WOCHE, LocalDate.of(2025, 11, 12)), heute))
+        // Vor: höchstens bis heute – dann sind es wieder die letzten sieben Tage.
+        val alt = Zeitraum.um(Reiter.WOCHE, LocalDate.of(2026, 11, 19))
+        assertEquals(w, alt.nachher(montag))
+        assertFalse(w.hatNachher(montag))
     }
 
     @Test
@@ -50,7 +54,7 @@ class StatistikTest {
             assertEquals(7, w.tage.size)
             assertEquals(tag, w.bis)
         }
-        assertEquals("23.–29. März", zeitraumTitel(Zeitraum.um(Reiter.WOCHE, LocalDate.of(2026, 3, 25)), heute))
+        assertEquals("19.–25. März", zeitraumTitel(Zeitraum.um(Reiter.WOCHE, LocalDate.of(2026, 3, 25)), heute))
     }
 
     @Test
@@ -79,7 +83,7 @@ class StatistikTest {
             assertTrue(r.name, jetzt.vorher().hatNachher(heute))
             assertEquals(jetzt, jetzt.vorher().nachher())
         }
-        // Mitten in der Woche: die laufende Woche ist die letzte.
+        // Die Woche bis heute ist die letzte.
         val mittwoch = LocalDate.of(2026, 11, 11)
         assertFalse(Zeitraum.um(Reiter.WOCHE, mittwoch).hatNachher(mittwoch))
         assertFalse(Zeitraum.um(Reiter.MONAT, mittwoch).hatNachher(mittwoch))
@@ -95,7 +99,7 @@ class StatistikTest {
 
     @Test
     fun summeUndDurchschnittNurUeberTageMitDaten() {
-        val w = Zeitraum.um(Reiter.WOCHE, LocalDate.of(2026, 11, 12)) // heute Donnerstag
+        val w = Zeitraum(Reiter.WOCHE, LocalDate.of(2026, 11, 9), LocalDate.of(2026, 11, 15)) // heute Donnerstag, Fr bis So kommen erst
         val donnerstag = LocalDate.of(2026, 11, 12)
         val verlauf = mapOf(
             w.von to tag(w.von, "com.beispiel.chat" to 3600L, "workout" to 1800L),
@@ -203,7 +207,7 @@ class StatistikTest {
             // Mi ohne Daten
             mo.plusDays(3) to tag(mo.plusDays(3), "org.mozilla.firefox" to 1800L, "com.beispiel.chat" to 600L),
         )
-        val a = auswerten(Zeitraum.um(Reiter.WOCHE, mo), verlauf, mo.plusDays(3), mo, nur = "org.mozilla.firefox")
+        val a = auswerten(Zeitraum(Reiter.WOCHE, mo, mo.plusDays(6)), verlauf, mo.plusDays(3), mo, nur = "org.mozilla.firefox")
         assertEquals(listOf(3600L, 0L, null, 1800L, null, null, null), a.tage.map { it.sekunden })
         assertEquals(listOf(false, false, false, false, true, true, true), a.tage.map { it.zukunft })
         assertEquals(listOf("org.mozilla.firefox"), a.apps.map { it.schluessel })
@@ -214,7 +218,7 @@ class StatistikTest {
         assertEquals("Ø je Tag 30 Min. · 3 von 4 Tagen mit Daten\n69\u00A0% deiner Bildschirmzeit", schnittText(a))
         assertEquals("1 Std. 30 Min.", gesamtText(a))
         // Ohne Auswahl wie bisher: alle Apps, Summe je Tag.
-        val alle = auswerten(Zeitraum.um(Reiter.WOCHE, mo), verlauf, mo.plusDays(3), mo)
+        val alle = auswerten(Zeitraum(Reiter.WOCHE, mo, mo.plusDays(6)), verlauf, mo.plusDays(3), mo)
         assertEquals(listOf(4800L, 600L, null, 2400L, null, null, null), alle.tage.map { it.sekunden })
         assertEquals("Ø je Tag 43 Min. · 3 von 4 Tagen mit Daten", schnittText(alle))
     }
@@ -224,7 +228,7 @@ class StatistikTest {
     fun eineAppOhneZeitUndAmTag() {
         val mo = LocalDate.of(2026, 11, 9)
         val verlauf = mapOf(mo to tag(mo, "com.beispiel.chat" to 1200L, "org.mozilla.firefox" to 300L))
-        val leer = auswerten(Zeitraum.um(Reiter.WOCHE, mo), verlauf, mo, mo, nur = "com.beispiel.karten")
+        val leer = auswerten(Zeitraum(Reiter.WOCHE, mo, mo.plusDays(6)), verlauf, mo, mo, nur = "com.beispiel.karten")
         assertTrue(leer.apps.isEmpty())
         assertEquals("0 Min.", gesamtText(leer))
         assertEquals("Ø je Tag 0 Min.", schnittText(leer))

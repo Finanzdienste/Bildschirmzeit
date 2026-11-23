@@ -1,12 +1,12 @@
 package de.finanzdienste.bildschirmzeit
 
-import java.time.DayOfWeek
 import java.time.LocalDate
-import java.time.temporal.TemporalAdjusters
 import kotlin.math.roundToLong
 
 /*
- * Die Statistik der App: Tag, Woche (Montag bis Sonntag), Monat – rein,
+ * Die Statistik der App: Tag, Woche (die letzten sieben Tage – Tobi, 23.11.:
+ * „Woche bedeutet ja nicht Montag bis Sonntag sondern letzte sieben tage“),
+ * Monat (der Kalendermonat) – rein,
  * getestet in StatistikTest. Die Zahlen kommen aus dem Verlauf (Verlauf.kt).
  * Ein Tag ohne Eintrag hat „keine Daten“ – nie 0.
  */
@@ -39,7 +39,11 @@ data class Zeitraum(val reiter: Reiter, val von: LocalDate, val bis: LocalDate) 
 
     fun vorher(): Zeitraum = um(reiter, von.minusDays(1))
 
-    fun nachher(): Zeitraum = um(reiter, bis.plusDays(1))
+    /** Der nächste Zeitraum; eine Woche endet dabei höchstens `heute` (dann sind es wieder die letzten sieben Tage). */
+    fun nachher(heute: LocalDate? = null): Zeitraum = when (reiter) {
+        Reiter.WOCHE -> um(reiter, bis.plusDays(7).let { if (heute != null && it > heute) heute else it })
+        else -> um(reiter, bis.plusDays(1))
+    }
 
     /** › gibt es, solange der nächste Zeitraum nicht nach heute beginnt. */
     fun hatNachher(heute: LocalDate): Boolean = bis < heute
@@ -50,13 +54,10 @@ data class Zeitraum(val reiter: Reiter, val von: LocalDate, val bis: LocalDate) 
     fun enthaelt(tag: LocalDate): Boolean = tag in von..bis
 
     companion object {
-        /** Der Zeitraum dieses Reiters, in dem `tag` liegt. */
+        /** Der Zeitraum dieses Reiters, der mit `tag` endet (Woche: `tag` und die sechs Tage davor) bzw. in dem `tag` liegt (Monat). */
         fun um(reiter: Reiter, tag: LocalDate): Zeitraum = when (reiter) {
             Reiter.TAG -> Zeitraum(reiter, tag, tag)
-            Reiter.WOCHE -> {
-                val montag = tag.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY))
-                Zeitraum(reiter, montag, montag.plusDays(6))
-            }
+            Reiter.WOCHE -> Zeitraum(reiter, tag.minusDays(6), tag)
             Reiter.MONAT -> {
                 val erster = tag.withDayOfMonth(1)
                 Zeitraum(reiter, erster, erster.plusMonths(1).minusDays(1))

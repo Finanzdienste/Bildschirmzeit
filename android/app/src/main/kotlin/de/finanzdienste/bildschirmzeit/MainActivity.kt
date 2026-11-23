@@ -146,12 +146,12 @@ class MainActivity : Activity(), UpdateBeobachter {
     override fun onSaveInstanceState(outState: Bundle) {
         super.onSaveInstanceState(outState)
         outState.putString(ZUSTAND_REITER, reiter.name)
-        outState.putString(ZUSTAND_VON, zeitraum.von.toString())
+        outState.putString(ZUSTAND_BIS, zeitraum.bis.toString())
         outState.putString(ZUSTAND_AM, gewaehltAm.toString())
         outState.putBoolean(ZUSTAND_UPDATE, updateOben)
         vomBalken?.let {
             outState.putString(ZUSTAND_BALKEN_REITER, it.reiter.name)
-            outState.putString(ZUSTAND_BALKEN_VON, it.von.toString())
+            outState.putString(ZUSTAND_BALKEN_BIS, it.bis.toString())
         }
         appWahl?.let {
             outState.putString(ZUSTAND_APP, it.schluessel)
@@ -162,14 +162,14 @@ class MainActivity : Activity(), UpdateBeobachter {
     /** Den gesicherten Zustand übernehmen; false, wenn er fehlt oder unlesbar ist. */
     private fun zustandLesen(b: Bundle): Boolean {
         val r = b.getString(ZUSTAND_REITER) ?: return false
-        val von = b.getString(ZUSTAND_VON) ?: return false
+        val bis = b.getString(ZUSTAND_BIS) ?: return false // das Ende: Eine Woche sind die sieben Tage bis dahin
         val am = b.getString(ZUSTAND_AM) ?: return false
         return try {
             reiter = Reiter.von(r)
-            zeitraum = Zeitraum.um(reiter, LocalDate.parse(von))
+            zeitraum = Zeitraum.um(reiter, LocalDate.parse(bis))
             gewaehltAm = LocalDate.parse(am)
             updateOben = b.getBoolean(ZUSTAND_UPDATE)
-            vomBalken = b.getString(ZUSTAND_BALKEN_VON)?.let { Zeitraum.um(Reiter.von(b.getString(ZUSTAND_BALKEN_REITER)), LocalDate.parse(it)) }
+            vomBalken = b.getString(ZUSTAND_BALKEN_BIS)?.let { Zeitraum.um(Reiter.von(b.getString(ZUSTAND_BALKEN_REITER)), LocalDate.parse(it)) }
             appWahl = b.getString(ZUSTAND_APP)?.let { Posten(it, b.getString(ZUSTAND_APP_NAME) ?: it, 0L) }
             zurueckPflegen()
             true
@@ -410,7 +410,7 @@ class MainActivity : Activity(), UpdateBeobachter {
             statistikNeu()
         }
         findViewById<View>(R.id.weiter).setOnClickListener {
-            if (zeitraum.hatNachher(heute())) zeitraum = zeitraum.nachher()
+            if (zeitraum.hatNachher(heute())) zeitraum = zeitraum.nachher(heute())
             statistikNeu()
         }
         findViewById<Balken>(R.id.balken).beiTipp = { tag -> tagZeigen(tag) }
@@ -966,11 +966,11 @@ class MainActivity : Activity(), UpdateBeobachter {
 
     private companion object {
         const val ZUSTAND_REITER = "reiter"
-        const val ZUSTAND_VON = "von"
+        const val ZUSTAND_BIS = "bis"
         const val ZUSTAND_AM = "gewaehltAm"
         const val ZUSTAND_UPDATE = "updateOben"
         const val ZUSTAND_BALKEN_REITER = "balkenReiter"
-        const val ZUSTAND_BALKEN_VON = "balkenVon"
+        const val ZUSTAND_BALKEN_BIS = "balkenBis"
         const val ZUSTAND_APP = "app"
         const val ZUSTAND_APP_NAME = "appName"
         const val ANRUFE_FRAGE = 41
