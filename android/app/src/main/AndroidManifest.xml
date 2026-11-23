@@ -12,6 +12,8 @@
          installieren“); ohne UPDATE_PACKAGES_WITHOUT_USER_ACTION fragte Android jedes Mal. -->
     <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
     <uses-permission android:name="android.permission.UPDATE_PACKAGES_WITHOUT_USER_ACTION" />
+    <!-- Anrufliste für die Bewerbungszentrale (Anrufe.kt): erst nach Tobis Freigabe in der App. -->
+    <uses-permission android:name="android.permission.READ_CALL_LOG" />
     <!-- Nach einem Neustart den Wecker fürs Widget neu stellen (Takt.kt). -->
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
 

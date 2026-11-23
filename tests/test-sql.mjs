@@ -61,6 +61,7 @@ async function fehler(p) {
 
 const K1 = 'A'.repeat(20) + 'b_-c'.repeat(5) + 'xyz'; // 43 Zeichen, base64url
 const K2 = 'Z'.repeat(43);
+const K3 = 'q'.repeat(43);
 const sha = (k) => createHash('sha256').update(k, 'utf8').digest('hex');
 
 const anmelden = (k) => als('anon', 'select bildschirmzeit_anmelden(p_kennung => $1) as r', [k]).then((r) => r[0].r);
@@ -68,6 +69,9 @@ const melden = (k, app, tage) => als('anon', 'select bildschirmzeit_melden(p_ken
   [k, app, typeof tage === 'string' ? tage : JSON.stringify(tage)]).then((r) => r[0].r);
 const lesen = (k, von, bis) => als('anon', 'select * from bildschirmzeit_lesen(p_kennung => $1, p_von => $2::date, p_bis => $3::date)', [k, von, bis]);
 const loeschen = (k) => als('anon', 'select bildschirmzeit_loeschen(p_kennung => $1) as r', [k]).then((r) => r[0].r);
+const anrufeMelden = (k, liste) => als('anon', 'select bildschirmzeit_anrufe_melden(p_kennung => $1, p_anrufe => $2::text::jsonb) as r', [k, JSON.stringify(liste)]).then((r) => r[0].r);
+const anrufeLoeschen = (k) => als('anon', 'select bildschirmzeit_anrufe_loeschen(p_kennung => $1) as r', [k]).then((r) => r[0].r);
+const anrufe = (k) => su('select nummer, name, art, sekunden, zeit from bildschirmzeit_anruf where geraet = $1 order by zeit', [sha(k)]);
 
 const tag = (versatz) => {
   const [r] = [new Date(Date.now() + versatz * 86400000)];
@@ -86,10 +90,10 @@ const fn = await su(`select p.proname as name, has_function_privilege('anon', p.
   from pg_proc p join pg_namespace n on n.oid = p.pronamespace
   where n.nspname = 'public' and p.proname like 'bildschirmzeit%'`);
 const anonDarf = fn.filter((f) => f.anon).map((f) => f.name).sort();
-check(gleich(anonDarf, ['bildschirmzeit_anmelden', 'bildschirmzeit_lesen', 'bildschirmzeit_loeschen', 'bildschirmzeit_melden']),
-  `anon darf genau die vier Funktionen ausführen (${anonDarf.join(', ')})`);
+check(gleich(anonDarf, ['bildschirmzeit_anmelden', 'bildschirmzeit_anrufe_loeschen', 'bildschirmzeit_anrufe_melden', 'bildschirmzeit_lesen', 'bildschirmzeit_loeschen', 'bildschirmzeit_melden']),
+  `anon darf genau die sechs Funktionen ausführen (${anonDarf.join(', ')})`);
 check((await fehler(als('anon', "select bildschirmzeit_hash('x')")))?.code === '42501', 'anon darf bildschirmzeit_hash nicht aufrufen');
-for (const t of ['bildschirmzeit', 'bildschirmzeit_geraet']) {
+for (const t of ['bildschirmzeit', 'bildschirmzeit_geraet', 'bildschirmzeit_anruf']) {
   for (const rolle of ['anon', 'authenticated']) {
     const e = await fehler(als(rolle, `select * from ${t}`));
     check(e?.code === '42501', `${rolle}: select * from ${t} → permission denied`);
@@ -178,10 +182,48 @@ check(gelesen[0].gelesen instanceof Date, 'lesen merkt sich, wann das Widget zul
 const spalten = Object.keys(z1[0]).sort();
 check(gleich(spalten, ['aktualisiert', 'app', 'sekunden', 'tag']), `lesen liefert app, tag, sekunden, aktualisiert (${spalten.join(', ')})`);
 
+// --- Anrufe (Widget-App, seit 23.11.2026) ---
+{
+  const vor = (min) => new Date(Date.now() - min * 60000).toISOString();
+  check(await anrufeMelden(K3, []) === false, 'anrufe_melden mit nicht angemeldeter Kennung → false');
+  const liste = [
+    { zeit: vor(30), nummer: '+4940123456', name: null, art: 'verpasst', sekunden: 0 },
+    { zeit: vor(90), nummer: '017612345678', name: 'Erika Beispiel', art: 'eingehend', sekunden: 312.4 },
+    { zeit: vor(200), nummer: 'unbekannt', name: '', art: 'verpasst', sekunden: 0 },
+  ];
+  check(await anrufeMelden(K1, liste) === true, 'anrufe_melden: drei Anrufe → true');
+  let a = await anrufe(K1);
+  check(a.length === 3 && a.find((x) => x.nummer === '017612345678').sekunden === 312 && a.find((x) => x.nummer === 'unbekannt').name === null,
+    'gespeichert: drei Anrufe, Sekunden gerundet, leerer Name als null');
+  check(await anrufeMelden(K1, liste) === true && (await anrufe(K1)).length === 3, 'dieselbe Liste noch einmal: nichts doppelt');
+  await anrufeMelden(K1, [{ ...liste[0], art: 'eingehend', sekunden: 60 }]);
+  a = await anrufe(K1);
+  check(a.find((x) => x.nummer === '+4940123456').art === 'eingehend', 'gleiche Zeit und Nummer: der neue Stand gilt');
+  await anrufeMelden(K1, [
+    { zeit: vor(60 * 24 * 40), nummer: '040111', art: 'verpasst', sekunden: 0 },
+    { zeit: 'gestern', nummer: '040222', art: 'verpasst', sekunden: 0 },
+    { zeit: vor(5), nummer: '040 333', art: 'verpasst', sekunden: 0 },
+    { zeit: vor(5), nummer: '040444', art: 'konferenz', sekunden: 0 },
+    { zeit: vor(5), nummer: '040555', art: 'verpasst', sekunden: 'lang' },
+    'kein Objekt',
+  ]);
+  check((await anrufe(K1)).length === 3, 'zu alt, falsche Zeit, Leerzeichen in der Nummer, unbekannte Art, keine Zahl: fällt still weg');
+  check((await fehler(anrufeMelden(K1, Array.from({ length: 501 }, () => liste[0]))))?.message === 'Zu viele Anrufe', 'mehr als 500 → „Zu viele Anrufe“');
+  check((await fehler(anrufeMelden(K1, { a: 1 })))?.message === 'Anrufe fehlen', 'kein Array → „Anrufe fehlen“');
+  await anmelden(K3);
+  await anrufeMelden(K3, [liste[1]]);
+  check(await anrufeLoeschen(K1) === true && (await anrufe(K1)).length === 0, 'anrufe_loeschen: alle Anrufe dieser Kennung weg');
+  check((await anrufe(K3)).length === 1, '… die einer anderen Kennung bleiben');
+  check((await su('select count(*)::int as n from bildschirmzeit where geraet = $1', [sha(K1)]))[0].n > 0, '… und die Minuten der Web-Apps auch');
+  await anrufeMelden(K1, [liste[1]]);
+}
+
 // --- Löschen ---
 check(await loeschen(K1) === true, 'loeschen → true');
 check(await loeschen(K1) === false, 'noch einmal loeschen → false');
 check((await su('select count(*)::int as n from bildschirmzeit where geraet = $1', [sha(K1)]))[0].n === 0, 'loeschen nimmt alle Zahlen dieser Kennung mit');
+check((await anrufe(K1)).length === 0, 'loeschen nimmt auch die Anrufe mit');
+check(await anrufeLoeschen(K1) === false, 'danach: anrufe_loeschen → false');
 check(await melden(K1, 'workout', { [HEUTE]: 400 }) === false, 'nach dem Löschen: melden → false (die Web-App trennt sich dann)');
 check((await lesen(K2, HEUTE, HEUTE)).length === 1, 'die andere Kennung behält ihre Zahlen');
 

@@ -1112,6 +1112,36 @@ Namen mit gleicher Zeit) und `DiskretGeraetTest` (nach dem Update ohne Namen
 in Widget, Verlauf und Beobachtungen; eine Seite selbst zusammenfassen mit
 Rückfrage, Karte „Diskret“, „Wieder einzeln zeigen“; „Alle Daten löschen“).
 
+## Anrufe für die Bewerbungszentrale (v19)
+
+Tobi, 23.11.2026: „lass doch machen dass du meine verpassten und angenommenen
+Anrufe und so einsehen darfst“ – auf Nachfrage **alle Anrufe**, nicht nur
+unbekannte Nummern. Firmen und Vermittler rufen an, Claude soll die Anrufe den
+Bewerbungen zuordnen (etwa „verpasster Anruf von Michael Page → zurückrufen“).
+Weder Google noch Samsung geben die Anrufliste in die Cloud, deshalb liest sie
+diese App (`Anrufe.kt`).
+
+- **Erst nach Freigabe:** Karte „Anrufe für die Bewerbungszentrale“ →
+  „Anrufliste freigeben“ → Androids Abfrage „Zugriff auf Anruflisten“ →
+  „Zulassen“ (Berechtigung `READ_CALL_LOG`). Zweimal abgelehnt fragt Android
+  nicht mehr; dann öffnet die App ihre App-Infos (Berechtigungen → Anrufliste).
+- **Was:** die Anrufe der letzten 14 Tage, höchstens 500 – Zeit, Nummer (ohne
+  Leer- und Trennzeichen, unterdrückt = „unbekannt“), Name aus den Kontakten,
+  Art (eingehend, ausgehend, verpasst, abgelehnt, blockiert, Mailbox), Dauer.
+- **Wann:** im 15-Minuten-Lauf (`WidgetArbeit`) höchstens alle 30 Minuten,
+  dazu gleich nach dem Freigeben. Ohne Netz geht nichts verloren: Gemerkt wird
+  nur ein erfolgreiches Melden, der nächste Lauf liest die Liste neu und
+  meldet sie ganz; Supabase nimmt Doppeltes nicht doppelt.
+- **Wohin:** Tabelle `bildschirmzeit_anruf` über `bildschirmzeit_anrufe_melden`.
+  Mit dem öffentlichen Schlüssel kommt niemand an die Tabelle; gelesen wird sie
+  nur über den Supabase-Connector (Claude). Behalten wird ein Vierteljahr.
+- **Aus:** „Nicht mehr teilen“ schaltet ab und löscht die Anrufe bei Supabase
+  (`bildschirmzeit_anrufe_loeschen`), ohne Netz beim nächsten Lauf. „Alle Daten
+  löschen“ nimmt sie mit der Anmeldung mit; danach wird erst nach neuer
+  Freigabe wieder geteilt.
+- Geprüft von `AnrufeTest` (erfundene Anrufliste, auch ohne Netz) und
+  `tests/test-sql.mjs`.
+
 ## Der Vertrag zwischen Widget-App, Supabase und Web-Apps
 
 **Supabase** – Projekt `vjyohppohmvhhxgwouti` („Finanzdienste's Project“),
@@ -1127,6 +1157,8 @@ kein `Authorization` (es ist kein JWT).
 | `bildschirmzeit_melden` | Web-Apps | `p_kennung`, `p_app` (`boxenstopp`/`freizeit`/`workout`/`bewerbungszentrale`), `p_tage` `{"JJJJ-MM-TT": sekunden}` | `true`; `false` = Kennung nicht (mehr) angemeldet |
 | `bildschirmzeit_lesen` | Widget-App | `p_kennung`, `p_von`, `p_bis` (≤ 62 Tage) | `[{app, tag, sekunden, aktualisiert}]` |
 | `bildschirmzeit_loeschen` | Widget-App | `p_kennung` | `true`/`false`; danach meldet `melden` `false` |
+| `bildschirmzeit_anrufe_melden` | Widget-App | `p_kennung`, `p_anrufe` `[{zeit, nummer, name, art, sekunden}]` (≤ 500) | `true`; `false` = Kennung nicht (mehr) angemeldet |
+| `bildschirmzeit_anrufe_loeschen` | Widget-App | `p_kennung` | `true`/`false` |
 
 Je Tag gilt der größere Wert (Tagesstand, kein Zuwachs). Tage außerhalb
 heute − 8 … heute + 1 (UTC) fallen still weg, mehr als 10 Tage auf einmal
@@ -1526,6 +1558,10 @@ spricht mit dem echten Supabase oder GitHub (`Netz.gesperrt`).
   nur die App-Bilder mit den neuen Texten (Schritt 2, Hinweis unter der
   Statistik), die Widget-Bilder sind gleich. Offen bei Tobi: in der App bei
   „Bewerbungen“ einmal „Verbinden“, das öffnet jetzt Firefox.
+- 23.11.2026: Anrufe für die Bewerbungszentrale (Abschnitt oben), nächstes
+  Release v19. 242 JUnit-/Robolectric-Prüfungen (6 neue in `AnrufeTest`),
+  69 SQL, 64 Web-Modul grün; geändert sind nur die App-Bilder mit der neuen
+  Karte. Offen bei Tobi: in der App „Anrufliste freigeben“ → „Zulassen“.
 - Noch nicht auf dem S24 ausprobiert: Größen des Startbildschirms, Akku-
   Verhalten von One UI (ob es die App trotz Widget schlafen legt), ob
   Chrome den Verbinden-Link in der installierten Web-App oder als Tab

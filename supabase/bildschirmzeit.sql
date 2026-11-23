@@ -16,6 +16,12 @@
 --     (bildschirmzeit_loeschen). Danach antwortet bildschirmzeit_melden mit
 --     false, und die Web-Apps trennen sich von selbst.
 --
+--   * Seit dem 23.11.2026 meldet die Widget-App, wenn Tobi es freigibt, auch
+--     seine Anrufliste der letzten 14 Tage (bildschirmzeit_anrufe_melden),
+--     damit Claude Anrufe von Firmen den Bewerbungen zuordnet. Gelesen wird
+--     sie nur über den Supabase-Connector, nie mit dem öffentlichen Schlüssel;
+--     „Nicht mehr teilen“ löscht sie (bildschirmzeit_anrufe_loeschen).
+--
 -- Gespeichert wird nur der SHA-256 der Kennung. Auf die Tabellen führt mit dem
 -- öffentlichen Schlüssel kein Weg; nur diese vier Funktionen.
 
@@ -42,10 +48,25 @@ alter table public.bildschirmzeit drop constraint if exists bildschirmzeit_app_c
 alter table public.bildschirmzeit add constraint bildschirmzeit_app_check
   check (app in ('boxenstopp', 'freizeit', 'workout', 'bewerbungszentrale'));
 
+-- Anrufe aus Androids Anrufliste (Tobi, 23.11.2026: „lass doch machen dass du
+-- meine verpassten und angenommenen Anrufe und so einsehen darfst“, alle Anrufe).
+create table if not exists public.bildschirmzeit_anruf (
+  geraet    text not null references public.bildschirmzeit_geraet (geraet) on delete cascade,
+  zeit      timestamptz not null,                 -- Beginn laut Anrufliste
+  nummer    text not null check (nummer ~ '^(\+?[0-9*#]{1,32}|unbekannt)$'),
+  name      text check (name is null or length(name) <= 100),  -- Name aus den Kontakten, falls gespeichert
+  art       text not null check (art in ('eingehend', 'ausgehend', 'verpasst', 'abgelehnt', 'blockiert', 'mailbox')),
+  sekunden  integer not null check (sekunden between 0 and 86400),
+  gemeldet  timestamptz not null default now(),
+  primary key (geraet, zeit, nummer)
+);
+
 alter table public.bildschirmzeit_geraet enable row level security;
 alter table public.bildschirmzeit enable row level security;
+alter table public.bildschirmzeit_anruf enable row level security;
 revoke all on table public.bildschirmzeit_geraet from public, anon, authenticated;
 revoke all on table public.bildschirmzeit from public, anon, authenticated;
+revoke all on table public.bildschirmzeit_anruf from public, anon, authenticated;
 
 -- Die Kennung nie im Klartext: gespeichert und verglichen wird ihr Hash.
 create or replace function public.bildschirmzeit_hash(p_kennung text)
@@ -164,6 +185,83 @@ begin
 end
 $$;
 
+-- Die Widget-App meldet die Anrufliste: p_anrufe = [{"zeit": "2026-11-23T08:15:00Z",
+-- "nummer": "+4940123", "name": null, "art": "verpasst", "sekunden": 0}, …].
+-- Doppelt geschickt schadet nicht (gleiche Zeit und Nummer: der neue Stand gilt).
+-- Einträge, die nicht passen, fallen still weg, ebenso Zeiten außerhalb von
+-- „jetzt − 31 Tage … jetzt + 1 Tag“. Behalten wird ein Vierteljahr.
+-- false heißt: Diese Kennung ist nicht (mehr) angemeldet.
+create or replace function public.bildschirmzeit_anrufe_melden(p_kennung text, p_anrufe jsonb)
+returns boolean
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  g text := public.bildschirmzeit_hash(p_kennung);
+  jetzt timestamptz := pg_catalog.now();
+  a jsonb;
+  z timestamptz;
+  n text;
+  nm text;
+  s integer;
+begin
+  if p_anrufe is null or jsonb_typeof(p_anrufe) <> 'array' then
+    raise exception 'Anrufe fehlen' using errcode = '22023';
+  end if;
+  if jsonb_array_length(p_anrufe) > 500 then
+    raise exception 'Zu viele Anrufe' using errcode = '22023';
+  end if;
+  if not exists (select 1 from public.bildschirmzeit_geraet where geraet = g) then
+    return false;
+  end if;
+
+  for a in select value from jsonb_array_elements(p_anrufe) loop
+    continue when jsonb_typeof(a) <> 'object'
+      or jsonb_typeof(a -> 'zeit') <> 'string' or jsonb_typeof(a -> 'nummer') <> 'string'
+      or jsonb_typeof(a -> 'art') <> 'string' or jsonb_typeof(a -> 'sekunden') <> 'number';
+    continue when (a ->> 'art') not in ('eingehend', 'ausgehend', 'verpasst', 'abgelehnt', 'blockiert', 'mailbox');
+    n := a ->> 'nummer';
+    continue when n !~ '^(\+?[0-9*#]{1,32}|unbekannt)$';
+    begin
+      z := (a ->> 'zeit')::timestamptz;
+    exception when others then
+      continue;
+    end;
+    continue when z < jetzt - interval '31 days' or z > jetzt + interval '1 day';
+    nm := case when jsonb_typeof(a -> 'name') = 'string' then left(btrim(a ->> 'name'), 100) end;
+    if nm = '' then nm := null; end if;
+    s := least(86400, greatest(0, round((a ->> 'sekunden')::numeric)))::integer;
+    insert into public.bildschirmzeit_anruf as x (geraet, zeit, nummer, name, art, sekunden)
+    values (g, z, n, nm, a ->> 'art', s)
+    on conflict (geraet, zeit, nummer) do update
+      set name = excluded.name, art = excluded.art, sekunden = excluded.sekunden, gemeldet = jetzt;
+  end loop;
+
+  delete from public.bildschirmzeit_anruf where geraet = g and zeit < jetzt - interval '92 days';
+  return true;
+end
+$$;
+
+-- „Anrufe nicht mehr teilen“ in der Widget-App: alle gemeldeten Anrufe weg,
+-- die Anmeldung (und die Minuten der Web-Apps) bleibt.
+create or replace function public.bildschirmzeit_anrufe_loeschen(p_kennung text)
+returns boolean
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  g text := public.bildschirmzeit_hash(p_kennung);
+begin
+  if not exists (select 1 from public.bildschirmzeit_geraet where geraet = g) then
+    return false;
+  end if;
+  delete from public.bildschirmzeit_anruf where geraet = g;
+  return true;
+end
+$$;
+
 revoke all on function public.bildschirmzeit_hash(text) from public, anon, authenticated;
 revoke all on function public.bildschirmzeit_anmelden(text) from public;
 revoke all on function public.bildschirmzeit_melden(text, text, jsonb) from public;
@@ -173,5 +271,9 @@ grant execute on function public.bildschirmzeit_anmelden(text) to anon, authenti
 grant execute on function public.bildschirmzeit_melden(text, text, jsonb) to anon, authenticated;
 grant execute on function public.bildschirmzeit_lesen(text, date, date) to anon, authenticated;
 grant execute on function public.bildschirmzeit_loeschen(text) to anon, authenticated;
+revoke all on function public.bildschirmzeit_anrufe_melden(text, jsonb) from public;
+revoke all on function public.bildschirmzeit_anrufe_loeschen(text) from public;
+grant execute on function public.bildschirmzeit_anrufe_melden(text, jsonb) to anon, authenticated;
+grant execute on function public.bildschirmzeit_anrufe_loeschen(text) to anon, authenticated;
 
 notify pgrst, 'reload schema';

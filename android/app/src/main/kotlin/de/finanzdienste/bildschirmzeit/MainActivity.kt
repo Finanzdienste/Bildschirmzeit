@@ -1,11 +1,13 @@
 package de.finanzdienste.bildschirmzeit
 
+import android.Manifest
 import android.app.Activity
 import android.app.AlertDialog
 import android.appwidget.AppWidgetManager
 import android.content.ActivityNotFoundException
 import android.content.ComponentName
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
 import android.provider.Settings
@@ -27,6 +29,7 @@ import java.io.IOException
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
+import java.time.format.DateTimeFormatter
 import java.time.format.DateTimeParseException
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
@@ -125,6 +128,7 @@ class MainActivity : Activity(), UpdateBeobachter {
         }
         findViewById<Button>(R.id.update_knopf).setOnClickListener { updateKnopf(it.tag as? UpdateKnopf) }
         findViewById<Button>(R.id.update_knopf2).setOnClickListener { updateKnopf(it.tag as? UpdateKnopf) }
+        findViewById<Button>(R.id.anrufe_knopf).setOnClickListener { anrufeKnopf() }
         findViewById<Button>(R.id.loeschen).setOnClickListener { loeschenFragen() }
         versionZeigen(BuildConfig.VERSION_NAME)
         webZeilenAnlegen()
@@ -209,6 +213,7 @@ class MainActivity : Activity(), UpdateBeobachter {
         neuLaden()
         // Zurück aus „Unbekannte Apps installieren“: Die Karte zeigt gleich, ob es jetzt erlaubt ist.
         updateKarteNeu()
+        anrufeZeigen()
         updateFragen()
     }
 
@@ -358,6 +363,7 @@ class MainActivity : Activity(), UpdateBeobachter {
             add(findViewById<View>(R.id.webseiten_karte))
             if (!updateOben) add(update)
             add(findViewById<View>(R.id.diskret_karte))
+            add(findViewById<View>(R.id.anrufe_karte))
             add(findViewById<View>(R.id.loeschen))
             add(findViewById<View>(R.id.version))
         }
@@ -717,6 +723,69 @@ class MainActivity : Activity(), UpdateBeobachter {
         }
     }
 
+    /** Die Karte „Anrufe für die Bewerbungszentrale“: geteilt (mit letztem Melden) oder nicht, dazu der passende Knopf. */
+    internal fun anrufeZeigen() {
+        val an = speicher.anrufeTeilen && Anrufe.erlaubt(this)
+        val zuletzt = speicher.anrufeGemeldet
+        textSetzen(
+            R.id.anrufe_stand,
+            when {
+                !an -> null
+                zuletzt <= 0L -> getString(R.string.anrufe_an_noch_nicht)
+                else -> getString(R.string.anrufe_an, anrufeZeit(zuletzt))
+            },
+        )
+        findViewById<Button>(R.id.anrufe_knopf).setText(if (an) R.string.anrufe_aus else R.string.anrufe_freigeben)
+    }
+
+    private fun anrufeZeit(ms: Long): String {
+        val z = Instant.ofEpochMilli(ms).atZone(ZoneId.systemDefault())
+        return if (z.toLocalDate() == heute()) z.format(DateTimeFormatter.ofPattern("HH:mm")) else z.format(DateTimeFormatter.ofPattern("dd.MM., HH:mm"))
+    }
+
+    /** Freigeben (Androids Abfrage, falls nötig) oder „Nicht mehr teilen“. */
+    private fun anrufeKnopf() {
+        if (speicher.anrufeTeilen && Anrufe.erlaubt(this)) {
+            faeden.execute {
+                Anrufe.nichtMehrTeilen(applicationContext)
+                imVordergrund {
+                    Toast.makeText(this, R.string.anrufe_geloescht, Toast.LENGTH_LONG).show()
+                    anrufeZeigen()
+                }
+            }
+            return
+        }
+        if (Anrufe.erlaubt(this)) anrufeAn() else requestPermissions(arrayOf(Manifest.permission.READ_CALL_LOG), ANRUFE_FRAGE)
+    }
+
+    /** Freigegeben: gleich einmal melden (ohne Netz beim nächsten Lauf) und die Karte nachziehen. */
+    private fun anrufeAn() {
+        speicher.anrufeTeilen = true
+        speicher.anrufeLoeschenOffen = false
+        speicher.anrufeGemeldet = 0L
+        anrufeZeigen()
+        faeden.execute {
+            Anrufe.imTakt(applicationContext)
+            imVordergrund { anrufeZeigen() }
+        }
+    }
+
+    @Deprecated("Activity ohne AndroidX-Ergebnis-API, wie der Rest dieser App")
+    override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+        if (requestCode != ANRUFE_FRAGE) return
+        if (grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+            anrufeAn()
+            return
+        }
+        // Zweimal abgelehnt fragt Android nicht mehr: dann die App-Infos, dort unter Berechtigungen.
+        if (!shouldShowRequestPermissionRationale(Manifest.permission.READ_CALL_LOG)) {
+            Toast.makeText(this, R.string.anrufe_verweigert, Toast.LENGTH_LONG).show()
+            oeffnen(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, "package:$packageName".toUri()))
+        }
+        anrufeZeigen()
+    }
+
     private fun loeschenFragen() {
         AlertDialog.Builder(this)
             .setTitle(R.string.loeschen_titel)
@@ -770,6 +839,7 @@ class MainActivity : Activity(), UpdateBeobachter {
         const val ZUSTAND_BALKEN_VON = "balkenVon"
         const val ZUSTAND_APP = "app"
         const val ZUSTAND_APP_NAME = "appName"
+        const val ANRUFE_FRAGE = 41
     }
 }
 

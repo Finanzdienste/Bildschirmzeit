@@ -130,6 +130,13 @@ object Supabase {
         ),
     )
 
+    /** Die Anrufliste (Anrufe.alsJson); false: Kennung nicht (mehr) angemeldet. */
+    fun anrufeMelden(kennung: String, anrufe: JSONArray): Boolean =
+        wahr(rpc("bildschirmzeit_anrufe_melden", JSONObject().put("p_kennung", kennung).put("p_anrufe", anrufe)))
+
+    /** „Nicht mehr teilen“: alle gemeldeten Anrufe weg; false: Kennung nicht (mehr) angemeldet. */
+    fun anrufeLoeschen(kennung: String): Boolean = wahr(rpc("bildschirmzeit_anrufe_loeschen", JSONObject().put("p_kennung", kennung)))
+
     /** true: gelöscht; false: Kennung war nicht (mehr) angemeldet. */
     fun loeschen(kennung: String): Boolean = wahr(rpc("bildschirmzeit_loeschen", JSONObject().put("p_kennung", kennung)))
 

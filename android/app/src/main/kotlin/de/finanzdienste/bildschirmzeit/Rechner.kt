@@ -247,6 +247,10 @@ object Rechner {
             Verlauf(context).loeschen(Instant.ofEpochMilli(jetzt).atZone(ZoneId.systemDefault()).toLocalDate())
             Beobachtungen(context).loeschen()
             Verborgen(context).alleZeigen()
+            // Die Anrufe sind mit der Anmeldung bei Supabase weg; geteilt wird erst wieder nach neuer Freigabe.
+            speicher.anrufeTeilen = false
+            speicher.anrufeGemeldet = 0L
+            speicher.anrufeLoeschenOffen = false
             val neu = speicher.neueKennungSetzen()
             try {
                 if (Supabase.anmelden(neu)) speicher.angemeldet = true

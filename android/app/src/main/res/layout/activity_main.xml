@@ -332,6 +332,32 @@
                 android:visibility="gone" />
         </LinearLayout>
 
+        <!-- Anrufe (Anrufe.kt): die Anrufliste für die Bewerbungszentrale freigeben oder nicht mehr teilen. -->
+        <LinearLayout
+            android:id="@+id/anrufe_karte"
+            style="@style/Karte">
+
+            <TextView
+                android:id="@+id/anrufe_titel"
+                style="@style/Ueberschrift"
+                android:text="@string/anrufe_titel" />
+
+            <TextView
+                android:id="@+id/anrufe_text"
+                style="@style/Fliesstext"
+                android:text="@string/anrufe_text" />
+
+            <TextView
+                android:id="@+id/anrufe_stand"
+                style="@style/Hinweis"
+                android:visibility="gone" />
+
+            <Button
+                android:id="@+id/anrufe_knopf"
+                style="@style/Knopf"
+                android:text="@string/anrufe_freigeben" />
+        </LinearLayout>
+
         <LinearLayout
             android:id="@+id/update_karte"
             style="@style/Karte"

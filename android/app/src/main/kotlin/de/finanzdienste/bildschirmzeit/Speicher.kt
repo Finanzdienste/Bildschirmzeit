@@ -43,6 +43,27 @@ class Speicher(context: Context) {
             p.edit { putBoolean(ANGEMELDET, wert) }
         }
 
+    /** Darf die App die Anrufliste an Supabase melden (Anrufe.kt)? Tobi schaltet es in der App an und aus. */
+    var anrufeTeilen: Boolean
+        get() = p.getBoolean(ANRUFE_TEILEN, false)
+        set(wert) {
+            p.edit { putBoolean(ANRUFE_TEILEN, wert) }
+        }
+
+    /** Wann die Anrufliste zuletzt erfolgreich gemeldet wurde (ms); 0: noch nie. */
+    var anrufeGemeldet: Long
+        get() = p.getLong(ANRUFE_GEMELDET, 0L)
+        set(wert) {
+            p.edit { putLong(ANRUFE_GEMELDET, wert) }
+        }
+
+    /** „Nicht mehr teilen“ ohne Netz: Das Löschen bei Supabase steht noch aus und läuft beim nächsten Lauf. */
+    var anrufeLoeschenOffen: Boolean
+        get() = p.getBoolean(ANRUFE_LOESCHEN, false)
+        set(wert) {
+            p.edit { putBoolean(ANRUFE_LOESCHEN, wert) }
+        }
+
     /** Wann das Widget zuletzt gerechnet wurde (ms) – für den Takt (Takt.kt). */
     var gerechnet: Long
         get() = p.getLong(GERECHNET, 0L)
@@ -127,6 +148,9 @@ class Speicher(context: Context) {
         const val NETZ_FEHLT = "netz_fehlt"
         const val REITER = "reiter"
         const val EROTIK_STAND = "erotikStand"
+        const val ANRUFE_TEILEN = "anrufe_teilen"
+        const val ANRUFE_GEMELDET = "anrufe_gemeldet"
+        const val ANRUFE_LOESCHEN = "anrufe_loeschen"
         val SPERRE = Any()
     }
 }

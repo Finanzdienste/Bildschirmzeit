@@ -74,9 +74,17 @@
     <!-- Die Texte der Update-Karte stehen in UpdateRegeln.anzeige (Selbstupdate.kt), getestet in UpdateRegelnTest. -->
     <string name="update_titel">Automatische Updates</string>
 
+    <string name="anrufe_titel">Anrufe für die Bewerbungszentrale</string>
+    <string name="anrufe_text">Meldet deine Anrufliste der letzten 14 Tage (Nummer, Name aus deinen Kontakten, Zeit, Dauer, angenommen oder verpasst) alle 30 Minuten an Supabase. Claude ordnet Anrufe von Firmen und Vermittlern deinen Bewerbungen zu. Ohne Netz geht es beim nächsten Mal weiter.</string>
+    <string name="anrufe_freigeben">Anrufliste freigeben</string>
+    <string name="anrufe_aus">Nicht mehr teilen</string>
+    <string name="anrufe_an">Geteilt. Zuletzt gemeldet: %1$s.</string>
+    <string name="anrufe_an_noch_nicht">Geteilt. Gemeldet wird beim nächsten Lauf, sobald Netz da ist.</string>
+    <string name="anrufe_verweigert">Android hat den Zugriff auf die Anrufliste nicht erlaubt. In den App-Infos unter Berechtigungen → Anrufliste → Zulassen tippen.</string>
+    <string name="anrufe_geloescht">Nicht mehr geteilt. Die gemeldeten Anrufe werden bei Supabase gelöscht, ohne Netz beim nächsten Lauf.</string>
     <string name="loeschen">Alle Daten löschen</string>
     <string name="loeschen_titel">Alle Daten löschen?</string>
-    <string name="loeschen_text">Die Minuten von Boxenstopp, Freizeit, Workout und Bewerbungen werden bei Supabase gelöscht, dazu der Verlauf hier in der App – die Statistik beginnt mit heute neu. Die Web-Apps trennen sich beim nächsten Melden von selbst; danach kannst du sie neu verbinden. Androids eigene Nutzungsdaten bleiben, wie sie sind.</string>
+    <string name="loeschen_text">Die Minuten von Boxenstopp, Freizeit, Workout und Bewerbungen werden bei Supabase gelöscht, ebenso die geteilten Anrufe (geteilt wird erst nach neuer Freigabe), dazu der Verlauf hier in der App – die Statistik beginnt mit heute neu. Die Web-Apps trennen sich beim nächsten Melden von selbst; danach kannst du sie neu verbinden. Androids eigene Nutzungsdaten bleiben, wie sie sind.</string>
     <string name="loeschen_ja">Löschen</string>
     <string name="abbrechen">Abbrechen</string>
     <string name="geloescht">Gelöscht. Verbinde die Web-Apps neu, wenn du magst.</string>
