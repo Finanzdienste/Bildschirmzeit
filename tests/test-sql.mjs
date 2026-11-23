@@ -71,6 +71,7 @@ const lesen = (k, von, bis) => als('anon', 'select * from bildschirmzeit_lesen(p
 const loeschen = (k) => als('anon', 'select bildschirmzeit_loeschen(p_kennung => $1) as r', [k]).then((r) => r[0].r);
 const anrufeMelden = (k, liste) => als('anon', 'select bildschirmzeit_anrufe_melden(p_kennung => $1, p_anrufe => $2::text::jsonb) as r', [k, JSON.stringify(liste)]).then((r) => r[0].r);
 const anrufeLoeschen = (k) => als('anon', 'select bildschirmzeit_anrufe_loeschen(p_kennung => $1) as r', [k]).then((r) => r[0].r);
+const anrufeLesen = (k, seit) => als('anon', 'select * from bildschirmzeit_anrufe_lesen(p_kennung => $1, p_seit => $2::timestamptz)', [k, seit]);
 const anrufe = (k) => su('select nummer, name, art, sekunden, zeit from bildschirmzeit_anruf where geraet = $1 order by zeit', [sha(k)]);
 
 const tag = (versatz) => {
@@ -90,8 +91,8 @@ const fn = await su(`select p.proname as name, has_function_privilege('anon', p.
   from pg_proc p join pg_namespace n on n.oid = p.pronamespace
   where n.nspname = 'public' and p.proname like 'bildschirmzeit%'`);
 const anonDarf = fn.filter((f) => f.anon).map((f) => f.name).sort();
-check(gleich(anonDarf, ['bildschirmzeit_anmelden', 'bildschirmzeit_anrufe_loeschen', 'bildschirmzeit_anrufe_melden', 'bildschirmzeit_lesen', 'bildschirmzeit_loeschen', 'bildschirmzeit_melden']),
-  `anon darf genau die sechs Funktionen ausführen (${anonDarf.join(', ')})`);
+check(gleich(anonDarf, ['bildschirmzeit_anmelden', 'bildschirmzeit_anrufe_lesen', 'bildschirmzeit_anrufe_loeschen', 'bildschirmzeit_anrufe_melden', 'bildschirmzeit_lesen', 'bildschirmzeit_loeschen', 'bildschirmzeit_melden']),
+  `anon darf genau die sieben Funktionen ausführen (${anonDarf.join(', ')})`);
 check((await fehler(als('anon', "select bildschirmzeit_hash('x')")))?.code === '42501', 'anon darf bildschirmzeit_hash nicht aufrufen');
 for (const t of ['bildschirmzeit', 'bildschirmzeit_geraet', 'bildschirmzeit_anruf']) {
   for (const rolle of ['anon', 'authenticated']) {
@@ -210,6 +211,12 @@ check(gleich(spalten, ['aktualisiert', 'app', 'sekunden', 'tag']), `lesen liefer
   check((await anrufe(K1)).length === 3, 'zu alt, falsche Zeit, Leerzeichen in der Nummer, unbekannte Art, keine Zahl: fällt still weg');
   check((await fehler(anrufeMelden(K1, Array.from({ length: 501 }, () => liste[0]))))?.message === 'Zu viele Anrufe', 'mehr als 500 → „Zu viele Anrufe“');
   check((await fehler(anrufeMelden(K1, { a: 1 })))?.message === 'Anrufe fehlen', 'kein Array → „Anrufe fehlen“');
+  const gelesen = await anrufeLesen(K1, vor(60 * 24 * 14));
+  check(gelesen.length === 3 && gleich(Object.keys(gelesen[0]).sort(), ['art', 'name', 'nummer', 'sekunden', 'zeit']) && gelesen[0].zeit < gelesen[2].zeit,
+    'anrufe_lesen: die drei Anrufe, älteste zuerst, mit zeit, nummer, name, art, sekunden');
+  check((await anrufeLesen(K1, vor(60))).length === 1, 'anrufe_lesen ab p_seit');
+  check((await anrufeLesen(K2, vor(60 * 24 * 14))).length === 0, 'anrufe_lesen mit anderer Kennung → nichts');
+  check((await fehler(anrufeLesen(K1, null)))?.message === 'Zeitraum ungültig', 'anrufe_lesen ohne p_seit → „Zeitraum ungültig“');
   await anmelden(K3);
   await anrufeMelden(K3, [liste[1]]);
   check(await anrufeLoeschen(K1) === true && (await anrufe(K1)).length === 0, 'anrufe_loeschen: alle Anrufe dieser Kennung weg');

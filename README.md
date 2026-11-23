@@ -1133,8 +1133,11 @@ diese App (`Anrufe.kt`).
   nur ein erfolgreiches Melden, der nächste Lauf liest die Liste neu und
   meldet sie ganz; Supabase nimmt Doppeltes nicht doppelt.
 - **Wohin:** Tabelle `bildschirmzeit_anruf` über `bildschirmzeit_anrufe_melden`.
-  Mit dem öffentlichen Schlüssel kommt niemand an die Tabelle; gelesen wird sie
-  nur über den Supabase-Connector (Claude). Behalten wird ein Vierteljahr.
+  Mit dem öffentlichen Schlüssel kommt niemand an die Tabelle, nur mit der
+  Kennung über `bildschirmzeit_anrufe_lesen`: So holt die Bewerbungszentrale
+  (seit „Verbinden“ hat sie die Kennung) die Anrufe und ordnet sie über die
+  Telefonnummern den Bewerbungen zu (verpasst → „zurückrufen“). Behalten wird
+  ein Vierteljahr.
 - **Aus:** „Nicht mehr teilen“ schaltet ab und löscht die Anrufe bei Supabase
   (`bildschirmzeit_anrufe_loeschen`), ohne Netz beim nächsten Lauf. „Alle Daten
   löschen“ nimmt sie mit der Anmeldung mit; danach wird erst nach neuer
@@ -1159,6 +1162,7 @@ kein `Authorization` (es ist kein JWT).
 | `bildschirmzeit_loeschen` | Widget-App | `p_kennung` | `true`/`false`; danach meldet `melden` `false` |
 | `bildschirmzeit_anrufe_melden` | Widget-App | `p_kennung`, `p_anrufe` `[{zeit, nummer, name, art, sekunden}]` (≤ 500) | `true`; `false` = Kennung nicht (mehr) angemeldet |
 | `bildschirmzeit_anrufe_loeschen` | Widget-App | `p_kennung` | `true`/`false` |
+| `bildschirmzeit_anrufe_lesen` | Bewerbungszentrale | `p_kennung`, `p_seit` (höchstens 31 Tage zurück) | `[{zeit, nummer, name, art, sekunden}]` |
 
 Je Tag gilt der größere Wert (Tagesstand, kein Zuwachs). Tage außerhalb
 heute − 8 … heute + 1 (UTC) fallen still weg, mehr als 10 Tage auf einmal

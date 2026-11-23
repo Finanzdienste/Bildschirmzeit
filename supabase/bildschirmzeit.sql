@@ -18,9 +18,10 @@
 --
 --   * Seit dem 23.11.2026 meldet die Widget-App, wenn Tobi es freigibt, auch
 --     seine Anrufliste der letzten 14 Tage (bildschirmzeit_anrufe_melden),
---     damit Claude Anrufe von Firmen den Bewerbungen zuordnet. Gelesen wird
---     sie nur über den Supabase-Connector, nie mit dem öffentlichen Schlüssel;
---     „Nicht mehr teilen“ löscht sie (bildschirmzeit_anrufe_loeschen).
+--     damit die Bewerbungszentrale Anrufe von Firmen den Bewerbungen
+--     zuordnet. Sie liest sie mit derselben Kennung (bildschirmzeit_anrufe_lesen,
+--     die sie seit „Verbinden“ ohnehin hat); „Nicht mehr teilen“ löscht sie
+--     (bildschirmzeit_anrufe_loeschen).
 --
 -- Gespeichert wird nur der SHA-256 der Kennung. Auf die Tabellen führt mit dem
 -- öffentlichen Schlüssel kein Weg; nur diese vier Funktionen.
@@ -243,6 +244,28 @@ begin
 end
 $$;
 
+-- Die Bewerbungszentrale liest die Anrufe ab p_seit (höchstens die letzten 31 Tage).
+create or replace function public.bildschirmzeit_anrufe_lesen(p_kennung text, p_seit timestamptz)
+returns table (zeit timestamptz, nummer text, name text, art text, sekunden integer)
+language plpgsql
+security definer
+set search_path = ''
+as $$
+#variable_conflict use_column
+declare
+  g text := public.bildschirmzeit_hash(p_kennung);
+begin
+  if p_seit is null then
+    raise exception 'Zeitraum ungültig' using errcode = '22023';
+  end if;
+  return query
+    select a.zeit, a.nummer, a.name, a.art, a.sekunden
+    from public.bildschirmzeit_anruf a
+    where a.geraet = g and a.zeit >= greatest(p_seit, pg_catalog.now() - interval '31 days')
+    order by a.zeit;
+end
+$$;
+
 -- „Anrufe nicht mehr teilen“ in der Widget-App: alle gemeldeten Anrufe weg,
 -- die Anmeldung (und die Minuten der Web-Apps) bleibt.
 create or replace function public.bildschirmzeit_anrufe_loeschen(p_kennung text)
@@ -273,6 +296,8 @@ grant execute on function public.bildschirmzeit_lesen(text, date, date) to anon,
 grant execute on function public.bildschirmzeit_loeschen(text) to anon, authenticated;
 revoke all on function public.bildschirmzeit_anrufe_melden(text, jsonb) from public;
 revoke all on function public.bildschirmzeit_anrufe_loeschen(text) from public;
+revoke all on function public.bildschirmzeit_anrufe_lesen(text, timestamptz) from public;
+grant execute on function public.bildschirmzeit_anrufe_lesen(text, timestamptz) to anon, authenticated;
 grant execute on function public.bildschirmzeit_anrufe_melden(text, jsonb) to anon, authenticated;
 grant execute on function public.bildschirmzeit_anrufe_loeschen(text) to anon, authenticated;
 
