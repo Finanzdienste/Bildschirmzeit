@@ -129,6 +129,7 @@ class MainActivity : Activity(), UpdateBeobachter {
         findViewById<Button>(R.id.update_knopf).setOnClickListener { updateKnopf(it.tag as? UpdateKnopf) }
         findViewById<Button>(R.id.update_knopf2).setOnClickListener { updateKnopf(it.tag as? UpdateKnopf) }
         findViewById<Button>(R.id.anrufe_knopf).setOnClickListener { anrufeKnopf() }
+        findViewById<Button>(R.id.kontakte_knopf).setOnClickListener { kontakteKnopf() }
         findViewById<Button>(R.id.loeschen).setOnClickListener { loeschenFragen() }
         versionZeigen(BuildConfig.VERSION_NAME)
         webZeilenAnlegen()
@@ -214,6 +215,7 @@ class MainActivity : Activity(), UpdateBeobachter {
         // Zurück aus „Unbekannte Apps installieren“: Die Karte zeigt gleich, ob es jetzt erlaubt ist.
         updateKarteNeu()
         anrufeZeigen()
+        kontakteZeigen()
         updateFragen()
     }
 
@@ -364,6 +366,7 @@ class MainActivity : Activity(), UpdateBeobachter {
             if (!updateOben) add(update)
             add(findViewById<View>(R.id.diskret_karte))
             add(findViewById<View>(R.id.anrufe_karte))
+            add(findViewById<View>(R.id.kontakte_karte))
             add(findViewById<View>(R.id.loeschen))
             add(findViewById<View>(R.id.version))
         }
@@ -770,9 +773,67 @@ class MainActivity : Activity(), UpdateBeobachter {
         }
     }
 
+    /** Die Karte „Kontakte aus den Bewerbungen“: an (wann zuletzt geholt, wie viele angelegt und umbenannt) oder aus. */
+    internal fun kontakteZeigen() {
+        val an = speicher.kontakteBenennen && Kontakte.erlaubt(this)
+        val zuletzt = speicher.kontakteGeholt
+        textSetzen(
+            R.id.kontakte_stand,
+            when {
+                !an -> null
+                zuletzt <= 0L -> getString(R.string.kontakte_an_noch_nicht)
+                else -> getString(R.string.kontakte_an, anrufeZeit(zuletzt), speicher.kontakteAngelegt.size, speicher.kontakteUmbenannt.size)
+            },
+        )
+        findViewById<Button>(R.id.kontakte_knopf).setText(if (an) R.string.kontakte_aus else R.string.kontakte_freigeben)
+    }
+
+    /** Freigeben (Androids Abfrage, falls nötig) oder „Nicht mehr benennen“. */
+    private fun kontakteKnopf() {
+        if (speicher.kontakteBenennen && Kontakte.erlaubt(this)) {
+            faeden.execute {
+                Kontakte.zuruecknehmen(applicationContext)
+                imVordergrund {
+                    Toast.makeText(this, R.string.kontakte_zurueck, Toast.LENGTH_LONG).show()
+                    kontakteZeigen()
+                }
+            }
+            return
+        }
+        if (Kontakte.erlaubt(this)) {
+            kontakteAn()
+        } else {
+            requestPermissions(arrayOf(Manifest.permission.READ_CONTACTS, Manifest.permission.WRITE_CONTACTS), KONTAKTE_FRAGE)
+        }
+    }
+
+    /** Freigegeben: gleich holen und benennen (ohne Netz beim nächsten Lauf) und die Karte nachziehen. */
+    private fun kontakteAn() {
+        speicher.kontakteBenennen = true
+        speicher.kontakteGeholt = 0L
+        speicher.kontakteAngewandt = null
+        kontakteZeigen()
+        faeden.execute {
+            Kontakte.imTakt(applicationContext)
+            imVordergrund { kontakteZeigen() }
+        }
+    }
+
     @Deprecated("Activity ohne AndroidX-Ergebnis-API, wie der Rest dieser App")
     override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+        if (requestCode == KONTAKTE_FRAGE) {
+            if (grantResults.isNotEmpty() && grantResults.all { it == PackageManager.PERMISSION_GRANTED }) {
+                kontakteAn()
+                return
+            }
+            if (!shouldShowRequestPermissionRationale(Manifest.permission.WRITE_CONTACTS)) {
+                Toast.makeText(this, R.string.kontakte_verweigert, Toast.LENGTH_LONG).show()
+                oeffnen(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, "package:$packageName".toUri()))
+            }
+            kontakteZeigen()
+            return
+        }
         if (requestCode != ANRUFE_FRAGE) return
         if (grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
             anrufeAn()
@@ -840,6 +901,7 @@ class MainActivity : Activity(), UpdateBeobachter {
         const val ZUSTAND_APP = "app"
         const val ZUSTAND_APP_NAME = "appName"
         const val ANRUFE_FRAGE = 41
+        const val KONTAKTE_FRAGE = 42
     }
 }
 

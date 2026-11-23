@@ -72,6 +72,8 @@ const loeschen = (k) => als('anon', 'select bildschirmzeit_loeschen(p_kennung =>
 const anrufeMelden = (k, liste) => als('anon', 'select bildschirmzeit_anrufe_melden(p_kennung => $1, p_anrufe => $2::text::jsonb) as r', [k, JSON.stringify(liste)]).then((r) => r[0].r);
 const anrufeLoeschen = (k) => als('anon', 'select bildschirmzeit_anrufe_loeschen(p_kennung => $1) as r', [k]).then((r) => r[0].r);
 const anrufeLesen = (k, seit) => als('anon', 'select * from bildschirmzeit_anrufe_lesen(p_kennung => $1, p_seit => $2::timestamptz)', [k, seit]);
+const kontakteSetzen = (k, liste) => als('anon', 'select bildschirmzeit_kontakte_setzen(p_kennung => $1, p_kontakte => $2::text::jsonb) as r', [k, JSON.stringify(liste)]).then((r) => r[0].r);
+const kontakteLesen = (k) => als('anon', 'select * from bildschirmzeit_kontakte_lesen(p_kennung => $1)', [k]);
 const anrufe = (k) => su('select nummer, name, art, sekunden, zeit from bildschirmzeit_anruf where geraet = $1 order by zeit', [sha(k)]);
 
 const tag = (versatz) => {
@@ -91,10 +93,10 @@ const fn = await su(`select p.proname as name, has_function_privilege('anon', p.
   from pg_proc p join pg_namespace n on n.oid = p.pronamespace
   where n.nspname = 'public' and p.proname like 'bildschirmzeit%'`);
 const anonDarf = fn.filter((f) => f.anon).map((f) => f.name).sort();
-check(gleich(anonDarf, ['bildschirmzeit_anmelden', 'bildschirmzeit_anrufe_lesen', 'bildschirmzeit_anrufe_loeschen', 'bildschirmzeit_anrufe_melden', 'bildschirmzeit_lesen', 'bildschirmzeit_loeschen', 'bildschirmzeit_melden']),
-  `anon darf genau die sieben Funktionen ausführen (${anonDarf.join(', ')})`);
+check(gleich(anonDarf, ['bildschirmzeit_anmelden', 'bildschirmzeit_anrufe_lesen', 'bildschirmzeit_anrufe_loeschen', 'bildschirmzeit_anrufe_melden', 'bildschirmzeit_kontakte_lesen', 'bildschirmzeit_kontakte_setzen', 'bildschirmzeit_lesen', 'bildschirmzeit_loeschen', 'bildschirmzeit_melden']),
+  `anon darf genau die neun Funktionen ausführen (${anonDarf.join(', ')})`);
 check((await fehler(als('anon', "select bildschirmzeit_hash('x')")))?.code === '42501', 'anon darf bildschirmzeit_hash nicht aufrufen');
-for (const t of ['bildschirmzeit', 'bildschirmzeit_geraet', 'bildschirmzeit_anruf']) {
+for (const t of ['bildschirmzeit', 'bildschirmzeit_geraet', 'bildschirmzeit_anruf', 'bildschirmzeit_kontakt']) {
   for (const rolle of ['anon', 'authenticated']) {
     const e = await fehler(als(rolle, `select * from ${t}`));
     check(e?.code === '42501', `${rolle}: select * from ${t} → permission denied`);
@@ -225,11 +227,40 @@ check(gleich(spalten, ['aktualisiert', 'app', 'sekunden', 'tag']), `lesen liefer
   await anrufeMelden(K1, [liste[1]]);
 }
 
+// --- Kontakte (Bewerbungszentrale setzt, Widget-App liest, seit 23.11.2026) ---
+{
+  check(await kontakteSetzen('w'.repeat(43), []) === false, 'kontakte_setzen mit nicht angemeldeter Kennung → false');
+  const liste = [
+    { nummer: '+4940123456', name: 'Erika Beispiel (Beispiel GmbH)' },
+    { nummer: '+49301112', name: '  Muster AG\n ' },
+  ];
+  check(await kontakteSetzen(K1, liste) === true, 'kontakte_setzen: zwei Namen → true');
+  let k = await kontakteLesen(K1);
+  check(gleich(k.map((x) => [x.nummer, x.name]), [['+49301112', 'Muster AG'], ['+4940123456', 'Erika Beispiel (Beispiel GmbH)']]),
+    `kontakte_lesen: nach Nummer, Name ohne Steuerzeichen und Rand (${JSON.stringify(k)})`);
+  check(gleich(Object.keys(k[0]).sort(), ['name', 'nummer']), 'kontakte_lesen liefert nur nummer und name');
+  await kontakteSetzen(K1, [
+    { nummer: '+49301112', name: 'Muster AG' },
+    { nummer: '+49301112', name: 'Muster Neu AG' },
+    { nummer: '040 333', name: 'Leerzeichen' },
+    { nummer: '+4940999', name: '   ' },
+    { nummer: 4940999, name: 'Zahl' },
+    'kein Objekt',
+  ]);
+  k = await kontakteLesen(K1);
+  check(k.length === 1 && k[0].name === 'Muster Neu AG', 'die neue Liste ersetzt die alte; doppelte Nummer: der letzte Name; Unpassendes fällt still weg');
+  check((await kontakteLesen(K2)).length === 0 && (await kontakteLesen('w'.repeat(43))).length === 0, 'kontakte_lesen mit anderer oder unbekannter Kennung → nichts');
+  check((await fehler(kontakteSetzen(K1, Array.from({ length: 501 }, () => liste[0]))))?.message === 'Zu viele Kontakte', 'mehr als 500 → „Zu viele Kontakte“');
+  check((await fehler(kontakteSetzen(K1, { a: 1 })))?.message === 'Kontakte fehlen', 'kein Array → „Kontakte fehlen“');
+  check((await kontakteLesen(K1)).length === 1, '… und die Liste bleibt dabei, wie sie war');
+}
+
 // --- Löschen ---
 check(await loeschen(K1) === true, 'loeschen → true');
 check(await loeschen(K1) === false, 'noch einmal loeschen → false');
 check((await su('select count(*)::int as n from bildschirmzeit where geraet = $1', [sha(K1)]))[0].n === 0, 'loeschen nimmt alle Zahlen dieser Kennung mit');
 check((await anrufe(K1)).length === 0, 'loeschen nimmt auch die Anrufe mit');
+check((await kontakteLesen(K1)).length === 0 && (await su('select count(*)::int as n from bildschirmzeit_kontakt where geraet = $1', [sha(K1)]))[0].n === 0, '… und die Kontakte');
 check(await anrufeLoeschen(K1) === false, 'danach: anrufe_loeschen → false');
 check(await melden(K1, 'workout', { [HEUTE]: 400 }) === false, 'nach dem Löschen: melden → false (die Web-App trennt sich dann)');
 check((await lesen(K2, HEUTE, HEUTE)).length === 1, 'die andere Kennung behält ihre Zahlen');

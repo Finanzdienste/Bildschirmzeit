@@ -1145,6 +1145,38 @@ diese App (`Anrufe.kt`).
 - Geprüft von `AnrufeTest` (erfundene Anrufliste, auch ohne Netz) und
   `tests/test-sql.mjs`.
 
+## Kontakte aus den Bewerbungen (nächstes Release)
+
+Tobi, 23.11.2026: „Du kannst meine Telefon Kontakte auch umbennenen“. Ruft eine
+Firma oder ein Vermittler an, soll auf dem Handy gleich stehen, wer das ist
+(„Erika Muster (Beispiel GmbH)“). Die Namen kennt nur die Bewerbungszentrale,
+die Kontakte nur das Handy; dazwischen liegt Supabase (`Kontakte.kt`).
+
+- **Erst nach Freigabe:** Karte „Kontakte aus den Bewerbungen“ → „Kontakte
+  benennen“ → Androids Abfrage „Zugriff auf Kontakte“ → „Zulassen“
+  (`READ_CONTACTS`, `WRITE_CONTACTS`). Zweimal abgelehnt: die App-Infos.
+- **Woher:** Die Bewerbungszentrale schickt beim Start und bei „online“ die
+  Nummern ihrer Akten ab „beworben“ mit Namen („Person (Firma)“ oder nur die
+  Firma, Nummer als +49…) an `bildschirmzeit_kontakte_setzen`; die Liste
+  ersetzt die alte ganz. Die App holt sie im 15-Minuten-Lauf höchstens alle 30
+  Minuten (`bildschirmzeit_kontakte_lesen`) und merkt sie sich. Ohne Netz gilt
+  der zuletzt geholte Stand.
+- **Was:** Angewandt wird nur eine geänderte Liste – was Tobi danach von Hand
+  umbenennt, bleibt, bis sich der Name in der Liste ändert. Verglichen wird die
+  ganze Nummer (+49 und 0049 = 0, ohne Leer- und Trennzeichen), nicht nur die
+  letzten Ziffern wie Androids PhoneLookup. Ein Kontakt mit der Nummer bekommt
+  den neuen Namen (alle seine RawContacts; der alte Name wird gemerkt); fehlt
+  er, legt die App einen im Telefonspeicher an (kein Konto, Nummer als
+  „Geschäftlich“). Fällt eine Nummer aus der Liste, ist der angelegte Kontakt
+  wieder weg und der umbenannte hat seinen alten Namen. Eine leere Liste ändert
+  nichts. Einen angelegten Kontakt, den Tobi löscht, vergisst die App.
+- **Aus:** „Nicht mehr benennen“ löscht alle angelegten Kontakte und gibt den
+  umbenannten ihren alten Namen zurück (ohne Netz, nur auf dem Handy). „Alle
+  Daten löschen“ ebenso; Supabase nimmt die Liste mit der Anmeldung mit.
+- Geprüft von `KontakteTest` (erfundenes Adressbuch, auch ohne Netz) und
+  `tests/test-sql.mjs`; die Bewerbungszentrale prüft ihre Seite in ihren Tests
+  `kontakte` und `kontakte-nur-lesen`.
+
 ## Der Vertrag zwischen Widget-App, Supabase und Web-Apps
 
 **Supabase** – Projekt `vjyohppohmvhhxgwouti` („Finanzdienste's Project“),
@@ -1262,13 +1294,15 @@ android/                     Gradle-Projekt (Kotlin DSL)
     Ziel.kt                  wohin das Widget die App öffnet (Extra an MainActivity: statistik, update)
     WidgetAnsicht.kt         WidgetRaster (wie viele Apps in welche Größe, rein), RemoteViews
     Aktualisierung.kt        WorkManager, Widget-Empfänger, Sperre
+    Anrufe.kt                die Anrufliste für die Bewerbungszentrale (nach Freigabe)
+    Kontakte.kt              Kontakte für die Nummern aus den Bewerbungen benennen (nach Freigabe)
     Takt.kt                  wann gerechnet und gefunkt wird (rein), Wecker, Neustart/Update
     NeueVersion.kt           GitHub releases/latest: Laufnummer, APK, Prüfsumme
     Selbstupdate.kt          Updates von selbst: Regeln (rein), Laden, Installer-Sitzung, Status
     MainActivity.kt          der App-Bildschirm: oben die Statistik, darunter die Einrichtung
   app/src/test/…             JUnit + Robolectric (Vorschau mit nativer Grafik)
 docs/vorschau-*.png          gezeichnet von den Tests
-supabase/bildschirmzeit.sql  die vier Funktionen
+supabase/bildschirmzeit.sql  Tabellen und Funktionen
 web/bildschirmzeit.js        das Mess-Modul der Web-Apps
 tests/                       test-sql.mjs (PGlite), test-web.mjs
 .github/workflows/apk.yml    pruefen → apk → Release v<Laufnummer>
@@ -1570,6 +1604,11 @@ spricht mit dem echten Supabase oder GitHub (`Netz.gesperrt`).
   Handy nicht an), geprüft mit einer erfundenen Kennung (`lesen` → `[]`,
   `melden` → `false`). Offen bei Tobi: in der App „Anrufliste freigeben“ →
   „Zulassen“.
+- 23.11.2026: Kontakte aus den Bewerbungen (Abschnitt oben), nächstes
+  Release. 252 JUnit-/Robolectric-Prüfungen (10 neue in `KontakteTest`),
+  86 SQL grün; geändert sind nur die App-Bilder mit der neuen Karte. Offen:
+  Tabelle `bildschirmzeit_kontakt` und die zwei Funktionen in Supabase
+  einspielen, dann in der App „Kontakte benennen“ → „Zulassen“.
 - Noch nicht auf dem S24 ausprobiert: Größen des Startbildschirms, Akku-
   Verhalten von One UI (ob es die App trotz Widget schlafen legt), ob
   Chrome den Verbinden-Link in der installierten Web-App oder als Tab

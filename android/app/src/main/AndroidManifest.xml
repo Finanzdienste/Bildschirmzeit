@@ -14,6 +14,9 @@
     <uses-permission android:name="android.permission.UPDATE_PACKAGES_WITHOUT_USER_ACTION" />
     <!-- Anrufliste für die Bewerbungszentrale (Anrufe.kt): erst nach Tobis Freigabe in der App. -->
     <uses-permission android:name="android.permission.READ_CALL_LOG" />
+    <!-- Kontakte für die Nummern aus den Bewerbungen benennen (Kontakte.kt): erst nach Tobis Freigabe in der App. -->
+    <uses-permission android:name="android.permission.READ_CONTACTS" />
+    <uses-permission android:name="android.permission.WRITE_CONTACTS" />
     <!-- Nach einem Neustart den Wecker fürs Widget neu stellen (Takt.kt). -->
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
 

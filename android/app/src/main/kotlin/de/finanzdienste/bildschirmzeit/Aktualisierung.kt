@@ -122,7 +122,7 @@ object Aktualisierung {
         context.getSystemService(PowerManager::class.java)?.isInteractive ?: true
 }
 
-/** Der 15-Minuten-Lauf: das Widget, die Anrufliste (wenn freigegeben, höchstens alle 30 Minuten), danach (höchstens jede Stunde bei GitHub) das Update. */
+/** Der 15-Minuten-Lauf: das Widget, Anrufliste und Kontakte (wenn freigegeben, höchstens alle 30 Minuten), danach (höchstens jede Stunde bei GitHub) das Update. */
 class WidgetArbeit(context: Context, parameter: WorkerParameters) : Worker(context, parameter) {
     override fun doWork(): Result {
         try {
@@ -134,6 +134,11 @@ class WidgetArbeit(context: Context, parameter: WorkerParameters) : Worker(conte
             Anrufe.imTakt(applicationContext)
         } catch (e: RuntimeException) {
             Log.w(LOG, "Anrufe fehlgeschlagen: ${e.javaClass.simpleName}")
+        }
+        try {
+            Kontakte.imTakt(applicationContext)
+        } catch (e: RuntimeException) {
+            Log.w(LOG, "Kontakte fehlgeschlagen: ${e.javaClass.simpleName}")
         }
         try {
             Selbstupdate.imHintergrund(applicationContext)

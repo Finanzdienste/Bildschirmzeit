@@ -64,6 +64,67 @@ class Speicher(context: Context) {
             p.edit { putBoolean(ANRUFE_LOESCHEN, wert) }
         }
 
+    /** Darf die App Kontakte für die Nummern aus den Bewerbungen anlegen und umbenennen (Kontakte.kt)? */
+    var kontakteBenennen: Boolean
+        get() = p.getBoolean(KONTAKTE_BENENNEN, false)
+        set(wert) {
+            p.edit { putBoolean(KONTAKTE_BENENNEN, wert) }
+        }
+
+    /** Wann die Namen zuletzt bei Supabase geholt wurden (ms); 0: noch nie. */
+    var kontakteGeholt: Long
+        get() = p.getLong(KONTAKTE_GEHOLT, 0L)
+        set(wert) {
+            p.edit { putLong(KONTAKTE_GEHOLT, wert) }
+        }
+
+    /** Die zuletzt geholte Liste (Kontakte.alsJson) – für die Zeit ohne Netz. */
+    var kontakteListe: String?
+        get() = p.getString(KONTAKTE_LISTE, null)
+        set(wert) {
+            p.edit { putString(KONTAKTE_LISTE, wert) }
+        }
+
+    /** Die Liste, die zuletzt angewandt wurde: Angewandt wird nur, was sich geändert hat. */
+    var kontakteAngewandt: String?
+        get() = p.getString(KONTAKTE_ANGEWANDT, null)
+        set(wert) {
+            p.edit { putString(KONTAKTE_ANGEWANDT, wert) }
+        }
+
+    /** Die Kontakte, die die App angelegt hat: RawContact-Id → Nummer. */
+    var kontakteAngelegt: Map<Long, String>
+        get() = jsonMap(KONTAKTE_ANGELEGT) { o, k -> o.optString(k) }
+        set(wert) {
+            p.edit { putString(KONTAKTE_ANGELEGT, JSONObject().also { o -> wert.forEach { (k, v) -> o.put(k.toString(), v) } }.toString()) }
+        }
+
+    /** Die Kontakte, die die App umbenannt hat: RawContact-Id → alter Name und Nummer. */
+    var kontakteUmbenannt: Map<Long, Umbenannt>
+        get() = jsonMap(KONTAKTE_UMBENANNT) { o, k -> o.optJSONObject(k)?.let { Umbenannt(it.optString("alt"), it.optString("nummer")) } }
+        set(wert) {
+            p.edit {
+                putString(
+                    KONTAKTE_UMBENANNT,
+                    JSONObject().also { o -> wert.forEach { (k, v) -> o.put(k.toString(), JSONObject().put("alt", v.alt).put("nummer", v.nummer)) } }.toString(),
+                )
+            }
+        }
+
+    private fun <T> jsonMap(schluessel: String, wert: (JSONObject, String) -> T?): Map<Long, T> {
+        val o = try {
+            JSONObject(p.getString(schluessel, null) ?: return emptyMap())
+        } catch (e: JSONException) {
+            return emptyMap()
+        }
+        val aus = LinkedHashMap<Long, T>()
+        for (k in o.keys()) {
+            val id = k.toLongOrNull() ?: continue
+            aus[id] = wert(o, k) ?: continue
+        }
+        return aus
+    }
+
     /** Wann das Widget zuletzt gerechnet wurde (ms) – für den Takt (Takt.kt). */
     var gerechnet: Long
         get() = p.getLong(GERECHNET, 0L)
@@ -151,6 +212,12 @@ class Speicher(context: Context) {
         const val ANRUFE_TEILEN = "anrufe_teilen"
         const val ANRUFE_GEMELDET = "anrufe_gemeldet"
         const val ANRUFE_LOESCHEN = "anrufe_loeschen"
+        const val KONTAKTE_BENENNEN = "kontakte_benennen"
+        const val KONTAKTE_GEHOLT = "kontakte_geholt"
+        const val KONTAKTE_LISTE = "kontakte_liste"
+        const val KONTAKTE_ANGEWANDT = "kontakte_angewandt"
+        const val KONTAKTE_ANGELEGT = "kontakte_angelegt"
+        const val KONTAKTE_UMBENANNT = "kontakte_umbenannt"
         val SPERRE = Any()
     }
 }

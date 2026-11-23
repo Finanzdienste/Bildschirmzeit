@@ -137,6 +137,17 @@ object Supabase {
     /** „Nicht mehr teilen“: alle gemeldeten Anrufe weg; false: Kennung nicht (mehr) angemeldet. */
     fun anrufeLoeschen(kennung: String): Boolean = wahr(rpc("bildschirmzeit_anrufe_loeschen", JSONObject().put("p_kennung", kennung)))
 
+    /** Die Namen für die Nummern aus den Bewerbungen (Kontakte.kt); unbekannte Kennung: leer. Unlesbares wirft IOException. */
+    fun kontakteLesen(kennung: String): List<Wunsch> {
+        val text = rpc("bildschirmzeit_kontakte_lesen", JSONObject().put("p_kennung", kennung))
+        try {
+            JSONArray(text)
+        } catch (e: JSONException) {
+            throw IOException("Antwort unlesbar", e)
+        }
+        return Kontakte.ausJson(text)
+    }
+
     /** true: gelöscht; false: Kennung war nicht (mehr) angemeldet. */
     fun loeschen(kennung: String): Boolean = wahr(rpc("bildschirmzeit_loeschen", JSONObject().put("p_kennung", kennung)))
 

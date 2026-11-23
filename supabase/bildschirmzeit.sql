@@ -22,9 +22,13 @@
 --     zuordnet. Sie liest sie mit derselben Kennung (bildschirmzeit_anrufe_lesen,
 --     die sie seit „Verbinden“ ohnehin hat); „Nicht mehr teilen“ löscht sie
 --     (bildschirmzeit_anrufe_loeschen).
+--   * Seit dem 23.11.2026 schickt die Bewerbungszentrale außerdem Namen für
+--     die Nummern aus Tobis Bewerbungen (bildschirmzeit_kontakte_setzen), und
+--     die Widget-App benennt damit, wenn Tobi es freigibt, die Kontakte auf
+--     dem Handy (bildschirmzeit_kontakte_lesen).
 --
 -- Gespeichert wird nur der SHA-256 der Kennung. Auf die Tabellen führt mit dem
--- öffentlichen Schlüssel kein Weg; nur diese vier Funktionen.
+-- öffentlichen Schlüssel kein Weg; nur die Funktionen unten.
 
 create table if not exists public.bildschirmzeit_geraet (
   geraet    text primary key,                 -- sha256(Kennung), hex
@@ -62,12 +66,25 @@ create table if not exists public.bildschirmzeit_anruf (
   primary key (geraet, zeit, nummer)
 );
 
+-- Namen für die Nummern aus den Bewerbungen (Tobi, 23.11.2026: „Du kannst meine
+-- Telefon Kontakte auch umbennenen“). Die Bewerbungszentrale setzt die ganze
+-- Liste, die Widget-App liest sie und benennt damit die Kontakte.
+create table if not exists public.bildschirmzeit_kontakt (
+  geraet    text not null references public.bildschirmzeit_geraet (geraet) on delete cascade,
+  nummer    text not null check (nummer ~ '^\+?[0-9]{3,32}$'),
+  name      text not null check (length(name) between 1 and 100),
+  gesetzt   timestamptz not null default now(),
+  primary key (geraet, nummer)
+);
+
 alter table public.bildschirmzeit_geraet enable row level security;
 alter table public.bildschirmzeit enable row level security;
 alter table public.bildschirmzeit_anruf enable row level security;
+alter table public.bildschirmzeit_kontakt enable row level security;
 revoke all on table public.bildschirmzeit_geraet from public, anon, authenticated;
 revoke all on table public.bildschirmzeit from public, anon, authenticated;
 revoke all on table public.bildschirmzeit_anruf from public, anon, authenticated;
+revoke all on table public.bildschirmzeit_kontakt from public, anon, authenticated;
 
 -- Die Kennung nie im Klartext: gespeichert und verglichen wird ihr Hash.
 create or replace function public.bildschirmzeit_hash(p_kennung text)
@@ -285,6 +302,67 @@ begin
 end
 $$;
 
+-- Die Bewerbungszentrale setzt die Namen: p_kontakte = [{"nummer": "+4940123456",
+-- "name": "Erika Beispiel (Beispiel GmbH)"}, …]. Die Liste ersetzt die alte
+-- ganz. Einträge, die nicht passen, fallen still weg; doppelte Nummer: der
+-- letzte Name gilt. false heißt: Diese Kennung ist nicht (mehr) angemeldet.
+create or replace function public.bildschirmzeit_kontakte_setzen(p_kennung text, p_kontakte jsonb)
+returns boolean
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  g text := public.bildschirmzeit_hash(p_kennung);
+  k jsonb;
+  n text;
+  nm text;
+begin
+  if p_kontakte is null or jsonb_typeof(p_kontakte) <> 'array' then
+    raise exception 'Kontakte fehlen' using errcode = '22023';
+  end if;
+  if jsonb_array_length(p_kontakte) > 500 then
+    raise exception 'Zu viele Kontakte' using errcode = '22023';
+  end if;
+  if not exists (select 1 from public.bildschirmzeit_geraet where geraet = g) then
+    return false;
+  end if;
+
+  delete from public.bildschirmzeit_kontakt where geraet = g;
+  for k in select value from jsonb_array_elements(p_kontakte) loop
+    continue when jsonb_typeof(k) <> 'object'
+      or jsonb_typeof(k -> 'nummer') <> 'string' or jsonb_typeof(k -> 'name') <> 'string';
+    n := k ->> 'nummer';
+    continue when n !~ '^\+?[0-9]{3,32}$';
+    nm := left(btrim(regexp_replace(k ->> 'name', '[[:cntrl:]]+', ' ', 'g')), 100);
+    continue when nm = '';
+    insert into public.bildschirmzeit_kontakt (geraet, nummer, name)
+    values (g, n, nm)
+    on conflict (geraet, nummer) do update set name = excluded.name;
+  end loop;
+  return true;
+end
+$$;
+
+-- Die Widget-App liest die Namen (nach Nummer sortiert).
+create or replace function public.bildschirmzeit_kontakte_lesen(p_kennung text)
+returns table (nummer text, name text)
+language plpgsql
+security definer
+set search_path = ''
+as $$
+#variable_conflict use_column
+declare
+  g text := public.bildschirmzeit_hash(p_kennung);
+begin
+  return query
+    select k.nummer, k.name
+    from public.bildschirmzeit_kontakt k
+    where k.geraet = g
+    order by k.nummer;
+end
+$$;
+
 revoke all on function public.bildschirmzeit_hash(text) from public, anon, authenticated;
 revoke all on function public.bildschirmzeit_anmelden(text) from public;
 revoke all on function public.bildschirmzeit_melden(text, text, jsonb) from public;
@@ -300,5 +378,9 @@ revoke all on function public.bildschirmzeit_anrufe_lesen(text, timestamptz) fro
 grant execute on function public.bildschirmzeit_anrufe_lesen(text, timestamptz) to anon, authenticated;
 grant execute on function public.bildschirmzeit_anrufe_melden(text, jsonb) to anon, authenticated;
 grant execute on function public.bildschirmzeit_anrufe_loeschen(text) to anon, authenticated;
+revoke all on function public.bildschirmzeit_kontakte_setzen(text, jsonb) from public;
+revoke all on function public.bildschirmzeit_kontakte_lesen(text) from public;
+grant execute on function public.bildschirmzeit_kontakte_setzen(text, jsonb) to anon, authenticated;
+grant execute on function public.bildschirmzeit_kontakte_lesen(text) to anon, authenticated;
 
 notify pgrst, 'reload schema';

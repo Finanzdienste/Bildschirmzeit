@@ -358,6 +358,32 @@
                 android:text="@string/anrufe_freigeben" />
         </LinearLayout>
 
+        <!-- Kontakte (Kontakte.kt): Nummern aus den Bewerbungen benennen oder nicht mehr. -->
+        <LinearLayout
+            android:id="@+id/kontakte_karte"
+            style="@style/Karte">
+
+            <TextView
+                android:id="@+id/kontakte_titel"
+                style="@style/Ueberschrift"
+                android:text="@string/kontakte_titel" />
+
+            <TextView
+                android:id="@+id/kontakte_text"
+                style="@style/Fliesstext"
+                android:text="@string/kontakte_text" />
+
+            <TextView
+                android:id="@+id/kontakte_stand"
+                style="@style/Hinweis"
+                android:visibility="gone" />
+
+            <Button
+                android:id="@+id/kontakte_knopf"
+                style="@style/Knopf"
+                android:text="@string/kontakte_freigeben" />
+        </LinearLayout>
+
         <LinearLayout
             android:id="@+id/update_karte"
             style="@style/Karte"
