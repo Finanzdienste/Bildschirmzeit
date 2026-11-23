@@ -1112,7 +1112,7 @@ Namen mit gleicher Zeit) und `DiskretGeraetTest` (nach dem Update ohne Namen
 in Widget, Verlauf und Beobachtungen; eine Seite selbst zusammenfassen mit
 Rückfrage, Karte „Diskret“, „Wieder einzeln zeigen“; „Alle Daten löschen“).
 
-## Anrufe für die Bewerbungszentrale (v19)
+## Anrufe für die Bewerbungszentrale (v20)
 
 Tobi, 23.11.2026: „lass doch machen dass du meine verpassten und angenommenen
 Anrufe und so einsehen darfst“ – auf Nachfrage **alle Anrufe**, nicht nur
@@ -1558,8 +1558,8 @@ spricht mit dem echten Supabase oder GitHub (`Netz.gesperrt`).
   nur die App-Bilder mit den neuen Texten (Schritt 2, Hinweis unter der
   Statistik), die Widget-Bilder sind gleich. Offen bei Tobi: in der App bei
   „Bewerbungen“ einmal „Verbinden“, das öffnet jetzt Firefox.
-- 23.11.2026: Anrufe für die Bewerbungszentrale (Abschnitt oben), nächstes
-  Release v19. 242 JUnit-/Robolectric-Prüfungen (6 neue in `AnrufeTest`),
+- 23.11.2026: Release **v20** (Fassung 1.20, aus ab3142e) mit den Anrufen
+  für die Bewerbungszentrale (Abschnitt oben). 242 JUnit-/Robolectric-Prüfungen (6 neue in `AnrufeTest`),
   69 SQL, 64 Web-Modul grün; geändert sind nur die App-Bilder mit der neuen
   Karte. Offen bei Tobi: in der App „Anrufliste freigeben“ → „Zulassen“.
 - Noch nicht auf dem S24 ausprobiert: Größen des Startbildschirms, Akku-
