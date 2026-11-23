@@ -1145,7 +1145,7 @@ diese App (`Anrufe.kt`).
 - Geprüft von `AnrufeTest` (erfundene Anrufliste, auch ohne Netz) und
   `tests/test-sql.mjs`.
 
-## Kontakte aus den Bewerbungen (nächstes Release)
+## Kontakte aus den Bewerbungen (v21)
 
 Tobi, 23.11.2026: „Du kannst meine Telefon Kontakte auch umbennenen“. Ruft eine
 Firma oder ein Vermittler an, soll auf dem Handy gleich stehen, wer das ist
@@ -1604,8 +1604,8 @@ spricht mit dem echten Supabase oder GitHub (`Netz.gesperrt`).
   Handy nicht an), geprüft mit einer erfundenen Kennung (`lesen` → `[]`,
   `melden` → `false`). Offen bei Tobi: in der App „Anrufliste freigeben“ →
   „Zulassen“.
-- 23.11.2026: Kontakte aus den Bewerbungen (Abschnitt oben), nächstes
-  Release. 252 JUnit-/Robolectric-Prüfungen (10 neue in `KontakteTest`),
+- 23.11.2026: Release **v21** (Fassung 1.21, aus fa8e03b) mit den Kontakten
+  aus den Bewerbungen (Abschnitt oben). 252 JUnit-/Robolectric-Prüfungen (10 neue in `KontakteTest`),
   86 SQL grün; geändert sind nur die App-Bilder mit der neuen Karte. Offen:
   Tabelle `bildschirmzeit_kontakt` und die zwei Funktionen in Supabase
   einspielen, dann in der App „Kontakte benennen“ → „Zulassen“.
