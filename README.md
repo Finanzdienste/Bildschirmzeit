@@ -1565,7 +1565,11 @@ spricht mit dem echten Supabase oder GitHub (`Netz.gesperrt`).
 - 23.11.2026: Release **v20** (Fassung 1.20, aus ab3142e) mit den Anrufen
   für die Bewerbungszentrale (Abschnitt oben). 242 JUnit-/Robolectric-Prüfungen (6 neue in `AnrufeTest`),
   69 SQL, 64 Web-Modul grün; geändert sind nur die App-Bilder mit der neuen
-  Karte. Offen bei Tobi: in der App „Anrufliste freigeben“ → „Zulassen“.
+  Karte. Supabase: Tabelle und die drei Anruf-Funktionen hat Tobi am 23.11.
+  im SQL-Editor eingespielt (der Connector fragte nach, die Frage kam auf dem
+  Handy nicht an), geprüft mit einer erfundenen Kennung (`lesen` → `[]`,
+  `melden` → `false`). Offen bei Tobi: in der App „Anrufliste freigeben“ →
+  „Zulassen“.
 - Noch nicht auf dem S24 ausprobiert: Größen des Startbildschirms, Akku-
   Verhalten von One UI (ob es die App trotz Widget schlafen legt), ob
   Chrome den Verbinden-Link in der installierten Web-App oder als Tab
