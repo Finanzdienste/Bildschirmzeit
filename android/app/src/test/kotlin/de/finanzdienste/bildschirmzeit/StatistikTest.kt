@@ -59,14 +59,17 @@ class StatistikTest {
 
     @Test
     fun monatUndTag() {
+        // Tobi, 23.11.: „Monat genauso. Ist nicht November sondern die letzten x tage“ – die letzten 30 Tage.
         val m = Zeitraum.um(Reiter.MONAT, heute)
-        assertEquals(LocalDate.of(2026, 11, 1), m.von)
-        assertEquals(LocalDate.of(2026, 11, 30), m.bis)
-        assertEquals("November 2026", zeitraumTitel(m, heute))
-        assertEquals("Oktober 2026", zeitraumTitel(m.vorher(), heute))
-        assertEquals("Dezember 2025", zeitraumTitel(Zeitraum.um(Reiter.MONAT, LocalDate.of(2026, 1, 5)).vorher(), heute))
-        assertEquals(29, Zeitraum.um(Reiter.MONAT, LocalDate.of(2028, 2, 10)).tage.size)
-        assertEquals(31, Zeitraum.um(Reiter.MONAT, LocalDate.of(2026, 3, 29)).tage.size)
+        assertEquals(LocalDate.of(2026, 10, 17), m.von)
+        assertEquals(heute, m.bis)
+        assertEquals(30, m.tage.size)
+        assertEquals("17. Okt. – 15. Nov.", zeitraumTitel(m, heute))
+        assertEquals("17. Sept. – 16. Okt.", zeitraumTitel(m.vorher(), heute))
+        assertEquals("7. Nov. – 6. Dez. 2025", zeitraumTitel(Zeitraum.um(Reiter.MONAT, LocalDate.of(2026, 1, 5)).vorher(), heute))
+        assertEquals(30, Zeitraum.um(Reiter.MONAT, LocalDate.of(2028, 3, 10)).tage.size)
+        // Vor: höchstens bis heute – dann sind es wieder die letzten 30 Tage.
+        assertEquals(m, Zeitraum.um(Reiter.MONAT, LocalDate.of(2026, 11, 1)).nachher(heute))
 
         assertEquals("Heute", zeitraumTitel(Zeitraum.um(Reiter.TAG, heute), heute))
         assertEquals("Gestern", zeitraumTitel(Zeitraum.um(Reiter.TAG, heute.minusDays(1)), heute))
@@ -156,8 +159,8 @@ class StatistikTest {
         val a = auswerten(m, verlauf, heute, seit)
         assertEquals("Daten seit 3. Nov.\nKeine Daten: 7.–8. Nov., 11. Nov.", lueckenText(a))
         assertEquals(10, a.belegt)
-        assertEquals(15, a.vergangen)
-        assertEquals("Ø je Tag 1 Std. 31 Min. · 10 von 15 Tagen mit Daten", schnittText(a))
+        assertEquals("ab dem 3.11.: die Tage davor zählen nicht als fehlend", 13, a.vergangen)
+        assertEquals("Ø je Tag 1 Std. 31 Min. · 10 von 13 Tagen mit Daten", schnittText(a))
         // Ein Tag vor dem Beginn des Verlaufs: „keine Daten“ und seit wann es welche gibt.
         val tag = auswerten(Zeitraum.um(Reiter.TAG, LocalDate.of(2026, 11, 1)), verlauf, heute, seit)
         assertEquals("keine Daten", gesamtText(tag))

@@ -128,13 +128,13 @@ class AppStatistikTest {
         a.findViewById<View>(R.id.reiter_monat).performClick()
         warten()
         assertEquals("MONAT", Speicher(kontext).reiter)
-        assertEquals("November 2026", a.text(R.id.zeitraum_titel))
+        assertEquals("16. Okt. – 14. Nov.", a.text(R.id.zeitraum_titel))
         assertEquals("Daten seit 3. Nov.\nKeine Daten: 7.–8. Nov.", a.text(R.id.luecken))
-        assertTrue(a.text(R.id.schnitt).endsWith("· 10 von 14 Tagen mit Daten"))
+        assertTrue(a.text(R.id.schnitt).endsWith("· 10 von 12 Tagen mit Daten"))
         // Zurück in den Oktober: dort keine Daten, und weiter zurück geht es nicht.
         a.findViewById<View>(R.id.zurueck).performClick()
         warten()
-        assertEquals("Oktober 2026", a.text(R.id.zeitraum_titel))
+        assertEquals("16. Sept. – 15. Okt.", a.text(R.id.zeitraum_titel))
         assertEquals("keine Daten", a.text(R.id.gesamt))
         assertFalse(a.findViewById<View>(R.id.zurueck).isEnabled)
         assertTrue(a.findViewById<View>(R.id.weiter).isEnabled)
@@ -142,11 +142,11 @@ class AppStatistikTest {
         // Das Widget öffnet die App wieder: der gemerkte Reiter, der jetzige Zeitraum.
         steuerung.newIntent(ziel(Ziel.STATISTIK))
         warten()
-        assertEquals("November 2026", a.text(R.id.zeitraum_titel))
+        assertEquals("16. Okt. – 14. Nov.", a.text(R.id.zeitraum_titel))
         // Auch eine neue App (nach dem Schließen) zeigt den Monat.
         val neu = oeffnen().get()
         assertTrue(neu.findViewById<View>(R.id.reiter_monat).isSelected)
-        assertEquals("November 2026", neu.text(R.id.zeitraum_titel))
+        assertEquals("16. Okt. – 14. Nov.", neu.text(R.id.zeitraum_titel))
     }
 
     @Test
@@ -178,7 +178,7 @@ class AppStatistikTest {
         assertEquals("1.–7. Nov.", a.text(R.id.zeitraum_titel))
         assertEquals("Daten seit 3. Nov.\nKeine Daten: 7. Nov.", a.text(R.id.luecken))
         assertEquals(dauerText(summe(3, 4, 5, 6)), a.text(R.id.gesamt))
-        assertTrue(a.text(R.id.schnitt).endsWith("· 4 von 7 Tagen mit Daten"))
+        assertTrue(a.text(R.id.schnitt).endsWith("· 4 von 5 Tagen mit Daten"))
         // Vor dem 3.11. hat der Verlauf nichts: nicht weiter zurück.
         assertFalse(a.findViewById<View>(R.id.zurueck).isEnabled)
         // Vergangene Woche: kein „Stand“ von heute darunter.
@@ -310,7 +310,7 @@ class AppStatistikTest {
         // Monat und eine Woche zurück: weiter nur Workout.
         a.findViewById<View>(R.id.reiter_monat).performClick()
         warten()
-        assertEquals("November 2026", a.text(R.id.zeitraum_titel))
+        assertEquals("16. Okt. – 14. Nov.", a.text(R.id.zeitraum_titel))
         assertEquals("Workout", a.text(R.id.app_kopf_name))
         assertEquals(dauerText(wochenSumme("workout", 3, 4, 5, 6, 9, 10, 11, 12, 13, 14)), a.text(R.id.gesamt))
         a.findViewById<View>(R.id.reiter_woche).performClick()
@@ -409,7 +409,7 @@ class AppStatistikTest {
         assertEquals("Mi., 4. Nov.", a.text(R.id.zeitraum_titel))
         obersterRueckruf(a)!!.onBackInvoked()
         warten()
-        assertEquals("November 2026", a.text(R.id.zeitraum_titel))
+        assertEquals("16. Okt. – 14. Nov.", a.text(R.id.zeitraum_titel))
         assertFalse(a.isFinishing)
     }
 

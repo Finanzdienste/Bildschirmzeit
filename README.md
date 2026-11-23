@@ -65,7 +65,7 @@ der Statistik, mit dem Weg über die eingeschränkte Einstellung).
   App“). Offen gelassen, also entschieden: beim ersten Mal der Reiter Woche,
   danach der zuletzt gewählte. Die Woche war erst Montag bis Sonntag; Tobi,
   23.11.: „Woche bedeutet ja nicht Montag bis Sonntag sondern letzte sieben
-  tage“ – seitdem die sieben Tage bis heute.
+  tage“ – seitdem die sieben Tage bis heute, und der Monat die 30 Tage bis heute („Monat genauso“).
 - „Bei Firefox bin ich viel auf Youtube. Kann man sich die größten Webseiten
   als einzelnen Punkt auflisten lassen?“ (15.11.) – seit v9 freiwillig über
   eine Bedienungshilfe (unten „Webseiten in Firefox einzeln“). Entschieden:
@@ -711,7 +711,7 @@ neu – Antippen bringt also weiter frische Zahlen.
   Monatswechsel „27. Okt. – 2. Nov.“, übers Jahr „27. Dez. – 2. Jan. 2027“ –
   die Jahreszahl einmal, hinten; mit beiden passte der Titel bei
   größerer Schrift nicht zwischen ‹ und ›, und passt er trotzdem nicht, wird
-  er kleiner statt umbrochen), Monat der Kalendermonat („November 2026“), Tag
+  er kleiner statt umbrochen), Monat die 30 Tage bis heute („25. Okt. – 23. Nov.“, Tobi, 23.11.: „Monat genauso. Ist nicht November sondern die letzten x tage“), Tag
   „Heute“, „Gestern“, „Sa., 14. Nov.“. Gemerkt wird der zuletzt von Hand
   gewählte Reiter; das Widget öffnet ihn mit dem jetzigen Zeitraum, beim
   ersten Mal „Woche“.
@@ -1690,6 +1690,9 @@ spricht mit dem echten Supabase oder GitHub (`Netz.gesperrt`).
   Prüfungen grün; geändert sind nur die App-Bilder (Woche 8.–14. Nov.).
 - 23.11.2026: Ältere Anrufe nachholen und Platzhalter „Job …“ (Abschnitt
   „Anrufer erkennen“), nächstes Release. 268 Prüfungen grün.
+- 23.11.2026: Monat = die 30 Tage bis heute statt Kalendermonat; „x von y
+  Tagen mit Daten“ zählt erst ab „Daten seit …“ (die Tage davor stehen schon
+  dort). 268 Prüfungen grün; geändert sind nur die Monats-Bilder.
 - Noch nicht auf dem S24 ausprobiert: Größen des Startbildschirms, Akku-
   Verhalten von One UI (ob es die App trotz Widget schlafen legt), ob
   Chrome den Verbinden-Link in der installierten Web-App oder als Tab

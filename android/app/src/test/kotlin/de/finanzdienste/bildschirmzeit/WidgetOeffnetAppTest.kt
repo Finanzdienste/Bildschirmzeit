@@ -136,7 +136,7 @@ class WidgetOeffnetAppTest {
         a.zeigen(ergebnis)
         warten()
         assertTrue(a.findViewById<View>(R.id.reiter_monat).isSelected)
-        assertEquals("November 2026", a.text(R.id.zeitraum_titel))
+        assertEquals("16. Okt. – 14. Nov.", a.text(R.id.zeitraum_titel))
         assertEquals(R.id.statistik_karte, a.reihe()[1])
     }
 

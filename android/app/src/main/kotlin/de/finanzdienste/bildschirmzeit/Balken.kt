@@ -125,7 +125,7 @@ class Balken @JvmOverloads constructor(context: Context, attrs: AttributeSet? = 
         }
     }
 
-    /** Woche: jeder Tag („Mo“); Monat: der 1., 8., 15., 22. und 29. */
+    /** Woche: jeder Tag („Mo“); Monat: jeder siebte Tag ab dem ersten des Zeitraums („25.“, „1.“, …). */
     private fun beschriftung(i: Int, tag: LocalDate): String? = when {
         werte.size <= 7 -> wochentagKurz(tag)
         i % 7 == 0 -> tag.dayOfMonth.toString()

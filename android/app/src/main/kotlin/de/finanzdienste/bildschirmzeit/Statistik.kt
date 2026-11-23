@@ -6,16 +6,17 @@ import kotlin.math.roundToLong
 /*
  * Die Statistik der App: Tag, Woche (die letzten sieben Tage – Tobi, 23.11.:
  * „Woche bedeutet ja nicht Montag bis Sonntag sondern letzte sieben tage“),
- * Monat (der Kalendermonat) – rein,
+ * Monat (die letzten 30 Tage – „Monat genauso. Ist nicht November sondern die
+ * letzten x tage“) – rein,
  * getestet in StatistikTest. Die Zahlen kommen aus dem Verlauf (Verlauf.kt).
  * Ein Tag ohne Eintrag hat „keine Daten“ – nie 0.
  */
 
 /** Die drei Reiter oben in der App. */
-enum class Reiter(val text: String) {
-    TAG("Tag"),
-    WOCHE("Woche"),
-    MONAT("Monat"),
+enum class Reiter(val text: String, val tage: Int) {
+    TAG("Tag", 1),
+    WOCHE("Woche", 7),
+    MONAT("Monat", 30),
     ;
 
     companion object {
@@ -39,10 +40,10 @@ data class Zeitraum(val reiter: Reiter, val von: LocalDate, val bis: LocalDate) 
 
     fun vorher(): Zeitraum = um(reiter, von.minusDays(1))
 
-    /** Der nächste Zeitraum; eine Woche endet dabei höchstens `heute` (dann sind es wieder die letzten sieben Tage). */
+    /** Der nächste Zeitraum; Woche und Monat enden dabei höchstens `heute` (dann sind es wieder die letzten 7 bzw. 30 Tage). */
     fun nachher(heute: LocalDate? = null): Zeitraum = when (reiter) {
-        Reiter.WOCHE -> um(reiter, bis.plusDays(7).let { if (heute != null && it > heute) heute else it })
-        else -> um(reiter, bis.plusDays(1))
+        Reiter.TAG -> um(reiter, bis.plusDays(1))
+        else -> um(reiter, bis.plusDays(reiter.tage.toLong()).let { if (heute != null && it > heute) heute else it })
     }
 
     /** › gibt es, solange der nächste Zeitraum nicht nach heute beginnt. */
@@ -54,19 +55,11 @@ data class Zeitraum(val reiter: Reiter, val von: LocalDate, val bis: LocalDate) 
     fun enthaelt(tag: LocalDate): Boolean = tag in von..bis
 
     companion object {
-        /** Der Zeitraum dieses Reiters, der mit `tag` endet (Woche: `tag` und die sechs Tage davor) bzw. in dem `tag` liegt (Monat). */
-        fun um(reiter: Reiter, tag: LocalDate): Zeitraum = when (reiter) {
-            Reiter.TAG -> Zeitraum(reiter, tag, tag)
-            Reiter.WOCHE -> Zeitraum(reiter, tag.minusDays(6), tag)
-            Reiter.MONAT -> {
-                val erster = tag.withDayOfMonth(1)
-                Zeitraum(reiter, erster, erster.plusMonths(1).minusDays(1))
-            }
-        }
+        /** Der Zeitraum dieses Reiters, der mit `tag` endet: der Tag, die sieben bzw. 30 Tage bis `tag`. */
+        fun um(reiter: Reiter, tag: LocalDate): Zeitraum = Zeitraum(reiter, tag.minusDays(reiter.tage - 1L), tag)
     }
 }
 
-private val MONATE = listOf("Januar", "Februar", "März", "April", "Mai", "Juni", "Juli", "August", "September", "Oktober", "November", "Dezember")
 private val MONATE_KURZ = listOf("Jan.", "Feb.", "März", "Apr.", "Mai", "Juni", "Juli", "Aug.", "Sept.", "Okt.", "Nov.", "Dez.")
 private val WOCHENTAGE = listOf("Mo.", "Di.", "Mi.", "Do.", "Fr.", "Sa.", "So.")
 
@@ -77,15 +70,14 @@ fun wochentagKurz(tag: LocalDate): String = WOCHENTAGE[tag.dayOfWeek.value - 1].
 fun datumKurz(tag: LocalDate, heute: LocalDate): String =
     "${tag.dayOfMonth}. ${MONATE_KURZ[tag.monthValue - 1]}" + if (tag.year != heute.year) " ${tag.year}" else ""
 
-/** Der Titel zwischen ‹ und ›: „Heute“, „Gestern“, „Sa., 14. Nov.“, „9.–15. Nov.“, „November 2026“. */
+/** Der Titel zwischen ‹ und ›: „Heute“, „Gestern“, „Sa., 14. Nov.“, „17.–23. Nov.“, „25. Okt. – 23. Nov.“. */
 fun zeitraumTitel(z: Zeitraum, heute: LocalDate): String = when (z.reiter) {
     Reiter.TAG -> when (z.von) {
         heute -> "Heute"
         heute.minusDays(1) -> "Gestern"
         else -> "${WOCHENTAGE[z.von.dayOfWeek.value - 1]}, ${datumKurz(z.von, heute)}"
     }
-    Reiter.WOCHE -> spanne(z.von, z.bis, heute)
-    Reiter.MONAT -> "${MONATE[z.von.monthValue - 1]} ${z.von.year}"
+    Reiter.WOCHE, Reiter.MONAT -> spanne(z.von, z.bis, heute)
 }
 
 /**
@@ -123,8 +115,8 @@ data class Auswertung(
     /** Tage mit Daten. */
     val belegt: Int get() = tage.count { it.sekunden != null }
 
-    /** Tage bis heute (die noch kommenden zählen nicht). */
-    val vergangen: Int get() = tage.count { !it.zukunft }
+    /** Tage bis heute, ab dem Beginn des Verlaufs (die noch kommenden und die davor zählen nicht – „Daten seit …“ steht darunter). */
+    val vergangen: Int get() = tage.count { !it.zukunft && (datenSeit == null || it.datum >= datenSeit) }
 
     /** Ø je Tag – nur über die Tage, für die es Daten gibt. */
     val schnitt: Long? get() = if (belegt > 0) (gesamt.toDouble() / belegt).roundToLong() else null
