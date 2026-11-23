@@ -70,10 +70,10 @@ object Anrufe {
     /** Fällig, wenn noch nie gemeldet, seit 30 Minuten nicht oder die Uhr zurückgestellt wurde. */
     fun faellig(jetzt: Long, zuletzt: Long): Boolean = zuletzt <= 0L || jetzt < zuletzt || jetzt - zuletzt >= ABSTAND_MS
 
-    /** Die Anrufe der letzten 14 Tage, neueste zuerst; ohne Erlaubnis leer. */
-    fun lesen(context: Context, jetzt: Long): List<Anruf> {
+    /** Die Anrufe der letzten 14 Tage (oder `tage`), neueste zuerst; ohne Erlaubnis leer. */
+    fun lesen(context: Context, jetzt: Long, tage: Int = TAGE): List<Anruf> {
         if (!erlaubt(context)) return emptyList()
-        val ab = jetzt - TAGE * 86_400_000L
+        val ab = jetzt - tage * 86_400_000L
         val aus = ArrayList<Anruf>()
         try {
             context.contentResolver.query(

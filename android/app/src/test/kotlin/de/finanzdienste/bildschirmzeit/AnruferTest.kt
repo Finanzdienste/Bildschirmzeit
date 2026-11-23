@@ -184,7 +184,7 @@ class AnruferTest {
         assertTrue(gefragt.contains("030 1234567 (+49301234567)"))
         assertTrue("die Firmen aus den Bewerbungen", gefragt.contains("- muster-2: Muster – Muster") && gefragt.contains("- beispiel-1: Beispiel – Erika Beispiel (Beispiel)"))
         val f = speicher.nachgeschlagen.getValue("0301234567")
-        assertEquals(Fund("+49301234567", jetzt, "Muster AG, Personal", "muster-2", true, "Impressum der Muster AG", gemeldet = false), f)
+        assertEquals(Fund("+49301234567", jetzt, "Muster AG, Personal", "muster-2", true, "Impressum der Muster AG", gemeldet = false, bewerbung = true), f)
         assertTrue(speicher.nachschlagOffen.isEmpty())
         val m = mitteilungen().single()
         assertEquals("030 1234567: Muster AG, Personal", titel(m))
@@ -258,6 +258,44 @@ class AnruferTest {
         assertEquals("Hafen Beispiel", titel(mitteilungen().single()))
         Anrufer.aufgelegt(kontext, jetzt + 60_000L)
         assertEquals("dieser Anruf schon gezeigt", 1, mitteilungen().size)
+    }
+
+    /** Tobi, 23.11.: „Okay aber die sind alle noch nicht vernünftig benannt“ – ältere Anrufe und Platzhalter „Job …“. */
+    @Test
+    fun nachholenSchlaegtAlteAnrufeNachUndBenenntPlatzhalter() {
+        Robolectric.buildContentProvider(AnrufeTest.ErfundeneAnrufliste::class.java).create(CallLog.AUTHORITY)
+        speicher.kiSchluessel = schluessel
+        KontakteTest.ErfundeneKontakte.anlegen("Max Beispiel", "+49 40 1234-56") // privat: geht nie an Claude
+        val platzhalter = KontakteTest.ErfundeneKontakte.anlegen("Job Neu 2", "0176 12345678") // von Tobi selbst als „Job …“ gespeichert
+        assertEquals(2, Anrufer.nachholen(kontext, jetzt))
+        assertEquals(setOf("+4917612345678", "+4940111"), speicher.nachschlagOffen.keys)
+        assertEquals(1, geplant)
+        assertEquals("nichts doppelt", 0, Anrufer.nachholen(kontext, jetzt))
+        // Heute schon zehn: Nachgeholtes bleibt für die nächsten Tage, ohne Mitteilung.
+        speicher.nachschlagHeute = Instant.ofEpochMilli(jetzt).atZone(ZoneId.systemDefault()).toLocalDate().toString() + "|10"
+        assertEquals(0, Anrufer.nachschlagen(kontext, jetzt) { _, _ -> throw AssertionError("nicht mehr fragen") })
+        assertEquals(2, speicher.nachschlagOffen.size)
+        assertTrue(mitteilungen().isEmpty())
+        // Am nächsten Tag: nachgeschlagen, der Platzhalter heißt wie der Vermittler.
+        speicher.kontakteBenennen = true
+        shadowOf(kontext).grantPermissions(Manifest.permission.WRITE_CONTACTS)
+        val morgen = jetzt + 86_400_000L
+        val n = Anrufer.nachschlagen(kontext, morgen) { _, frage ->
+            if (frage.contains("+4917612345678")) {
+                "{\"wer\": \"Beispiel Personal GmbH, Personalvermittlung\", \"akte\": \"\", \"bewerbung\": true, \"sicher\": true}"
+            } else {
+                "{\"wer\": \"unbekannt\", \"sicher\": false}"
+            }
+        }
+        assertEquals(2, n)
+        assertEquals("Beispiel Personal GmbH, Personalvermittlung", KontakteTest.ErfundeneKontakte.name(platzhalter))
+        assertTrue(speicher.nachschlagOffen.isEmpty())
+        assertTrue("mit der Zeit des Anrufs", mitteilungen().any { text(it).startsWith("Anruf am 23.11., ") })
+        assertEquals("schon nachgeschlagen", 0, Anrufer.nachholen(kontext, morgen))
+        // Ohne Schlüssel holt es nichts nach.
+        speicher.kiSchluessel = null
+        speicher.nachgeschlagen = emptyMap()
+        assertEquals(0, Anrufer.nachholen(kontext, morgen))
     }
 
     @Test

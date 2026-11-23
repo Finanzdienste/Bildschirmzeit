@@ -90,7 +90,7 @@
     <string name="kontakte_verweigert">Android hat den Zugriff auf die Kontakte nicht erlaubt. In den App-Infos unter Berechtigungen → Kontakte → Zulassen tippen.</string>
     <string name="kontakte_zurueck">Nicht mehr benannt. Die angelegten Kontakte sind gelöscht, umbenannte haben ihren alten Namen.</string>
     <string name="anrufer_titel">Anrufer erkennen</string>
-    <string name="anrufer_text">Ruft eine Nummer aus deinen Bewerbungen an, zeigt eine Mitteilung gleich das Briefing: Stelle, Stand, Ansprechperson, deine Forderung, offene Fragen. Ist die Nummer unbekannt und nicht in deinen Kontakten, schlägt Claude sie mit deinem Claude-Schlüssel im Netz nach (ein paar Cent je Suche, höchstens zehn am Tag); ohne Netz, sobald es wieder da ist. Gehört sie zu einer Bewerbung, bekommt der Kontakt den Namen (mit „Kontakte benennen“) und die Bewerbungszentrale die Nummer. Nummern aus deinen Kontakten gehen nie an Claude.</string>
+    <string name="anrufer_text">Ruft eine Nummer aus deinen Bewerbungen an, zeigt eine Mitteilung gleich das Briefing: Stelle, Stand, Ansprechperson, deine Forderung, offene Fragen. Ist die Nummer unbekannt und nicht in deinen Kontakten, schlägt Claude sie mit deinem Claude-Schlüssel im Netz nach (ein paar Cent je Suche, höchstens zehn am Tag); ohne Netz, sobald es wieder da ist. Gehört sie zu einer Bewerbung oder einem Personalvermittler, bekommt der Kontakt den Namen (mit „Kontakte benennen“) und die Bewerbungszentrale die Nummer. Anrufe der letzten 30 Tage schlägt sie auch nach. Nummern aus deinen Kontakten gehen nie an Claude – außer Kontakte, die du „Job …“ genannt hast.</string>
     <string name="anrufer_freigeben">Anrufer erkennen</string>
     <string name="anrufer_aus">Nicht mehr erkennen</string>
     <string name="anrufer_schluessel">Claude-Schlüssel holen</string>
@@ -105,6 +105,7 @@
     <string name="anrufer_sucht_spaeter">Nicht in deinen Bewerbungen und Kontakten. Ohne Netz: Claude schlägt sie nach, sobald Netz da ist.</string>
     <string name="anrufer_genug_heute">Heute wurden schon zehn Nummern nachgeschlagen, diese nicht mehr.</string>
     <string name="anrufer_fehler">Nachschlagen ging nicht (Fehler %1$d). Stimmt der Claude-Schlüssel?</string>
+    <string name="anrufer_anruf_am">Anruf am %1$s Uhr</string>
     <string name="anrufer_unsicher">Nicht sicher – nur ein Hinweis.</string>
     <string name="ki_uebernommen">Claude-Schlüssel übernommen. Unbekannte Anrufer werden ab jetzt nachgeschlagen.</string>
     <string name="anrufe_geloescht">Nicht mehr geteilt. Die gemeldeten Anrufe werden bei Supabase gelöscht, ohne Netz beim nächsten Lauf.</string>

@@ -54,15 +54,20 @@ data class Fund(
     val sicher: Boolean,
     val hinweis: String = "",
     val gemeldet: Boolean = false,
+    /** Hat der Anruf mit den Bewerbungen zu tun (Personalabteilung, Personalvermittler, Firma aus der Liste)? */
+    val bewerbung: Boolean = false,
 ) {
     fun alsJson(): JSONObject = JSONObject().put("nummer", nummer).put("zeit", zeit).put("wer", wer).put("akte", akte ?: JSONObject.NULL)
-        .put("sicher", sicher).put("hinweis", hinweis).put("gemeldet", gemeldet)
+        .put("sicher", sicher).put("hinweis", hinweis).put("gemeldet", gemeldet).put("bewerbung", bewerbung)
 
     companion object {
         fun aus(o: JSONObject): Fund? {
             val nummer = o.optString("nummer").takeIf { it.startsWith("+") } ?: return null
             val wer = o.optString("wer").takeIf { it.isNotBlank() } ?: return null
-            return Fund(nummer, o.optLong("zeit"), wer, o.optString("akte").takeIf { !o.isNull("akte") && it.isNotEmpty() }, o.optBoolean("sicher"), o.optString("hinweis"), o.optBoolean("gemeldet"))
+            return Fund(
+                nummer, o.optLong("zeit"), wer, o.optString("akte").takeIf { !o.isNull("akte") && it.isNotEmpty() }, o.optBoolean("sicher"),
+                o.optString("hinweis"), o.optBoolean("gemeldet"), o.optBoolean("bewerbung"),
+            )
         }
     }
 }
@@ -92,11 +97,16 @@ object Anrufer {
     const val DOPPELT_MS = 2 * 60_000L
     const val MERKEN_MS = 30L * 86_400_000L
     const val SCHLUESSEL_MS = 10 * 60_000L
+    const val NACHHOLEN_TAGE = 30
+    private const val LIVE_MS = 3_600_000L
     const val BEWERBUNGSZENTRALE = "https://finanzdienste.github.io/Bewerbungszentrale/"
     private const val ARBEIT = "nachschlagen"
     private val NUMMER = Regex("^\\+[0-9]{6,32}$")
     private val AKTE = Regex("^[A-Za-z0-9._-]{1,120}$")
     private val EINGEHEND = setOf("eingehend", "verpasst", "abgelehnt", "mailbox")
+
+    /** Kontakte, die Tobi selbst „Job …“ genannt hat (etwa „Job Neu 2“), sind Platzhalter für unbekannte Anrufer aus den Bewerbungen. */
+    private val PLATZHALTER = Regex("^\\s*job\\b", RegexOption.IGNORE_CASE)
 
     /** Was das Nachschlagen anstößt – in Tests ersetzt (dort gibt es kein WorkManager). */
     @Volatile
@@ -172,11 +182,11 @@ object Anrufer {
             return
         }
         s.nachgeschlagen[Kontakte.vergleich(nummer)]?.takeIf { jetzt - it.zeit in 0 until MERKEN_MS }?.let {
-            fundMitteilen(context, it, akten)
+            fundMitteilen(context, it, akten, jetzt)
             return
         }
         // Nur mit Schlüssel, und nie für Nummern aus Tobis Kontakten (die gehen nicht an Claude).
-        if (s.kiSchluessel == null || !erlaubt(context) || inKontakten(context, nummer)) return
+        if (s.kiSchluessel == null || !erlaubt(context) || privat(context, nummer)) return
         s.nachschlagOffen = s.nachschlagOffen + (nummer to jetzt)
         val text = context.getString(if (online(context)) R.string.anrufer_sucht else R.string.anrufer_sucht_spaeter)
         mitteilen(context, nummer, context.getString(R.string.anrufer_unbekannt, anzeige(nummer)), text, null)
@@ -197,6 +207,38 @@ object Anrufer {
         val vorher = s.zuletztGeklingelt?.split('|')
         if (vorher?.getOrNull(0) == nummer && (vorher.getOrNull(1)?.toLongOrNull() ?: 0L) >= anruf.zeit - 60_000L) return
         klingelt(context, nummer, jetzt)
+    }
+
+    /**
+     * Ältere Anrufe nachholen (Tobi, 23.11.: „Okay aber die sind alle noch nicht
+     * vernünftig benannt“): die eingehenden und verpassten Anrufe der letzten 30
+     * Tage aus der Anrufliste, deren Nummer zu keiner Bewerbung gehört, noch nicht
+     * nachgeschlagen ist und nicht in Tobis Kontakten steht – außer als
+     * Platzhalter „Job …“. Vorgemerkt wie ein Klingeln, das Nachschlagen läuft
+     * dann wie sonst (höchstens zehn am Tag, der Rest an den nächsten Tagen).
+     * Beim Einschalten, nach dem Schlüssel und im 15-Minuten-Lauf. Rückgabe: wie
+     * viele neu vorgemerkt.
+     */
+    fun nachholen(context: Context, jetzt: Long = System.currentTimeMillis()): Int {
+        val s = Speicher(context)
+        if (!s.anruferErkennen || s.kiSchluessel == null || !erlaubt(context)) return 0
+        val akten = akten(s.kontakteListe)
+        val bekannt = s.nachgeschlagen.keys
+        val offen = s.nachschlagOffen.toMutableMap()
+        var neu = 0
+        for (a in Anrufe.lesen(context, jetzt, NACHHOLEN_TAGE)) {
+            if (a.art !in EINGEHEND) continue
+            val nummer = e164(a.nummer) ?: continue
+            val v = Kontakte.vergleich(nummer)
+            if (v in bekannt || offen.keys.any { Kontakte.vergleich(it) == v } || finden(nummer, akten) != null || privat(context, nummer)) continue
+            offen[nummer] = a.zeit
+            neu++
+        }
+        if (neu > 0) {
+            s.nachschlagOffen = offen
+            planer(context)
+        }
+        return neu
     }
 
     /** Nur kurz nach „Claude-Schlüssel holen“ in der App: Sonst könnte jede Webseite einen fremden Schlüssel unterschieben. */
@@ -228,6 +270,7 @@ object Anrufer {
         var n = 0
         for ((nummer, zeit) in s.nachschlagOffen) {
             if (!kontingent(s, jetzt)) {
+                if (jetzt - zeit > LIVE_MS) continue // nachgeholt: bleibt für die nächsten Tage vorgemerkt
                 s.nachschlagOffen = s.nachschlagOffen - nummer
                 mitteilen(context, nummer, context.getString(R.string.anrufer_unbekannt, anzeige(nummer)), context.getString(R.string.anrufer_genug_heute), null)
                 continue
@@ -247,7 +290,7 @@ object Anrufer {
             val fund = fundAus(text, nummer, zeit, akten)
             s.nachgeschlagen = s.nachgeschlagen + (Kontakte.vergleich(nummer) to fund)
             s.nachschlagOffen = s.nachschlagOffen - nummer
-            fundMitteilen(context, fund, akten)
+            fundMitteilen(context, fund, akten, jetzt)
             n++
         }
         if (n > 0) {
@@ -272,7 +315,10 @@ object Anrufer {
         }
         val wer = o?.optString("wer")?.replace(Regex("\\s+"), " ")?.trim()?.take(300)?.takeIf { it.isNotEmpty() } ?: "nicht gefunden"
         val akte = o?.optString("akte")?.takeIf { id -> akten.any { it.akte == id } }
-        return Fund(nummer, zeit, wer, akte, o?.optBoolean("sicher") == true && wer != "unbekannt", o?.optString("hinweis")?.trim()?.take(300).orEmpty())
+        return Fund(
+            nummer, zeit, wer, akte, o?.optBoolean("sicher") == true && wer != "unbekannt", o?.optString("hinweis")?.trim()?.take(300).orEmpty(),
+            bewerbung = akte != null || o?.optBoolean("bewerbung") == true,
+        )
     }
 
     /** Die Frage an Claude: Nummer, Zeit, die Firmen aus den Bewerbungen; Antwort als JSON. */
@@ -285,7 +331,7 @@ object Anrufer {
             |Ich bewerbe mich gerade. Diese Firmen und Personalvermittler könnten anrufen (Kennung: Firma – Kontakt):
             |$liste
             |Antworte nur mit einem JSON-Objekt, ohne Text davor oder danach:
-            |{"wer": "kurz, wem die Nummer gehört, z. B. Beispiel GmbH, Personalabteilung Hamburg; oder unbekannt", "akte": "die Kennung aus der Liste, wenn die Nummer zu dieser Firma oder diesem Vermittler gehört, sonst leer", "sicher": true oder false, "hinweis": "ein kurzer Satz, worauf das beruht"}
+            |{"wer": "kurz, wem die Nummer gehört, z. B. Beispiel GmbH, Personalabteilung Hamburg; oder unbekannt", "akte": "die Kennung aus der Liste, wenn die Nummer zu dieser Firma oder diesem Vermittler gehört, sonst leer", "bewerbung": true, wenn der Anruf mit meinen Bewerbungen zu tun haben kann (Personalabteilung, Personalvermittler, Firma aus der Liste), sonst false, "sicher": true oder false, "hinweis": "ein kurzer Satz, worauf das beruht"}
             |"sicher" ist nur true, wenn eine Quelle genau diese Nummer (oder ihre Zentrale mit Durchwahlbereich) dieser Firma zuordnet. Nicht raten.
         """.trimMargin()
     }
@@ -302,10 +348,22 @@ object Anrufer {
         return if (n.length > vorwahl + 2) n.take(vorwahl) + " " + n.drop(vorwahl) else n
     }
 
-    /** Nachgeschlagene Nummern, die zu einer Bewerbung gehören, als Namen für Kontakte.kt („Firma“). */
+    /**
+     * Sicher Nachgeschlagenes als Namen für Kontakte.kt: gehört die Nummer zu
+     * einer Bewerbung, die Firma; sonst, wenn der Anruf mit den Bewerbungen zu
+     * tun hat (etwa ein Personalvermittler), was Claude gefunden hat. Werbung
+     * und Privates bekommen keinen Kontakt.
+     */
     fun wuensche(s: Speicher): List<Wunsch> {
         val akten = akten(s.kontakteListe).associateBy { it.akte }
-        return s.nachgeschlagen.values.mapNotNull { f -> if (f.sicher) f.akte?.let { akten[it] }?.let { Wunsch(f.nummer, it.firma) } else null }
+        return s.nachgeschlagen.values.mapNotNull { f ->
+            when {
+                !f.sicher -> null
+                f.akte != null -> akten[f.akte]?.let { Wunsch(f.nummer, it.firma) }
+                f.bewerbung -> Wunsch(f.nummer, f.wer.take(100))
+                else -> null
+            }
+        }
     }
 
     private fun kontingent(s: Speicher, jetzt: Long): Boolean {
@@ -338,13 +396,16 @@ object Anrufer {
         }
     }
 
-    private fun inKontakten(context: Context, nummer: String): Boolean {
+    /** Steht die Nummer in Tobis Kontakten (dann geht sie nie an Claude)? Platzhalter „Job …“ zählen nicht; nicht prüfbar zählt als ja. */
+    private fun privat(context: Context, nummer: String): Boolean {
         val n = Kontakte.vergleich(nummer)
         return try {
             context.contentResolver.query(Phone.CONTENT_URI, arrayOf(Phone.CONTACT_ID, Phone.NUMBER, Phone.DISPLAY_NAME), null, null, null)?.use { c ->
-                var da = false
-                while (!da && c.moveToNext()) da = Kontakte.vergleich(c.getString(1)) == n
-                da
+                var privat = false
+                while (!privat && c.moveToNext()) {
+                    privat = Kontakte.vergleich(c.getString(1)) == n && !PLATZHALTER.containsMatchIn(c.getString(2).orEmpty())
+                }
+                privat
             } ?: true
         } catch (e: SecurityException) {
             true // nicht prüfbar: dann lieber nicht nachschlagen
@@ -358,10 +419,12 @@ object Anrufer {
         return f.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
     }
 
-    private fun fundMitteilen(context: Context, f: Fund, akten: List<Akte>) {
+    private fun fundMitteilen(context: Context, f: Fund, akten: List<Akte>, jetzt: Long) {
         val akte = f.akte?.let { id -> akten.firstOrNull { it.akte == id } }
         val titel = "${anzeige(f.nummer)}: ${f.wer}"
+        val wann = Instant.ofEpochMilli(f.zeit).atZone(ZoneId.systemDefault())
         val text = listOfNotNull(
+            if (jetzt - f.zeit > LIVE_MS) context.getString(R.string.anrufer_anruf_am, wann.format(DateTimeFormatter.ofPattern("dd.MM., HH:mm"))) else null,
             if (f.sicher) null else context.getString(R.string.anrufer_unsicher),
             f.hinweis.takeIf { it.isNotEmpty() },
             akte?.briefing?.takeIf { it.isNotEmpty() },

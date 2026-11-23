@@ -141,6 +141,7 @@ class WidgetArbeit(context: Context, parameter: WorkerParameters) : Worker(conte
             Log.w(LOG, "Kontakte fehlgeschlagen: ${e.javaClass.simpleName}")
         }
         try {
+            Anrufer.nachholen(applicationContext) // ältere Anrufe, die noch niemand nachgeschlagen hat
             Anrufer.nachschlagen(applicationContext) // was ohne Netz vorgemerkt blieb
         } catch (e: RuntimeException) {
             Log.w(LOG, "Nachschlagen fehlgeschlagen: ${e.javaClass.simpleName}")

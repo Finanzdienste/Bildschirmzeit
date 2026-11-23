@@ -193,6 +193,7 @@ class MainActivity : Activity(), UpdateBeobachter {
         if (Anrufer.schluesselAnnehmen(speicher, daten.fragment, System.currentTimeMillis())) {
             Toast.makeText(this, R.string.ki_uebernommen, Toast.LENGTH_LONG).show()
             anruferZeigen()
+            faeden.execute { Anrufer.nachholen(applicationContext) } // die Anrufe der letzten 30 Tage gleich mit
         }
     }
 
@@ -870,6 +871,7 @@ class MainActivity : Activity(), UpdateBeobachter {
         anruferZeigen()
         faeden.execute {
             Kontakte.imTakt(applicationContext)
+            Anrufer.nachholen(applicationContext)
             imVordergrund { anruferZeigen() }
         }
     }

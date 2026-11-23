@@ -1228,6 +1228,18 @@ benannt wird“ (`Anrufer.kt`, `KI.kt`).
   später); die Bewerbungszentrale trägt die Nummer in die Akte ein, dann passen
   auch ihre Anrufe. Ruft die Nummer wieder an, zeigt die App gleich das
   Gefundene.
+- **Ältere Anrufe** (Tobi, 23.11.: „Okay aber die sind alle noch nicht
+  vernünftig benannt“): Beim Einschalten, nach dem Schlüssel und im
+  15-Minuten-Lauf merkt die App die eingehenden und verpassten Anrufe der letzten
+  30 Tage vor, deren Nummer zu keiner Bewerbung gehört, noch nicht
+  nachgeschlagen ist und nicht in Tobis Kontakten steht – Kontakte, die er selbst
+  „Job …“ genannt hat (etwa „Job Neu 2“), zählen als Platzhalter und dürfen
+  nachgeschlagen werden. Das Tageslimit gilt mit: Nachgeholtes wartet dann auf
+  die nächsten Tage (ohne Mitteilung), ein frischer Anruf bekommt „Heute schon
+  zehn“. Die Mitteilung nennt dann die Zeit des Anrufs. Hat ein Anruf mit den
+  Bewerbungen zu tun, ohne zu einer Akte zu gehören (Claude meldet
+  `bewerbung`, etwa ein Personalvermittler), bekommt die Nummer den gefundenen
+  Namen; ein Platzhalter „Job …“ wird so umbenannt (der alte Name bleibt gemerkt).
 - **Aus:** „Nicht mehr erkennen“; Vorgemerktes fällt weg. „Alle Daten löschen“
   nimmt das Nachgeschlagene mit, Schlüssel und Schalter bleiben.
 - Geprüft von `AnruferTest` (erfundene Nummern und Anrufliste, Claude
@@ -1676,6 +1688,8 @@ spricht mit dem echten Supabase oder GitHub (`Netz.gesperrt`).
 - 23.11.2026: Woche = die sieben Tage bis heute statt Montag bis Sonntag
   (Tobi, 23.11.). Gemerkt wird beim Drehen jetzt das Ende des Zeitraums. 267
   Prüfungen grün; geändert sind nur die App-Bilder (Woche 8.–14. Nov.).
+- 23.11.2026: Ältere Anrufe nachholen und Platzhalter „Job …“ (Abschnitt
+  „Anrufer erkennen“), nächstes Release. 268 Prüfungen grün.
 - Noch nicht auf dem S24 ausprobiert: Größen des Startbildschirms, Akku-
   Verhalten von One UI (ob es die App trotz Widget schlafen legt), ob
   Chrome den Verbinden-Link in der installierten Web-App oder als Tab
