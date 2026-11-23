@@ -132,6 +132,20 @@ class Speicher(context: Context) {
             p.edit { putLong(KI_ANGEFRAGT, wert) }
         }
 
+    /** Bis wann (ms) das Nachschlagen ruht, nachdem Claude den Schlüssel oder die Anfrage abgelehnt hat (Anrufer.PAUSE_MS). */
+    var kiPause: Long
+        get() = p.getLong(KI_PAUSE, 0L)
+        set(wert) {
+            p.edit { putLong(KI_PAUSE, wert) }
+        }
+
+    /** Warum es ruht (KI.grund), für Karte und Mitteilung; null, wenn alles geht. */
+    var kiFehler: String?
+        get() = p.getString(KI_FEHLER, null)
+        set(wert) {
+            p.edit { if (wert == null) remove(KI_FEHLER) else putString(KI_FEHLER, wert) }
+        }
+
     /** Was zu Nummern nachgeschlagen wurde: Vergleichsnummer (Kontakte.vergleich) → Fund. */
     var nachgeschlagen: Map<String, Fund>
         get() = textMap(NACHGESCHLAGEN) { o -> Fund.aus(o) }
@@ -281,6 +295,8 @@ class Speicher(context: Context) {
         const val ANRUFER_ERKENNEN = "anrufer_erkennen"
         const val KI_SCHLUESSEL = "ki_schluessel"
         const val KI_ANGEFRAGT = "ki_angefragt"
+        const val KI_PAUSE = "ki_pause"
+        const val KI_FEHLER = "ki_fehler"
         const val NACHGESCHLAGEN = "nachgeschlagen"
         const val NACHSCHLAG_OFFEN = "nachschlag_offen"
         const val NACHSCHLAG_HEUTE = "nachschlag_heute"

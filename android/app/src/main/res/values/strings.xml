@@ -104,7 +104,10 @@
     <string name="anrufer_sucht">Nicht in deinen Bewerbungen und Kontakten. Claude schlägt die Nummer nach …</string>
     <string name="anrufer_sucht_spaeter">Nicht in deinen Bewerbungen und Kontakten. Ohne Netz: Claude schlägt sie nach, sobald Netz da ist.</string>
     <string name="anrufer_genug_heute">Heute wurden schon zehn Nummern nachgeschlagen, diese nicht mehr.</string>
-    <string name="anrufer_fehler">Nachschlagen ging nicht (Fehler %1$d). Stimmt der Claude-Schlüssel?</string>
+    <string name="anrufer_pause_titel">Nachschlagen pausiert</string>
+    <string name="anrufer_pause_text">%1$s Die unbekannten Nummern bleiben vorgemerkt; nächster Versuch um %2$s Uhr oder gleich, wenn du einen neuen Schlüssel gibst.</string>
+    <string name="anrufer_sucht_pause">Nicht in deinen Bewerbungen und Kontakten. Nachschlagen ist gerade pausiert: %1$s Die Nummer bleibt vorgemerkt (nächster Versuch um %2$s Uhr).</string>
+    <string name="anrufer_stand_pause">Nachschlagen pausiert: %1$s Nächster Versuch um %2$s Uhr. Vorgemerkt: %3$d Nummern. Bewerbungen mit Briefing: %4$d.</string>
     <string name="anrufer_anruf_am">Anruf am %1$s Uhr</string>
     <string name="anrufer_unsicher">Nicht sicher – nur ein Hinweis.</string>
     <string name="ki_uebernommen">Claude-Schlüssel übernommen. Unbekannte Anrufer werden ab jetzt nachgeschlagen.</string>

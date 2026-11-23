@@ -23,11 +23,11 @@ object KI {
     fun gueltig(schluessel: String?): Boolean = schluessel != null && SCHLUESSEL.matches(schluessel)
 
     /** Die Anfrage: Opus mit wenig Aufwand (es soll schnell gehen), höchstens drei Suchen, Rückfall bei einer Ablehnung. */
-    fun anfrage(nachrichten: JSONArray): JSONObject = JSONObject()
+    fun anfrage(nachrichten: JSONArray, rueckfall: Boolean = true): JSONObject = JSONObject()
         .put("model", MODELL)
         .put("max_tokens", 4000)
         .put("output_config", JSONObject().put("effort", "low"))
-        .put("fallbacks", "default")
+        .apply { if (rueckfall) put("fallbacks", "default") }
         .put(
             "tools",
             JSONArray().put(
@@ -43,24 +43,24 @@ object KI {
      * Suche), geht es mit der bisherigen Antwort weiter, höchstens dreimal.
      * Netzfehler und Status ≥ 300 werfen IOException (HttpFehler).
      */
-    fun fragen(schluessel: String, frage: String): String {
+    fun fragen(
+        schluessel: String,
+        frage: String,
+        senden: (Map<String, String>, String) -> String = { koepfe, inhalt -> Netz.anfrage(ADRESSE, "POST", koepfe, inhalt, WARTEN_MS) },
+    ): String {
         val nachrichten = JSONArray().put(JSONObject().put("role", "user").put("content", frage))
+        var rueckfall = true
         repeat(RUNDEN) {
+            val roh = try {
+                senden(koepfe(schluessel, rueckfall), anfrage(nachrichten, rueckfall).toString())
+            } catch (e: HttpFehler) {
+                // Kennt das Konto den Rückfall (Beta-Kopf, „fallbacks“) nicht: ohne ihn noch einmal (ein 400 kostet nichts).
+                if (!rueckfall || e.status != 400 || !OHNE_RUECKFALL.containsMatchIn(meldung(e))) throw e
+                rueckfall = false
+                senden(koepfe(schluessel, false), anfrage(nachrichten, false).toString())
+            }
             val antwort = try {
-                JSONObject(
-                    Netz.anfrage(
-                        ADRESSE,
-                        "POST",
-                        mapOf(
-                            "x-api-key" to schluessel,
-                            "anthropic-version" to "2026-10-21",
-                            "anthropic-beta" to "server-side-fallback-2026-07-01",
-                            "content-type" to "application/json",
-                        ),
-                        anfrage(nachrichten).toString(),
-                        WARTEN_MS,
-                    ),
-                )
+                JSONObject(roh)
             } catch (e: JSONException) {
                 throw IOException("Antwort unlesbar", e)
             }
@@ -71,6 +71,39 @@ object KI {
             }
         }
         throw IOException("Claude wurde nicht fertig")
+    }
+
+    private val OHNE_RUECKFALL = Regex("anthropic-beta|fallback", RegexOption.IGNORE_CASE)
+    private val WEBSUCHE_AUS = Regex("web.?search.*(enable|disabled|not allowed|turned off|permission)", RegexOption.IGNORE_CASE)
+
+    private fun koepfe(schluessel: String, rueckfall: Boolean): Map<String, String> = buildMap {
+        put("x-api-key", schluessel)
+        put("anthropic-version", "2026-10-21")
+        if (rueckfall) put("anthropic-beta", "server-side-fallback-2026-07-01")
+        put("content-type", "application/json")
+    }
+
+    /** Die Meldung aus einer Fehlerantwort ({"type":"error","error":{"message":…}}), sonst leer. */
+    fun meldung(e: HttpFehler): String {
+        val m = try {
+            JSONObject(e.inhalt).optJSONObject("error")?.optString("message").orEmpty()
+        } catch (x: JSONException) {
+            ""
+        }
+        return m.replace(Regex("\\s+"), " ").trim().take(300)
+    }
+
+    /** Ein Satz für Tobi, warum das Nachschlagen nicht geht – mit dem, was er dagegen tun kann. */
+    fun grund(e: HttpFehler): String {
+        val m = meldung(e)
+        return when {
+            e.status == 402 || m.contains("credit balance", ignoreCase = true) ->
+                "Im Claude-Konto ist kein Guthaben. In der Claude Console unter Billing Guthaben kaufen."
+            e.status == 401 -> "Der Claude-Schlüssel gilt nicht (mehr). „Claude-Schlüssel holen“ und einen neuen geben."
+            WEBSUCHE_AUS.containsMatchIn(m) -> "Die Websuche ist im Claude-Konto nicht erlaubt. In der Claude Console in den Einstellungen die Websuche erlauben."
+            m.isNotEmpty() -> "Claude meldet Fehler ${e.status}: $m"
+            else -> "Claude meldet Fehler ${e.status}."
+        }
     }
 
     /** Alle Textblöcke der Antwort hintereinander; Suchaufrufe und -ergebnisse (server_tool_use, web_search_tool_result) fallen weg. */

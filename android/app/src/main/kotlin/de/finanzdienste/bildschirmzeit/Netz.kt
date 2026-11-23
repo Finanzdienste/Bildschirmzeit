@@ -16,7 +16,8 @@ import java.time.OffsetDateTime
 const val USER_AGENT = "Bildschirmzeit-App/1.0 (github.com/Finanzdienste/Bildschirmzeit)"
 
 /** Ein Status ≥ 300 (eine IOException wie jeder Netzfehler, aber mit dem Status). */
-class HttpFehler(val status: Int) : IOException("Fehler $status")
+/** Status ≥ 300; `inhalt` ist der Anfang der Fehlerantwort (bei Claude: {"error": {"message": …}}), nie ins Log. */
+class HttpFehler(val status: Int, val inhalt: String = "") : IOException("Fehler $status")
 
 /** Kleine HTTP-Hilfe ohne Bibliotheken. Wirft IOException bei Netzfehler oder Status ≥ 300 (HttpFehler). */
 internal object Netz {
@@ -43,11 +44,17 @@ internal object Netz {
                 verbindung.outputStream.use { it.write(bytes) }
             }
             val status = verbindung.responseCode
-            if (status !in 200..299) throw HttpFehler(status)
+            if (status !in 200..299) throw HttpFehler(status, fehlerText(verbindung))
             return verbindung.inputStream.use { it.readBytes().toString(Charsets.UTF_8) }
         } finally {
             verbindung.disconnect()
         }
+    }
+
+    private fun fehlerText(verbindung: HttpURLConnection): String = try {
+        verbindung.errorStream?.use { it.readBytes().toString(Charsets.UTF_8).take(4000) }.orEmpty()
+    } catch (e: IOException) {
+        ""
     }
 
     /**

@@ -1219,8 +1219,14 @@ benannt wird“ (`Anrufer.kt`, `KI.kt`).
   Liste der Firmen; Antwort als JSON (wer, Akte aus der Liste, sicher, Hinweis).
   Höchstens zehn Nummern am Tag, eine Nummer 30 Tage lang nur einmal. Ohne Netz
   ist die Nummer vorgemerkt und läuft von selbst, sobald Netz da ist (WorkManager
-  mit Netz-Bedingung, dazu der 15-Minuten-Lauf); ein Schlüsselfehler (4xx) nimmt
-  sie heraus und sagt es, 408/429/5xx bleiben vorgemerkt.
+  mit Netz-Bedingung, dazu der 15-Minuten-Lauf); 408/429/5xx bleiben vorgemerkt.
+  Lehnt Claude Schlüssel oder Anfrage ab (andere 4xx), bleibt ebenfalls alles
+  vorgemerkt, und das Nachschlagen ruht sechs Stunden oder bis ein neuer Schlüssel
+  kommt (`Anrufer.pausieren`): eine Mitteilung „Nachschlagen pausiert“ mit dem
+  Grund aus Claudes Fehlerantwort (`KI.grund`: kein Guthaben, Schlüssel ungültig,
+  Websuche nicht erlaubt, sonst die Meldung selbst), dieselbe Zeile auf der
+  Karte, und „Claude-Schlüssel holen“ ist wieder da. Kennt das Konto den Rückfall
+  nicht (400 zum Beta-Kopf oder zu `fallbacks`), fragt die App ohne ihn noch einmal.
 - **Ergebnis:** Mitteilung „040 …: Beispiel GmbH, Personal“ mit Hinweis und, wenn
   die Nummer zu einer Bewerbung gehört, deren Briefing. Ist sie sicher einer
   Bewerbung zugeordnet, benennt „Kontakte benennen“ den Kontakt (Name: die
@@ -1693,6 +1699,11 @@ spricht mit dem echten Supabase oder GitHub (`Netz.gesperrt`).
 - 23.11.2026: Monat = die 30 Tage bis heute statt Kalendermonat; „x von y
   Tagen mit Daten“ zählt erst ab „Daten seit …“ (die Tage davor stehen schon
   dort). 268 Prüfungen grün; geändert sind nur die Monats-Bilder.
+- 23.11.2026: Auf dem S24 kamen nach dem ersten Schlüssel drei Mitteilungen
+  „Nachschlagen ging nicht (Fehler 400)“, und die Nummern fielen heraus – mit
+  dem Nachholen wären sie alle 15 Minuten wiedergekommen. Jetzt bleiben sie
+  vorgemerkt, das Nachschlagen ruht mit dem Grund aus Claudes Antwort
+  (Abschnitt „Anrufer erkennen“). 271 Prüfungen grün.
 - Noch nicht auf dem S24 ausprobiert: Größen des Startbildschirms, Akku-
   Verhalten von One UI (ob es die App trotz Widget schlafen legt), ob
   Chrome den Verbinden-Link in der installierten Web-App oder als Tab

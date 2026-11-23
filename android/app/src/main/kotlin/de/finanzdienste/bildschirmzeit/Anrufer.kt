@@ -98,6 +98,8 @@ object Anrufer {
     const val MERKEN_MS = 30L * 86_400_000L
     const val SCHLUESSEL_MS = 10 * 60_000L
     const val NACHHOLEN_TAGE = 30
+    const val PAUSE_MS = 6 * 3_600_000L
+    private const val PAUSE_MITTEILUNG = "anrufer-pause"
     private const val LIVE_MS = 3_600_000L
     const val BEWERBUNGSZENTRALE = "https://finanzdienste.github.io/Bewerbungszentrale/"
     private const val ARBEIT = "nachschlagen"
@@ -188,7 +190,11 @@ object Anrufer {
         // Nur mit Schlüssel, und nie für Nummern aus Tobis Kontakten (die gehen nicht an Claude).
         if (s.kiSchluessel == null || !erlaubt(context) || privat(context, nummer)) return
         s.nachschlagOffen = s.nachschlagOffen + (nummer to jetzt)
-        val text = context.getString(if (online(context)) R.string.anrufer_sucht else R.string.anrufer_sucht_spaeter)
+        val text = when {
+            pausiert(s, jetzt) -> context.getString(R.string.anrufer_sucht_pause, s.kiFehler.orEmpty(), uhr(s.kiPause))
+            online(context) -> context.getString(R.string.anrufer_sucht)
+            else -> context.getString(R.string.anrufer_sucht_spaeter)
+        }
         mitteilen(context, nummer, context.getString(R.string.anrufer_unbekannt, anzeige(nummer)), text, null)
         planer(context)
     }
@@ -249,14 +255,33 @@ object Anrufer {
         if (!KI.gueltig(schluessel)) return false
         s.kiSchluessel = schluessel
         s.kiAngefragt = 0L
+        s.kiPause = 0L // neuer Schlüssel: gleich wieder versuchen
+        s.kiFehler = null
         return true
+    }
+
+    /** Ruht das Nachschlagen gerade? (Uhr zurückgestellt: höchstens PAUSE_MS ab jetzt.) */
+    fun pausiert(s: Speicher, jetzt: Long): Boolean = s.kiFehler != null && jetzt < s.kiPause && s.kiPause - jetzt <= PAUSE_MS
+
+    fun uhr(ms: Long): String = Instant.ofEpochMilli(ms).atZone(ZoneId.systemDefault()).format(DateTimeFormatter.ofPattern("HH:mm"))
+
+    /**
+     * Claude lehnt ab, was an keiner Nummer liegt (Schlüssel, Guthaben, Anfrage):
+     * Alles bleibt vorgemerkt, das Nachschlagen ruht sechs Stunden (oder bis ein
+     * neuer Schlüssel kommt), und es gibt eine Mitteilung – nur, wenn der Grund neu ist.
+     */
+    private fun pausieren(context: Context, s: Speicher, grund: String, jetzt: Long) {
+        val neu = s.kiFehler != grund
+        s.kiFehler = grund
+        s.kiPause = jetzt + PAUSE_MS
+        if (neu) mitteilen(context, PAUSE_MITTEILUNG, context.getString(R.string.anrufer_pause_titel), context.getString(R.string.anrufer_pause_text, grund, uhr(s.kiPause)), null)
     }
 
     /**
      * Das Vorgemerkte nachschlagen (WorkManager mit Netz, der 15-Minuten-Lauf,
-     * gleich nach dem Klingeln). Ohne Netz bleibt es vorgemerkt; ein Fehler des
-     * Schlüssels (4xx) nimmt die Nummer heraus und sagt es. Rückgabe: wie viele
-     * nachgeschlagen wurden.
+     * gleich nach dem Klingeln). Ohne Netz bleibt es vorgemerkt; lehnt Claude
+     * Schlüssel oder Anfrage ab (4xx), bleibt auch alles vorgemerkt und das
+     * Nachschlagen ruht (pausieren). Rückgabe: wie viele nachgeschlagen wurden.
      */
     fun nachschlagen(context: Context, jetzt: Long = System.currentTimeMillis(), fragen: (String, String) -> String = KI::fragen): Int {
         val s = Speicher(context)
@@ -266,6 +291,7 @@ object Anrufer {
             s.nachschlagOffen = emptyMap()
             return 0
         }
+        if (pausiert(s, jetzt) || s.nachschlagOffen.isEmpty()) return 0
         val akten = akten(s.kontakteListe)
         var n = 0
         for ((nummer, zeit) in s.nachschlagOffen) {
@@ -278,15 +304,18 @@ object Anrufer {
             val text = try {
                 fragen(schluessel, frage(nummer, zeit, akten))
             } catch (e: HttpFehler) {
-                if (e.status == 408 || e.status == 429 || e.status >= 500) break
-                s.nachschlagOffen = s.nachschlagOffen - nummer
-                mitteilen(context, nummer, context.getString(R.string.anrufer_unbekannt, anzeige(nummer)), context.getString(R.string.anrufer_fehler, e.status), null)
-                continue
+                if (e.status != 408 && e.status != 429 && e.status < 500) pausieren(context, s, KI.grund(e), jetzt)
+                break
             } catch (e: IOException) {
                 Log.i(LOG, "Nachschlagen: gerade kein Netz, bleibt vorgemerkt")
                 break
             }
             zaehlen(s, jetzt)
+            if (s.kiFehler != null) {
+                s.kiFehler = null
+                s.kiPause = 0L
+                context.getSystemService(NotificationManager::class.java)?.cancel(PAUSE_MITTEILUNG.hashCode())
+            }
             val fund = fundAus(text, nummer, zeit, akten)
             s.nachgeschlagen = s.nachgeschlagen + (Kontakte.vergleich(nummer) to fund)
             s.nachschlagOffen = s.nachschlagOffen - nummer
@@ -475,7 +504,8 @@ class NachschlagArbeit(context: Context, parameter: WorkerParameters) : Worker(c
         } catch (e: RuntimeException) {
             Log.w(LOG, "Nachschlagen fehlgeschlagen: ${e.javaClass.simpleName}")
         }
-        return if (Speicher(applicationContext).nachschlagOffen.isEmpty()) Result.success() else Result.retry()
+        val s = Speicher(applicationContext)
+        return if (s.nachschlagOffen.isEmpty() || Anrufer.pausiert(s, System.currentTimeMillis())) Result.success() else Result.retry()
     }
 }
 

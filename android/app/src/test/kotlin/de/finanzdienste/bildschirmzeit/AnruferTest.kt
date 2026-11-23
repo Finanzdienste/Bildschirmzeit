@@ -57,6 +57,8 @@ class AnruferTest {
         s.kontakteListe = liste
         s.kiSchluessel = null
         s.kiAngefragt = 0L
+        s.kiPause = 0L
+        s.kiFehler = null
         s.nachgeschlagen = emptyMap()
         s.nachschlagOffen = emptyMap()
         s.nachschlagHeute = null
@@ -164,8 +166,79 @@ class AnruferTest {
         assertEquals(0, Anrufer.nachschlagen(kontext, jetzt) { _, _ -> throw HttpFehler(429) })
         assertEquals("zu viele Anfragen: später noch einmal", 1, speicher.nachschlagOffen.size)
         assertEquals(0, Anrufer.nachschlagen(kontext, jetzt) { _, _ -> throw HttpFehler(401) })
-        assertTrue("falscher Schlüssel: nicht ewig wiederholen", speicher.nachschlagOffen.isEmpty())
-        assertTrue(text(mitteilungen().single()).contains("Fehler 401"))
+        assertEquals("falscher Schlüssel: bleibt vorgemerkt", 1, speicher.nachschlagOffen.size)
+        val m = mitteilungen().single()
+        assertEquals("Nachschlagen pausiert", titel(m))
+        assertTrue(text(m).contains("Claude-Schlüssel gilt nicht"))
+    }
+
+    @Test
+    fun abgelehntRuhtSechsStundenUndVerliertNichts() {
+        // Tobi, 23.11.: drei Mitteilungen „Fehler 400“ – vorher fiel die Nummer heraus und kam mit „nachholen“ alle 15 Minuten wieder
+        speicher.kiSchluessel = schluessel
+        val offen = mapOf("+49301234567" to jetzt, "+49309876543" to jetzt - 60_000L, "+491601234567" to jetzt - 120_000L)
+        speicher.nachschlagOffen = offen
+        val guthaben = """{"type":"error","error":{"type":"invalid_request_error","message":"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits."}}"""
+        var gefragt = 0
+        assertEquals(0, Anrufer.nachschlagen(kontext, jetzt) { _, _ -> gefragt++; throw HttpFehler(400, guthaben) })
+        assertEquals("nach der ersten Ablehnung keine weitere Anfrage", 1, gefragt)
+        assertEquals(offen, speicher.nachschlagOffen)
+        val m = mitteilungen().single()
+        assertTrue(text(m).contains("kein Guthaben") && text(m).contains("Billing"))
+        assertTrue(Anrufer.pausiert(speicher, jetzt + 3_600_000L))
+        // in der Pause: nichts fragen, keine neue Mitteilung, auch nicht beim Klingeln einer neuen Nummer
+        assertEquals(0, Anrufer.nachschlagen(kontext, jetzt + 3_600_000L) { _, _ -> gefragt++; "" })
+        assertEquals(1, gefragt)
+        Anrufer.klingelt(kontext, "040 5555555", jetzt + 3_700_000L)
+        assertTrue(speicher.nachschlagOffen.containsKey("+49405555555"))
+        assertTrue(mitteilungen().any { titel(it) != "Nachschlagen pausiert" && text(it).contains("Nachschlagen ist gerade pausiert") })
+        // derselbe Grund nach der Pause: noch ein Versuch, aber keine zweite Pausen-Mitteilung
+        assertEquals(0, Anrufer.nachschlagen(kontext, jetzt + Anrufer.PAUSE_MS + 1) { _, _ -> gefragt++; throw HttpFehler(400, guthaben) })
+        assertEquals(2, gefragt)
+        assertEquals(1, mitteilungen().count { titel(it) == "Nachschlagen pausiert" })
+        // neuer Schlüssel: sofort weiter, und es klappt
+        speicher.kiAngefragt = jetzt + Anrufer.PAUSE_MS + 2
+        assertTrue(Anrufer.schluesselAnnehmen(speicher, "sk-ant-" + "b".repeat(30), jetzt + Anrufer.PAUSE_MS + 3))
+        assertFalse(Anrufer.pausiert(speicher, jetzt + Anrufer.PAUSE_MS + 4))
+        val n = Anrufer.nachschlagen(kontext, jetzt + Anrufer.PAUSE_MS + 4) { _, _ -> "{\"wer\": \"unbekannt\", \"sicher\": false}" }
+        assertEquals(4, n)
+        assertTrue(speicher.nachschlagOffen.isEmpty())
+        assertNull(speicher.kiFehler)
+    }
+
+    @Test
+    fun claudeFehlerVerstaendlich() {
+        val f = { status: Int, meldung: String -> HttpFehler(status, JSONObject().put("type", "error").put("error", JSONObject().put("type", "x").put("message", meldung)).toString()) }
+        assertTrue(KI.grund(f(400, "Your credit balance is too low to access the Anthropic API.")).contains("kein Guthaben"))
+        assertTrue(KI.grund(f(401, "invalid x-api-key")).contains("gilt nicht"))
+        assertTrue(KI.grund(f(400, "Web search is not enabled for your organization. An admin can enable it in Console settings.")).contains("Websuche"))
+        assertEquals("Claude meldet Fehler 400: messages: Feld fehlt", KI.grund(f(400, "messages:  Feld\nfehlt")))
+        assertEquals("Claude meldet Fehler 404.", KI.grund(HttpFehler(404, "<html>nicht da</html>")))
+        assertFalse("ein Werkzeug-Fehler ist keine abgeschaltete Websuche", KI.grund(f(400, "tools.0: web_search_20260209 is not a valid type")).contains("nicht erlaubt"))
+    }
+
+    @Test
+    fun ohneRueckfallNochEinmal() {
+        // kennt das Konto den Beta-Kopf oder „fallbacks“ nicht: dieselbe Frage ohne – einmal
+        val gesendet = mutableListOf<Pair<Map<String, String>, JSONObject>>()
+        val antwort = JSONObject().put("stop_reason", "end_turn").put("content", JSONArray().put(JSONObject().put("type", "text").put("text", "ok"))).toString()
+        val text = KI.fragen(schluessel, "Wem gehört 040 1234567?") { koepfe, inhalt ->
+            gesendet += koepfe to JSONObject(inhalt)
+            if (gesendet.size == 1) throw HttpFehler(400, """{"type":"error","error":{"type":"invalid_request_error","message":"Unexpected value(s) `server-side-fallback-2026-07-01` for the `anthropic-beta` header."}}""")
+            antwort
+        }
+        assertEquals("ok", text)
+        assertEquals(2, gesendet.size)
+        assertEquals("server-side-fallback-2026-07-01", gesendet[0].first["anthropic-beta"])
+        assertTrue(gesendet[0].second.has("fallbacks"))
+        assertNull(gesendet[1].first["anthropic-beta"])
+        assertFalse(gesendet[1].second.has("fallbacks"))
+        assertEquals(schluessel, gesendet[1].first["x-api-key"])
+        // andere 400er gehen gleich weiter (an Anrufer.nachschlagen)
+        var mal = 0
+        val e = runCatching { KI.fragen(schluessel, "x") { _, _ -> mal++; throw HttpFehler(400, "{}") } }.exceptionOrNull()
+        assertTrue(e is HttpFehler)
+        assertEquals(1, mal)
     }
 
     @Test

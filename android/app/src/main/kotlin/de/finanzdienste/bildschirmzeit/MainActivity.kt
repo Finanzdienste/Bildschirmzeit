@@ -845,12 +845,16 @@ class MainActivity : Activity(), UpdateBeobachter {
             when {
                 !an -> null
                 akten == 0 -> getString(R.string.anrufer_noch_keine)
+                speicher.kiSchluessel != null && Anrufer.pausiert(speicher, System.currentTimeMillis()) ->
+                    getString(R.string.anrufer_stand_pause, speicher.kiFehler.orEmpty(), Anrufer.uhr(speicher.kiPause), speicher.nachschlagOffen.size, akten)
                 speicher.kiSchluessel != null -> getString(R.string.anrufer_stand_mit, akten)
                 else -> getString(R.string.anrufer_stand_ohne, akten)
             },
         )
         findViewById<Button>(R.id.anrufer_knopf).setText(if (an) R.string.anrufer_aus else R.string.anrufer_freigeben)
-        findViewById<Button>(R.id.anrufer_schluessel).visibility = if (an && speicher.kiSchluessel == null) View.VISIBLE else View.GONE
+        // auch, wenn Claude den Schlüssel gerade ablehnt: dann gibt Tobi einfach einen neuen
+        val schluesselFehlt = speicher.kiSchluessel == null || Anrufer.pausiert(speicher, System.currentTimeMillis())
+        findViewById<Button>(R.id.anrufer_schluessel).visibility = if (an && schluesselFehlt) View.VISIBLE else View.GONE
     }
 
     /** Freigeben (Androids Abfrage, falls nötig) oder „Nicht mehr erkennen“. */
