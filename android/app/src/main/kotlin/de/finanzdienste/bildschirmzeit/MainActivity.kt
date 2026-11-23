@@ -130,6 +130,8 @@ class MainActivity : Activity(), UpdateBeobachter {
         findViewById<Button>(R.id.update_knopf2).setOnClickListener { updateKnopf(it.tag as? UpdateKnopf) }
         findViewById<Button>(R.id.anrufe_knopf).setOnClickListener { anrufeKnopf() }
         findViewById<Button>(R.id.kontakte_knopf).setOnClickListener { kontakteKnopf() }
+        findViewById<Button>(R.id.anrufer_knopf).setOnClickListener { anruferKnopf() }
+        findViewById<Button>(R.id.anrufer_schluessel).setOnClickListener { schluesselHolen() }
         findViewById<Button>(R.id.loeschen).setOnClickListener { loeschenFragen() }
         versionZeigen(BuildConfig.VERSION_NAME)
         webZeilenAnlegen()
@@ -183,12 +185,24 @@ class MainActivity : Activity(), UpdateBeobachter {
         zielBehandeln(intent)
     }
 
+    /** bildschirmzeit://ki#<Schlüssel> aus der Bewerbungszentrale – angenommen nur kurz nach „Claude-Schlüssel holen“. */
+    private fun schluesselAusLink(intent: Intent?) {
+        val daten = intent?.data ?: return
+        if (daten.scheme != "bildschirmzeit" || daten.host != "ki") return
+        setIntent(Intent(intent).setData(null)) // den Schlüssel nicht im Intent liegen lassen
+        if (Anrufer.schluesselAnnehmen(speicher, daten.fragment, System.currentTimeMillis())) {
+            Toast.makeText(this, R.string.ki_uebernommen, Toast.LENGTH_LONG).show()
+            anruferZeigen()
+        }
+    }
+
     /**
      * STATISTIK: der zuletzt gewählte Reiter (beim ersten Mal Woche) mit dem
      * Zeitraum von heute, ganz oben. UPDATE: die Update-Karte steht oben. Ohne
      * Ziel (vom Startbildschirm) bleibt alles, wie es ist.
      */
     private fun zielBehandeln(intent: Intent?) {
+        schluesselAusLink(intent)
         when (intent?.getStringExtra(Ziel.EXTRA)) {
             Ziel.STATISTIK -> {
                 updateOben = false
@@ -216,6 +230,7 @@ class MainActivity : Activity(), UpdateBeobachter {
         updateKarteNeu()
         anrufeZeigen()
         kontakteZeigen()
+        anruferZeigen()
         updateFragen()
     }
 
@@ -367,6 +382,7 @@ class MainActivity : Activity(), UpdateBeobachter {
             add(findViewById<View>(R.id.diskret_karte))
             add(findViewById<View>(R.id.anrufe_karte))
             add(findViewById<View>(R.id.kontakte_karte))
+            add(findViewById<View>(R.id.anrufer_karte))
             add(findViewById<View>(R.id.loeschen))
             add(findViewById<View>(R.id.version))
         }
@@ -819,9 +835,66 @@ class MainActivity : Activity(), UpdateBeobachter {
         }
     }
 
+    /** Die Karte „Anrufer erkennen“: an (für wie viele Bewerbungen, mit oder ohne Claude-Schlüssel) oder aus. */
+    internal fun anruferZeigen() {
+        val an = speicher.anruferErkennen && Anrufer.erlaubt(this)
+        val akten = Anrufer.akten(speicher.kontakteListe).size
+        textSetzen(
+            R.id.anrufer_stand,
+            when {
+                !an -> null
+                akten == 0 -> getString(R.string.anrufer_noch_keine)
+                speicher.kiSchluessel != null -> getString(R.string.anrufer_stand_mit, akten)
+                else -> getString(R.string.anrufer_stand_ohne, akten)
+            },
+        )
+        findViewById<Button>(R.id.anrufer_knopf).setText(if (an) R.string.anrufer_aus else R.string.anrufer_freigeben)
+        findViewById<Button>(R.id.anrufer_schluessel).visibility = if (an && speicher.kiSchluessel == null) View.VISIBLE else View.GONE
+    }
+
+    /** Freigeben (Androids Abfrage, falls nötig) oder „Nicht mehr erkennen“. */
+    private fun anruferKnopf() {
+        if (speicher.anruferErkennen && Anrufer.erlaubt(this)) {
+            speicher.anruferErkennen = false
+            speicher.nachschlagOffen = emptyMap()
+            anruferZeigen()
+            return
+        }
+        val fehlt = Anrufer.erlaubnisse().filter { checkSelfPermission(it) != PackageManager.PERMISSION_GRANTED }
+        if (fehlt.isEmpty()) anruferAn() else requestPermissions(fehlt.toTypedArray(), ANRUFER_FRAGE)
+    }
+
+    private fun anruferAn() {
+        speicher.anruferErkennen = true
+        speicher.kontakteGeholt = 0L // die Briefings gleich holen
+        anruferZeigen()
+        faeden.execute {
+            Kontakte.imTakt(applicationContext)
+            imVordergrund { anruferZeigen() }
+        }
+    }
+
+    /** Öffnet die Bewerbungszentrale (Firefox), die fragt, ob sie den Claude-Schlüssel geben soll; er kommt über bildschirmzeit://ki zurück. */
+    private fun schluesselHolen() {
+        speicher.kiAngefragt = System.currentTimeMillis()
+        versuchen(verbindenAbsichten(Anrufer.BEWERBUNGSZENTRALE + "#bildschirmzeit-ki", FIREFOX))
+    }
+
     @Deprecated("Activity ohne AndroidX-Ergebnis-API, wie der Rest dieser App")
     override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+        if (requestCode == ANRUFER_FRAGE) {
+            if (Anrufer.erlaubt(this)) {
+                anruferAn()
+                return
+            }
+            if (permissions.any { checkSelfPermission(it) != PackageManager.PERMISSION_GRANTED && !shouldShowRequestPermissionRationale(it) }) {
+                Toast.makeText(this, R.string.anrufer_verweigert, Toast.LENGTH_LONG).show()
+                oeffnen(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, "package:$packageName".toUri()))
+            }
+            anruferZeigen()
+            return
+        }
         if (requestCode == KONTAKTE_FRAGE) {
             if (grantResults.isNotEmpty() && grantResults.all { it == PackageManager.PERMISSION_GRANTED }) {
                 kontakteAn()
@@ -902,6 +975,7 @@ class MainActivity : Activity(), UpdateBeobachter {
         const val ZUSTAND_APP_NAME = "appName"
         const val ANRUFE_FRAGE = 41
         const val KONTAKTE_FRAGE = 42
+        const val ANRUFER_FRAGE = 43
     }
 }
 

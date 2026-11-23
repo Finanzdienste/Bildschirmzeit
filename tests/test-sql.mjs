@@ -73,6 +73,8 @@ const anrufeMelden = (k, liste) => als('anon', 'select bildschirmzeit_anrufe_mel
 const anrufeLoeschen = (k) => als('anon', 'select bildschirmzeit_anrufe_loeschen(p_kennung => $1) as r', [k]).then((r) => r[0].r);
 const anrufeLesen = (k, seit) => als('anon', 'select * from bildschirmzeit_anrufe_lesen(p_kennung => $1, p_seit => $2::timestamptz)', [k, seit]);
 const kontakteSetzen = (k, liste) => als('anon', 'select bildschirmzeit_kontakte_setzen(p_kennung => $1, p_kontakte => $2::text::jsonb) as r', [k, JSON.stringify(liste)]).then((r) => r[0].r);
+const nachschlagMelden = (k, nr, zeit, wer, akte) => als('anon', 'select bildschirmzeit_nachschlag_melden(p_kennung => $1, p_nummer => $2, p_zeit => $3::timestamptz, p_wer => $4, p_akte => $5) as r', [k, nr, zeit, wer, akte]).then((r) => r[0].r);
+const nachschlagLesen = (k, seit) => als('anon', 'select * from bildschirmzeit_nachschlag_lesen(p_kennung => $1, p_seit => $2::timestamptz)', [k, seit]);
 const kontakteLesen = (k) => als('anon', 'select * from bildschirmzeit_kontakte_lesen(p_kennung => $1)', [k]);
 const anrufe = (k) => su('select nummer, name, art, sekunden, zeit from bildschirmzeit_anruf where geraet = $1 order by zeit', [sha(k)]);
 
@@ -93,10 +95,10 @@ const fn = await su(`select p.proname as name, has_function_privilege('anon', p.
   from pg_proc p join pg_namespace n on n.oid = p.pronamespace
   where n.nspname = 'public' and p.proname like 'bildschirmzeit%'`);
 const anonDarf = fn.filter((f) => f.anon).map((f) => f.name).sort();
-check(gleich(anonDarf, ['bildschirmzeit_anmelden', 'bildschirmzeit_anrufe_lesen', 'bildschirmzeit_anrufe_loeschen', 'bildschirmzeit_anrufe_melden', 'bildschirmzeit_kontakte_lesen', 'bildschirmzeit_kontakte_setzen', 'bildschirmzeit_lesen', 'bildschirmzeit_loeschen', 'bildschirmzeit_melden']),
-  `anon darf genau die neun Funktionen ausführen (${anonDarf.join(', ')})`);
+check(gleich(anonDarf, ['bildschirmzeit_anmelden', 'bildschirmzeit_anrufe_lesen', 'bildschirmzeit_anrufe_loeschen', 'bildschirmzeit_anrufe_melden', 'bildschirmzeit_kontakte_lesen', 'bildschirmzeit_kontakte_setzen', 'bildschirmzeit_lesen', 'bildschirmzeit_loeschen', 'bildschirmzeit_melden', 'bildschirmzeit_nachschlag_lesen', 'bildschirmzeit_nachschlag_melden']),
+  `anon darf genau die elf Funktionen ausführen (${anonDarf.join(', ')})`);
 check((await fehler(als('anon', "select bildschirmzeit_hash('x')")))?.code === '42501', 'anon darf bildschirmzeit_hash nicht aufrufen');
-for (const t of ['bildschirmzeit', 'bildschirmzeit_geraet', 'bildschirmzeit_anruf', 'bildschirmzeit_kontakt']) {
+for (const t of ['bildschirmzeit', 'bildschirmzeit_geraet', 'bildschirmzeit_anruf', 'bildschirmzeit_kontakt', 'bildschirmzeit_nachschlag']) {
   for (const rolle of ['anon', 'authenticated']) {
     const e = await fehler(als(rolle, `select * from ${t}`));
     check(e?.code === '42501', `${rolle}: select * from ${t} → permission denied`);
@@ -227,32 +229,50 @@ check(gleich(spalten, ['aktualisiert', 'app', 'sekunden', 'tag']), `lesen liefer
   await anrufeMelden(K1, [liste[1]]);
 }
 
-// --- Kontakte (Bewerbungszentrale setzt, Widget-App liest, seit 23.11.2026) ---
+// --- Kontakte und Briefings (Bewerbungszentrale setzt, Widget-App liest, seit 23.11.2026) ---
 {
   check(await kontakteSetzen('w'.repeat(43), []) === false, 'kontakte_setzen mit nicht angemeldeter Kennung → false');
   const liste = [
-    { nummer: '+4940123456', name: 'Erika Beispiel (Beispiel GmbH)' },
-    { nummer: '+49301112', name: '  Muster AG\n ' },
+    { akte: 'beispiel-1', name: 'Erika Beispiel (Beispiel)', firma: 'Beispiel', nummer: '+4940123456', basis: '+4940123', weitere: ['+491701234567', '040 999'], briefing: '  Beispiel GmbH – Controller\nBeworben am 20.11.  ' },
+    { akte: 'muster.2', name: '  Muster AG\n ', firma: 'Muster', nummer: null, weitere: 'kein Array' },
   ];
-  check(await kontakteSetzen(K1, liste) === true, 'kontakte_setzen: zwei Namen → true');
+  check(await kontakteSetzen(K1, liste) === true, 'kontakte_setzen: zwei Akten → true');
   let k = await kontakteLesen(K1);
-  check(gleich(k.map((x) => [x.nummer, x.name]), [['+49301112', 'Muster AG'], ['+4940123456', 'Erika Beispiel (Beispiel GmbH)']]),
-    `kontakte_lesen: nach Nummer, Name ohne Steuerzeichen und Rand (${JSON.stringify(k)})`);
-  check(gleich(Object.keys(k[0]).sort(), ['name', 'nummer']), 'kontakte_lesen liefert nur nummer und name');
+  check(gleich(Object.keys(k[0]).sort(), ['akte', 'basis', 'briefing', 'firma', 'name', 'nummer', 'weitere']), `kontakte_lesen liefert akte, name, firma, nummer, basis, weitere, briefing (${Object.keys(k[0]).join(', ')})`);
+  check(k[0].akte === 'beispiel-1' && k[0].nummer === '+4940123456' && k[0].basis === '+4940123' && gleich(k[0].weitere, ['+491701234567'])
+    && k[0].briefing === 'Beispiel GmbH – Controller\nBeworben am 20.11.', `erste Akte: Nummern geprüft (Unpassendes in weitere weg), Briefing ohne Rand (${JSON.stringify(k[0])})`);
+  check(k[1].name === 'Muster AG' && k[1].nummer === null && gleich(k[1].weitere, []) && k[1].briefing === '', `zweite Akte: ohne Nummer, Name ohne Steuerzeichen (${JSON.stringify(k[1])})`);
   await kontakteSetzen(K1, [
-    { nummer: '+49301112', name: 'Muster AG' },
-    { nummer: '+49301112', name: 'Muster Neu AG' },
-    { nummer: '040 333', name: 'Leerzeichen' },
-    { nummer: '+4940999', name: '   ' },
-    { nummer: 4940999, name: 'Zahl' },
+    { akte: 'muster.2', name: 'Muster AG', firma: 'Muster' },
+    { akte: 'muster.2', name: 'Muster Neu AG', firma: 'Muster', nummer: '040 333' },
+    { akte: 'mit leerzeichen', name: 'X', firma: 'X' },
+    { akte: 'leer', name: '   ', firma: 'X' },
+    { akte: 'ohne-firma', name: 'X' },
     'kein Objekt',
   ]);
   k = await kontakteLesen(K1);
-  check(k.length === 1 && k[0].name === 'Muster Neu AG', 'die neue Liste ersetzt die alte; doppelte Nummer: der letzte Name; Unpassendes fällt still weg');
+  check(k.length === 1 && k[0].name === 'Muster Neu AG' && k[0].nummer === null, 'die neue Liste ersetzt die alte; doppelte Akte: der letzte gilt; Nummer mit Leerzeichen → null; Unpassendes fällt still weg');
   check((await kontakteLesen(K2)).length === 0 && (await kontakteLesen('w'.repeat(43))).length === 0, 'kontakte_lesen mit anderer oder unbekannter Kennung → nichts');
   check((await fehler(kontakteSetzen(K1, Array.from({ length: 501 }, () => liste[0]))))?.message === 'Zu viele Kontakte', 'mehr als 500 → „Zu viele Kontakte“');
   check((await fehler(kontakteSetzen(K1, { a: 1 })))?.message === 'Kontakte fehlen', 'kein Array → „Kontakte fehlen“');
-  check((await kontakteLesen(K1)).length === 1, '… und die Liste bleibt dabei, wie sie war');
+  check((await fehler(kontakteSetzen(K1, [{ ...liste[0], briefing: 'x'.repeat(3000) }]))) === null && (await kontakteLesen(K1))[0].briefing.length === 1500, 'Briefing über 1500 Zeichen wird gekürzt');
+  await kontakteSetzen(K1, liste);
+
+  // Nachgeschlagen (Widget-App meldet, Bewerbungszentrale liest)
+  const vor = (min) => new Date(Date.now() - min * 60000).toISOString();
+  check(await nachschlagMelden('w'.repeat(43), '+4930111222', vor(5), 'Beispiel GmbH', null) === false, 'nachschlag_melden mit nicht angemeldeter Kennung → false');
+  check(await nachschlagMelden(K1, '+4930111222', vor(5), ' Beispiel GmbH, Personal\n', 'beispiel-1') === true, 'nachschlag_melden → true');
+  check(await nachschlagMelden(K1, '+4930999888', vor(3), 'Werbeanruf', 'gibt-es-nicht') === true, 'nachschlag_melden mit unbekannter Akte → true');
+  let n = await nachschlagLesen(K1, vor(60));
+  check(n.length === 2 && n[0].nummer === '+4930111222' && n[0].wer === 'Beispiel GmbH, Personal' && n[0].akte === 'beispiel-1' && n[1].akte === null,
+    `nachschlag_lesen: älteste zuerst, unbekannte Akte → null (${JSON.stringify(n)})`);
+  await nachschlagMelden(K1, '+4930111222', vor(1), 'Beispiel GmbH, Zentrale', 'beispiel-1');
+  n = await nachschlagLesen(K1, vor(60));
+  check(n.length === 2 && n.find((x) => x.nummer === '+4930111222').wer === 'Beispiel GmbH, Zentrale', 'dieselbe Nummer noch einmal: der neue Stand gilt');
+  check((await nachschlagLesen(K2, vor(60))).length === 0, 'nachschlag_lesen mit anderer Kennung → nichts');
+  check((await fehler(nachschlagMelden(K1, '030 111', vor(1), 'X', null)))?.message === 'Nachschlag ungültig', 'Nummer ohne +… → „Nachschlag ungültig“');
+  check((await fehler(nachschlagMelden(K1, '+4930111222', vor(1), '  ', null)))?.message === 'Nachschlag ungültig', 'leeres „wer“ → „Nachschlag ungültig“');
+  check((await fehler(nachschlagLesen(K1, null)))?.message === 'Zeitraum ungültig', 'nachschlag_lesen ohne p_seit → „Zeitraum ungültig“');
 }
 
 // --- Löschen ---
@@ -261,6 +281,7 @@ check(await loeschen(K1) === false, 'noch einmal loeschen → false');
 check((await su('select count(*)::int as n from bildschirmzeit where geraet = $1', [sha(K1)]))[0].n === 0, 'loeschen nimmt alle Zahlen dieser Kennung mit');
 check((await anrufe(K1)).length === 0, 'loeschen nimmt auch die Anrufe mit');
 check((await kontakteLesen(K1)).length === 0 && (await su('select count(*)::int as n from bildschirmzeit_kontakt where geraet = $1', [sha(K1)]))[0].n === 0, '… und die Kontakte');
+check((await su('select count(*)::int as n from bildschirmzeit_nachschlag where geraet = $1', [sha(K1)]))[0].n === 0, '… und das Nachgeschlagene');
 check(await anrufeLoeschen(K1) === false, 'danach: anrufe_loeschen → false');
 check(await melden(K1, 'workout', { [HEUTE]: 400 }) === false, 'nach dem Löschen: melden → false (die Web-App trennt sich dann)');
 check((await lesen(K2, HEUTE, HEUTE)).length === 1, 'die andere Kennung behält ihre Zahlen');
@@ -296,6 +317,31 @@ check((await lesen(K2, HEUTE, HEUTE)).length === 1, 'die andere Kennung behält 
   const p = (await alt.query(`select pg_get_constraintdef(oid) as d from pg_constraint
     where conrelid = 'public.bildschirmzeit'::regclass and contype = 'c' and pg_get_constraintdef(oid) like '%app%'`)).rows;
   check(p.length === 1 && p[0].d.includes('bewerbungszentrale'), '… mit genau einer Prüfung der Apps, der neuen');
+}
+
+// --- Eingespielt über die erste Fassung der Kontakte (23.11.2026: je Nummer, ohne Akte) ---
+{
+  const alt = await PGlite.create();
+  await alt.exec(ROLLEN);
+  await alt.exec('set role besitzer');
+  try {
+    await alt.exec(`create table public.bildschirmzeit_geraet (geraet text primary key, angelegt timestamptz not null default now(), gelesen timestamptz);
+      create table public.bildschirmzeit_kontakt (geraet text not null references public.bildschirmzeit_geraet (geraet) on delete cascade,
+        nummer text not null, name text not null, gesetzt timestamptz not null default now(), primary key (geraet, nummer));
+      create function public.bildschirmzeit_kontakte_lesen(p_kennung text) returns table (nummer text, name text) language sql as $$ select ''::text, ''::text $$;
+      insert into public.bildschirmzeit_geraet (geraet) values ('${sha(K2)}');
+      insert into public.bildschirmzeit_kontakt (geraet, nummer, name) values ('${sha(K2)}', '+4940111', 'Alt');`);
+    await alt.exec(SQL);
+  } finally { await alt.exec('reset role'); }
+  await alt.exec('set role anon');
+  let gesetzt; let gelesen;
+  try {
+    gesetzt = (await alt.query('select bildschirmzeit_kontakte_setzen(p_kennung => $1, p_kontakte => $2::text::jsonb) as r',
+      [K2, JSON.stringify([{ akte: 'a1', name: 'Neu', firma: 'Neu', nummer: '+4940111' }])])).rows[0].r;
+    gelesen = (await alt.query('select * from bildschirmzeit_kontakte_lesen(p_kennung => $1)', [K2])).rows;
+  } finally { await alt.exec('reset role'); }
+  check(gesetzt === true && gelesen.length === 1 && gelesen[0].akte === 'a1' && gelesen[0].name === 'Neu',
+    `über die erste Fassung eingespielt: neue Tabelle und neue Funktion (${JSON.stringify(gelesen)})`);
 }
 
 console.log(`\n${oks} OK, ${fails} FAIL`);

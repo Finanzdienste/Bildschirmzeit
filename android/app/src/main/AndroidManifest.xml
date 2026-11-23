@@ -17,6 +17,9 @@
     <!-- Kontakte für die Nummern aus den Bewerbungen benennen (Kontakte.kt): erst nach Tobis Freigabe in der App. -->
     <uses-permission android:name="android.permission.READ_CONTACTS" />
     <uses-permission android:name="android.permission.WRITE_CONTACTS" />
+    <!-- Anrufer erkennen (Anrufer.kt): wer gerade anruft, und die Mitteilung mit dem Briefing. -->
+    <uses-permission android:name="android.permission.READ_PHONE_STATE" />
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <!-- Nach einem Neustart den Wecker fürs Widget neu stellen (Takt.kt). -->
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
 
@@ -52,7 +55,25 @@
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
+            <!-- Der Claude-Schlüssel aus der Bewerbungszentrale (bildschirmzeit://ki#…), nur nach „Claude-Schlüssel holen“. -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data
+                    android:host="ki"
+                    android:scheme="bildschirmzeit" />
+            </intent-filter>
         </activity>
+
+        <!-- Anrufer erkennen (Anrufer.kt): PHONE_STATE kommt nur vom System. -->
+        <receiver
+            android:name=".AnrufEmpfaenger"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.PHONE_STATE" />
+            </intent-filter>
+        </receiver>
 
         <receiver
             android:name=".BildschirmzeitWidget"

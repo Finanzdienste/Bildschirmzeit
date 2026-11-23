@@ -8,13 +8,17 @@ import java.io.IOException
 import java.net.HttpURLConnection
 import java.net.URL
 import java.security.MessageDigest
+import java.time.Instant
 import java.time.LocalDate
 import java.time.OffsetDateTime
 
 /** Ehrlich, wer fragt – für GitHub und Supabase. */
 const val USER_AGENT = "Bildschirmzeit-App/1.0 (github.com/Finanzdienste/Bildschirmzeit)"
 
-/** Kleine HTTP-Hilfe ohne Bibliotheken. Wirft IOException bei Netzfehler oder Status ≥ 300. */
+/** Ein Status ≥ 300 (eine IOException wie jeder Netzfehler, aber mit dem Status). */
+class HttpFehler(val status: Int) : IOException("Fehler $status")
+
+/** Kleine HTTP-Hilfe ohne Bibliotheken. Wirft IOException bei Netzfehler oder Status ≥ 300 (HttpFehler). */
 internal object Netz {
     private const val WARTEN_MS = 6000
 
@@ -22,13 +26,13 @@ internal object Netz {
     @Volatile
     var gesperrt = false
 
-    fun anfrage(adresse: String, methode: String, koepfe: Map<String, String>, inhalt: String? = null): String {
+    fun anfrage(adresse: String, methode: String, koepfe: Map<String, String>, inhalt: String? = null, warten: Int = WARTEN_MS): String {
         if (gesperrt) throw IOException("Netz gesperrt")
         val verbindung = URL(adresse).openConnection() as HttpURLConnection
         try {
             verbindung.requestMethod = methode
-            verbindung.connectTimeout = WARTEN_MS
-            verbindung.readTimeout = WARTEN_MS
+            verbindung.connectTimeout = minOf(warten, WARTEN_MS)
+            verbindung.readTimeout = warten
             verbindung.useCaches = false
             verbindung.setRequestProperty("User-Agent", USER_AGENT)
             for ((k, v) in koepfe) verbindung.setRequestProperty(k, v)
@@ -39,7 +43,7 @@ internal object Netz {
                 verbindung.outputStream.use { it.write(bytes) }
             }
             val status = verbindung.responseCode
-            if (status !in 200..299) throw IOException("Fehler $status")
+            if (status !in 200..299) throw HttpFehler(status)
             return verbindung.inputStream.use { it.readBytes().toString(Charsets.UTF_8) }
         } finally {
             verbindung.disconnect()
@@ -137,16 +141,25 @@ object Supabase {
     /** „Nicht mehr teilen“: alle gemeldeten Anrufe weg; false: Kennung nicht (mehr) angemeldet. */
     fun anrufeLoeschen(kennung: String): Boolean = wahr(rpc("bildschirmzeit_anrufe_loeschen", JSONObject().put("p_kennung", kennung)))
 
-    /** Die Namen für die Nummern aus den Bewerbungen (Kontakte.kt); unbekannte Kennung: leer. Unlesbares wirft IOException. */
-    fun kontakteLesen(kennung: String): List<Wunsch> {
+    /** Die Bewerbungen fürs Handy (Kontakte.kt, Anrufer.kt) als JSON-Liste; unbekannte Kennung: leer. Unlesbares wirft IOException. */
+    fun kontakteLesen(kennung: String): String {
         val text = rpc("bildschirmzeit_kontakte_lesen", JSONObject().put("p_kennung", kennung))
         try {
             JSONArray(text)
         } catch (e: JSONException) {
             throw IOException("Antwort unlesbar", e)
         }
-        return Kontakte.ausJson(text)
+        return text
     }
+
+    /** Was Anrufer.kt zu einer Nummer nachgeschlagen hat; false: Kennung nicht (mehr) angemeldet. */
+    fun nachschlagMelden(kennung: String, fund: Fund): Boolean = wahr(
+        rpc(
+            "bildschirmzeit_nachschlag_melden",
+            JSONObject().put("p_kennung", kennung).put("p_nummer", fund.nummer).put("p_zeit", Instant.ofEpochMilli(fund.zeit).toString())
+                .put("p_wer", fund.wer).put("p_akte", fund.akte ?: JSONObject.NULL),
+        ),
+    )
 
     /** true: gelöscht; false: Kennung war nicht (mehr) angemeldet. */
     fun loeschen(kennung: String): Boolean = wahr(rpc("bildschirmzeit_loeschen", JSONObject().put("p_kennung", kennung)))

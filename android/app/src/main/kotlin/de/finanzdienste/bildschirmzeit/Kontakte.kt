@@ -24,10 +24,11 @@ data class Umbenannt(val alt: String, val nummer: String)
 
 /**
  * Kontakte für die Nummern aus den Bewerbungen (Tobi, 23.11.2026: „Du kannst
- * meine Telefon Kontakte auch umbennenen“). Die Bewerbungszentrale legt die
- * Namen bei Supabase ab (bildschirmzeit_kontakte_setzen, etwa „Erika Muster
- * (Beispiel GmbH)“), die App holt sie im 15-Minuten-Lauf höchstens alle 30
- * Minuten und merkt sich die Liste. Erst nach Tobis Freigabe in der App
+ * meine Telefon Kontakte auch umbennenen“). Die Bewerbungszentrale legt je
+ * Bewerbung Namen, Nummern und Briefing bei Supabase ab
+ * (bildschirmzeit_kontakte_setzen, Name etwa „Erika Muster (Beispiel)“), die
+ * App holt die Liste im 15-Minuten-Lauf höchstens alle 30 Minuten und merkt
+ * sie sich (auch für Anrufer.kt). Erst nach Tobis Freigabe in der App
  * (Speicher.kontakteBenennen und Androids Erlaubnis für die Kontakte).
  *
  * Angewandt wird nur, wenn sich die Liste geändert hat – was Tobi danach von
@@ -89,13 +90,15 @@ object Kontakte {
      * letzte Stand), dann – falls sich die Liste geändert hat – anwenden.
      * Rückgabe: wie viele Kontakte angelegt, umbenannt oder zurückgenommen.
      */
-    fun imTakt(context: Context, jetzt: Long = System.currentTimeMillis(), holen: (String) -> List<Wunsch> = Supabase::kontakteLesen): Int =
+    fun imTakt(context: Context, jetzt: Long = System.currentTimeMillis(), holen: (String) -> String = Supabase::kontakteLesen): Int =
         Aktualisierung.allein {
             val speicher = Speicher(context)
-            if (!speicher.kontakteBenennen || !erlaubt(context)) return@allein 0
+            // Die Liste brauchen beide: Kontakte benennen und Anrufer erkennen (Anrufer.kt, mit den Briefings).
+            val benennen = speicher.kontakteBenennen && erlaubt(context)
+            if (!benennen && !speicher.anruferErkennen) return@allein 0
             if (faellig(jetzt, speicher.kontakteGeholt)) {
                 try {
-                    speicher.kontakteListe = alsJson(holen(speicher.kennung))
+                    speicher.kontakteListe = holen(speicher.kennung)
                     speicher.kontakteGeholt = jetzt
                 } catch (e: IOException) {
                     Log.i(LOG, "Kontakte: gerade kein Netz, es bleibt beim letzten Stand")
@@ -104,11 +107,15 @@ object Kontakte {
             benennen(context)
         }
 
-    /** Den gemerkten Stand anwenden, falls er sich seit dem letzten Mal geändert hat. Eine leere Liste ändert nichts. */
+    /**
+     * Den gemerkten Stand anwenden, falls er sich seit dem letzten Mal geändert
+     * hat – die Liste der Bewerbungszentrale und dazu, was Anrufer.kt sicher
+     * einer Bewerbung zugeordnet hat. Eine leere Liste ändert nichts.
+     */
     fun benennen(context: Context): Int {
         val speicher = Speicher(context)
         if (!speicher.kontakteBenennen || !erlaubt(context)) return 0
-        val liste = ausJson(speicher.kontakteListe)
+        val liste = (ausJson(speicher.kontakteListe) + Anrufer.wuensche(speicher)).distinctBy { vergleich(it.nummer) }
         val stand = alsJson(liste)
         if (liste.isEmpty() || stand == speicher.kontakteAngewandt) return 0
         return try {

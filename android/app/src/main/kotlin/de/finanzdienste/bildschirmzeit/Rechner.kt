@@ -253,6 +253,8 @@ object Rechner {
             speicher.anrufeLoeschenOffen = false
             // Die Namen sind mit der Anmeldung bei Supabase weg: angelegte Kontakte löschen, umbenannte zurück.
             Kontakte.zuruecknehmen(context)
+            speicher.nachgeschlagen = emptyMap()
+            speicher.nachschlagOffen = emptyMap()
             val neu = speicher.neueKennungSetzen()
             try {
                 if (Supabase.anmelden(neu)) speicher.angemeldet = true

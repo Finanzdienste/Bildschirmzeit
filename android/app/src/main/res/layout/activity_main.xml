@@ -384,6 +384,38 @@
                 android:text="@string/kontakte_freigeben" />
         </LinearLayout>
 
+        <!-- Anrufer erkennen (Anrufer.kt): Briefing beim Anruf, unbekannte Nummern mit Claude nachschlagen. -->
+        <LinearLayout
+            android:id="@+id/anrufer_karte"
+            style="@style/Karte">
+
+            <TextView
+                android:id="@+id/anrufer_titel"
+                style="@style/Ueberschrift"
+                android:text="@string/anrufer_titel" />
+
+            <TextView
+                android:id="@+id/anrufer_text"
+                style="@style/Fliesstext"
+                android:text="@string/anrufer_text" />
+
+            <TextView
+                android:id="@+id/anrufer_stand"
+                style="@style/Hinweis"
+                android:visibility="gone" />
+
+            <Button
+                android:id="@+id/anrufer_knopf"
+                style="@style/Knopf"
+                android:text="@string/anrufer_freigeben" />
+
+            <Button
+                android:id="@+id/anrufer_schluessel"
+                style="@style/Knopf.Leise"
+                android:text="@string/anrufer_schluessel"
+                android:visibility="gone" />
+        </LinearLayout>
+
         <LinearLayout
             android:id="@+id/update_karte"
             style="@style/Karte"

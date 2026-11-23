@@ -22,10 +22,13 @@
 --     zuordnet. Sie liest sie mit derselben Kennung (bildschirmzeit_anrufe_lesen,
 --     die sie seit „Verbinden“ ohnehin hat); „Nicht mehr teilen“ löscht sie
 --     (bildschirmzeit_anrufe_loeschen).
---   * Seit dem 23.11.2026 schickt die Bewerbungszentrale außerdem Namen für
---     die Nummern aus Tobis Bewerbungen (bildschirmzeit_kontakte_setzen), und
---     die Widget-App benennt damit, wenn Tobi es freigibt, die Kontakte auf
---     dem Handy (bildschirmzeit_kontakte_lesen).
+--   * Seit dem 23.11.2026 schickt die Bewerbungszentrale außerdem je Bewerbung
+--     Name, Nummern und ein kurzes Briefing (bildschirmzeit_kontakte_setzen).
+--     Die Widget-App benennt damit, wenn Tobi es freigibt, die Kontakte auf
+--     dem Handy und zeigt bei einem Anruf das Briefing
+--     (bildschirmzeit_kontakte_lesen). Was sie zu unbekannten Nummern
+--     nachschlägt, meldet sie (bildschirmzeit_nachschlag_melden), die
+--     Bewerbungszentrale trägt es ein (bildschirmzeit_nachschlag_lesen).
 --
 -- Gespeichert wird nur der SHA-256 der Kennung. Auf die Tabellen führt mit dem
 -- öffentlichen Schlüssel kein Weg; nur die Funktionen unten.
@@ -66,14 +69,51 @@ create table if not exists public.bildschirmzeit_anruf (
   primary key (geraet, zeit, nummer)
 );
 
--- Namen für die Nummern aus den Bewerbungen (Tobi, 23.11.2026: „Du kannst meine
--- Telefon Kontakte auch umbennenen“). Die Bewerbungszentrale setzt die ganze
--- Liste, die Widget-App liest sie und benennt damit die Kontakte.
+-- Die Bewerbungen fürs Handy (Tobi, 23.11.2026: „Du kannst meine Telefon
+-- Kontakte auch umbennenen“ und „Geil wärs wenn er während des Telefonats
+-- direkt schon die Nummer googlet … und ich n schriftliches briefing bekomme“).
+-- Die Bewerbungszentrale setzt die ganze Liste, je Akte ab „beworben“: Name
+-- für den Kontakt, Firma, die Nummer der Akte, die Zentrale ohne Durchwahl,
+-- weitere Nummern aus Briefing und Verlauf und ein kurzes Briefing. Die
+-- Widget-App benennt damit Kontakte und zeigt das Briefing, wenn eine dieser
+-- Nummern anruft.
+-- Die erste Fassung vom 23.11. (je Nummer, ohne Akte) hatte die Spalte
+-- „gesetzt“ ohne „akte“: weg damit – nur abgeleitete Daten, die
+-- Bewerbungszentrale schickt die Liste neu.
+do $$
+begin
+  if exists (select 1 from information_schema.columns
+             where table_schema = 'public' and table_name = 'bildschirmzeit_kontakt' and column_name = 'nummer')
+     and not exists (select 1 from information_schema.columns
+             where table_schema = 'public' and table_name = 'bildschirmzeit_kontakt' and column_name = 'akte') then
+    drop table public.bildschirmzeit_kontakt;
+  end if;
+end
+$$;
+
 create table if not exists public.bildschirmzeit_kontakt (
   geraet    text not null references public.bildschirmzeit_geraet (geraet) on delete cascade,
-  nummer    text not null check (nummer ~ '^\+?[0-9]{3,32}$'),
-  name      text not null check (length(name) between 1 and 100),
+  akte      text not null check (akte ~ '^[A-Za-z0-9._-]{1,120}$'),
+  name      text not null check (length(name) between 1 and 100),   -- „Person (Firma)“ oder die Firma
+  firma     text not null check (length(firma) between 1 and 100),  -- kurz, für nachgeschlagene Nummern
+  nummer    text check (nummer is null or nummer ~ '^\+[0-9]{6,32}$'),  -- die Nummer der Akte
+  basis     text check (basis is null or basis ~ '^\+[0-9]{6,32}$'),    -- Zentrale ohne Durchwahl
+  weitere   text[] not null default '{}' check (cardinality(weitere) <= 10),
+  briefing  text not null default '' check (length(briefing) <= 1500),
   gesetzt   timestamptz not null default now(),
+  primary key (geraet, akte)
+);
+
+-- Was die Widget-App zu einer unbekannten Nummer nachgeschlagen hat (Claude mit
+-- Websuche, Tobis eigener Schlüssel): die Bewerbungszentrale trägt die Nummer
+-- in die passende Akte ein. Je Nummer der letzte Stand, ein Vierteljahr lang.
+create table if not exists public.bildschirmzeit_nachschlag (
+  geraet    text not null references public.bildschirmzeit_geraet (geraet) on delete cascade,
+  nummer    text not null check (nummer ~ '^\+[0-9]{6,32}$'),
+  zeit      timestamptz not null,                                  -- wann sie anrief
+  wer       text not null check (length(wer) between 1 and 300),   -- was die Suche fand
+  akte      text check (akte is null or akte ~ '^[A-Za-z0-9._-]{1,120}$'),  -- passende Bewerbung
+  gemeldet  timestamptz not null default now(),
   primary key (geraet, nummer)
 );
 
@@ -81,10 +121,12 @@ alter table public.bildschirmzeit_geraet enable row level security;
 alter table public.bildschirmzeit enable row level security;
 alter table public.bildschirmzeit_anruf enable row level security;
 alter table public.bildschirmzeit_kontakt enable row level security;
+alter table public.bildschirmzeit_nachschlag enable row level security;
 revoke all on table public.bildschirmzeit_geraet from public, anon, authenticated;
 revoke all on table public.bildschirmzeit from public, anon, authenticated;
 revoke all on table public.bildschirmzeit_anruf from public, anon, authenticated;
 revoke all on table public.bildschirmzeit_kontakt from public, anon, authenticated;
+revoke all on table public.bildschirmzeit_nachschlag from public, anon, authenticated;
 
 -- Die Kennung nie im Klartext: gespeichert und verglichen wird ihr Hash.
 create or replace function public.bildschirmzeit_hash(p_kennung text)
@@ -302,10 +344,12 @@ begin
 end
 $$;
 
--- Die Bewerbungszentrale setzt die Namen: p_kontakte = [{"nummer": "+4940123456",
--- "name": "Erika Beispiel (Beispiel GmbH)"}, …]. Die Liste ersetzt die alte
--- ganz. Einträge, die nicht passen, fallen still weg; doppelte Nummer: der
--- letzte Name gilt. false heißt: Diese Kennung ist nicht (mehr) angemeldet.
+-- Die Bewerbungszentrale setzt die Liste: p_kontakte = [{"akte": "beispiel-1",
+-- "name": "Erika Beispiel (Beispiel)", "firma": "Beispiel", "nummer": "+4940123456",
+-- "basis": "+4940123", "weitere": ["+491701234567"], "briefing": "…"}, …].
+-- Die Liste ersetzt die alte ganz. Einträge ohne Akte, Name oder Firma fallen
+-- still weg, unpassende Nummern ebenso (der Rest des Eintrags bleibt); doppelte
+-- Akte: der letzte gilt. false heißt: Diese Kennung ist nicht (mehr) angemeldet.
 create or replace function public.bildschirmzeit_kontakte_setzen(p_kennung text, p_kontakte jsonb)
 returns boolean
 language plpgsql
@@ -315,8 +359,14 @@ as $$
 declare
   g text := public.bildschirmzeit_hash(p_kennung);
   k jsonb;
-  n text;
+  ak text;
   nm text;
+  fi text;
+  nr text;
+  ba text;
+  we text[];
+  br text;
+  regel constant text := '^\+[0-9]{6,32}$';
 begin
   if p_kontakte is null or jsonb_typeof(p_kontakte) <> 'array' then
     raise exception 'Kontakte fehlen' using errcode = '22023';
@@ -330,23 +380,33 @@ begin
 
   delete from public.bildschirmzeit_kontakt where geraet = g;
   for k in select value from jsonb_array_elements(p_kontakte) loop
-    continue when jsonb_typeof(k) <> 'object'
-      or jsonb_typeof(k -> 'nummer') <> 'string' or jsonb_typeof(k -> 'name') <> 'string';
-    n := k ->> 'nummer';
-    continue when n !~ '^\+?[0-9]{3,32}$';
+    continue when jsonb_typeof(k) <> 'object' or jsonb_typeof(k -> 'akte') is distinct from 'string'
+      or jsonb_typeof(k -> 'name') is distinct from 'string' or jsonb_typeof(k -> 'firma') is distinct from 'string';
+    ak := k ->> 'akte';
+    continue when ak !~ '^[A-Za-z0-9._-]{1,120}$';
     nm := left(btrim(regexp_replace(k ->> 'name', '[[:cntrl:]]+', ' ', 'g')), 100);
-    continue when nm = '';
-    insert into public.bildschirmzeit_kontakt (geraet, nummer, name)
-    values (g, n, nm)
-    on conflict (geraet, nummer) do update set name = excluded.name;
+    fi := left(btrim(regexp_replace(k ->> 'firma', '[[:cntrl:]]+', ' ', 'g')), 100);
+    continue when nm = '' or fi = '';
+    nr := case when jsonb_typeof(k -> 'nummer') = 'string' and (k ->> 'nummer') ~ regel then k ->> 'nummer' end;
+    ba := case when jsonb_typeof(k -> 'basis') = 'string' and (k ->> 'basis') ~ regel then k ->> 'basis' end;
+    we := case when jsonb_typeof(k -> 'weitere') = 'array' then
+      array(select x from jsonb_array_elements_text(k -> 'weitere') as x where x ~ regel limit 10) else '{}' end;
+    br := case when jsonb_typeof(k -> 'briefing') = 'string' then left(btrim(k ->> 'briefing'), 1500) else '' end;
+    insert into public.bildschirmzeit_kontakt (geraet, akte, name, firma, nummer, basis, weitere, briefing)
+    values (g, ak, nm, fi, nr, ba, we, br)
+    on conflict (geraet, akte) do update
+      set name = excluded.name, firma = excluded.firma, nummer = excluded.nummer, basis = excluded.basis,
+          weitere = excluded.weitere, briefing = excluded.briefing;
   end loop;
   return true;
 end
 $$;
 
--- Die Widget-App liest die Namen (nach Nummer sortiert).
+-- Die Widget-App liest die Liste (nach Akte sortiert). Die erste Fassung gab nur
+-- nummer und name zurück; einen anderen Rückgabetyp nimmt „create or replace“ nicht.
+drop function if exists public.bildschirmzeit_kontakte_lesen(text);
 create or replace function public.bildschirmzeit_kontakte_lesen(p_kennung text)
-returns table (nummer text, name text)
+returns table (akte text, name text, firma text, nummer text, basis text, weitere text[], briefing text)
 language plpgsql
 security definer
 set search_path = ''
@@ -356,10 +416,62 @@ declare
   g text := public.bildschirmzeit_hash(p_kennung);
 begin
   return query
-    select k.nummer, k.name
+    select k.akte, k.name, k.firma, k.nummer, k.basis, k.weitere, k.briefing
     from public.bildschirmzeit_kontakt k
     where k.geraet = g
-    order by k.nummer;
+    order by k.akte;
+end
+$$;
+
+-- Die Widget-App meldet, was sie zu einer Nummer nachgeschlagen hat. Eine
+-- unbekannte Akte (nicht in der Liste) wird zu null. Behalten wird ein
+-- Vierteljahr. false heißt: Diese Kennung ist nicht (mehr) angemeldet.
+create or replace function public.bildschirmzeit_nachschlag_melden(p_kennung text, p_nummer text, p_zeit timestamptz, p_wer text, p_akte text)
+returns boolean
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  g text := public.bildschirmzeit_hash(p_kennung);
+  w text := left(btrim(regexp_replace(coalesce(p_wer, ''), '[[:cntrl:]]+', ' ', 'g')), 300);
+  a text;
+begin
+  if p_nummer is null or p_nummer !~ '^\+[0-9]{6,32}$' or p_zeit is null or w = '' then
+    raise exception 'Nachschlag ungültig' using errcode = '22023';
+  end if;
+  if not exists (select 1 from public.bildschirmzeit_geraet where geraet = g) then
+    return false;
+  end if;
+  select k.akte into a from public.bildschirmzeit_kontakt k where k.geraet = g and k.akte = p_akte;
+  insert into public.bildschirmzeit_nachschlag as x (geraet, nummer, zeit, wer, akte)
+  values (g, p_nummer, p_zeit, w, a)
+  on conflict (geraet, nummer) do update
+    set zeit = excluded.zeit, wer = excluded.wer, akte = excluded.akte, gemeldet = pg_catalog.now();
+  delete from public.bildschirmzeit_nachschlag where geraet = g and gemeldet < pg_catalog.now() - interval '92 days';
+  return true;
+end
+$$;
+
+-- Die Bewerbungszentrale liest die Ergebnisse ab p_seit (höchstens 31 Tage).
+create or replace function public.bildschirmzeit_nachschlag_lesen(p_kennung text, p_seit timestamptz)
+returns table (nummer text, zeit timestamptz, wer text, akte text)
+language plpgsql
+security definer
+set search_path = ''
+as $$
+#variable_conflict use_column
+declare
+  g text := public.bildschirmzeit_hash(p_kennung);
+begin
+  if p_seit is null then
+    raise exception 'Zeitraum ungültig' using errcode = '22023';
+  end if;
+  return query
+    select n.nummer, n.zeit, n.wer, n.akte
+    from public.bildschirmzeit_nachschlag n
+    where n.geraet = g and n.gemeldet >= greatest(p_seit, pg_catalog.now() - interval '31 days')
+    order by n.zeit;
 end
 $$;
 
@@ -382,5 +494,9 @@ revoke all on function public.bildschirmzeit_kontakte_setzen(text, jsonb) from p
 revoke all on function public.bildschirmzeit_kontakte_lesen(text) from public;
 grant execute on function public.bildschirmzeit_kontakte_setzen(text, jsonb) to anon, authenticated;
 grant execute on function public.bildschirmzeit_kontakte_lesen(text) to anon, authenticated;
+revoke all on function public.bildschirmzeit_nachschlag_melden(text, text, timestamptz, text, text) from public;
+revoke all on function public.bildschirmzeit_nachschlag_lesen(text, timestamptz) from public;
+grant execute on function public.bildschirmzeit_nachschlag_melden(text, text, timestamptz, text, text) to anon, authenticated;
+grant execute on function public.bildschirmzeit_nachschlag_lesen(text, timestamptz) to anon, authenticated;
 
 notify pgrst, 'reload schema';

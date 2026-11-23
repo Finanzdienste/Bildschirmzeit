@@ -1149,33 +1149,87 @@ diese App (`Anrufe.kt`).
 
 Tobi, 23.11.2026: „Du kannst meine Telefon Kontakte auch umbennenen“. Ruft eine
 Firma oder ein Vermittler an, soll auf dem Handy gleich stehen, wer das ist
-(„Erika Muster (Beispiel GmbH)“). Die Namen kennt nur die Bewerbungszentrale,
+(„Erika Muster (Beispiel)“). Die Namen kennt nur die Bewerbungszentrale,
 die Kontakte nur das Handy; dazwischen liegt Supabase (`Kontakte.kt`).
 
 - **Erst nach Freigabe:** Karte „Kontakte aus den Bewerbungen“ → „Kontakte
   benennen“ → Androids Abfrage „Zugriff auf Kontakte“ → „Zulassen“
   (`READ_CONTACTS`, `WRITE_CONTACTS`). Zweimal abgelehnt: die App-Infos.
-- **Woher:** Die Bewerbungszentrale schickt beim Start und bei „online“ die
-  Nummern ihrer Akten ab „beworben“ mit Namen („Person (Firma)“ oder nur die
-  Firma, Nummer als +49…) an `bildschirmzeit_kontakte_setzen`; die Liste
-  ersetzt die alte ganz. Die App holt sie im 15-Minuten-Lauf höchstens alle 30
-  Minuten (`bildschirmzeit_kontakte_lesen`) und merkt sie sich. Ohne Netz gilt
-  der zuletzt geholte Stand.
-- **Was:** Angewandt wird nur eine geänderte Liste – was Tobi danach von Hand
-  umbenennt, bleibt, bis sich der Name in der Liste ändert. Verglichen wird die
-  ganze Nummer (+49 und 0049 = 0, ohne Leer- und Trennzeichen), nicht nur die
-  letzten Ziffern wie Androids PhoneLookup. Ein Kontakt mit der Nummer bekommt
-  den neuen Namen (alle seine RawContacts; der alte Name wird gemerkt); fehlt
-  er, legt die App einen im Telefonspeicher an (kein Konto, Nummer als
-  „Geschäftlich“). Fällt eine Nummer aus der Liste, ist der angelegte Kontakt
-  wieder weg und der umbenannte hat seinen alten Namen. Eine leere Liste ändert
-  nichts. Einen angelegten Kontakt, den Tobi löscht, vergisst die App.
+- **Woher:** Die Bewerbungszentrale schickt beim Start und bei „online“ je
+  Bewerbung ab „beworben“ einen Eintrag an `bildschirmzeit_kontakte_setzen`
+  (Akte, Name „Person (Firma)“ oder die Firma, kurze Firma, Nummer +49…,
+  Zentrale ohne Durchwahl, weitere Nummern, Briefing – siehe „Anrufer
+  erkennen“); die Liste ersetzt die alte ganz. Die App holt sie im
+  15-Minuten-Lauf höchstens alle 30 Minuten (`bildschirmzeit_kontakte_lesen`,
+  wenn „Kontakte benennen“ oder „Anrufer erkennen“ an ist) und merkt sie sich.
+  Ohne Netz gilt der zuletzt geholte Stand.
+- **Was:** Benannt werden die Nummern der Akten, dazu Nummern, die „Anrufer
+  erkennen“ sicher einer Bewerbung zugeordnet hat (Name: die Firma). Angewandt
+  wird nur eine geänderte Liste – was Tobi danach von Hand umbenennt, bleibt,
+  bis sich der Name in der Liste ändert. Verglichen wird die ganze Nummer (+49
+  und 0049 = 0, ohne Leer- und Trennzeichen), nicht nur die letzten Ziffern wie
+  Androids PhoneLookup. Ein Kontakt mit der Nummer bekommt den neuen Namen
+  (alle seine RawContacts; der alte Name wird gemerkt); fehlt er, legt die App
+  einen im Telefonspeicher an (kein Konto, Nummer als „Geschäftlich“). Fällt
+  eine Nummer aus der Liste, ist der angelegte Kontakt wieder weg und der
+  umbenannte hat seinen alten Namen. Eine leere Liste ändert nichts. Einen
+  angelegten Kontakt, den Tobi löscht, vergisst die App.
 - **Aus:** „Nicht mehr benennen“ löscht alle angelegten Kontakte und gibt den
   umbenannten ihren alten Namen zurück (ohne Netz, nur auf dem Handy). „Alle
   Daten löschen“ ebenso; Supabase nimmt die Liste mit der Anmeldung mit.
 - Geprüft von `KontakteTest` (erfundenes Adressbuch, auch ohne Netz) und
   `tests/test-sql.mjs`; die Bewerbungszentrale prüft ihre Seite in ihren Tests
   `kontakte` und `kontakte-nur-lesen`.
+
+## Anrufer erkennen (nächstes Release)
+
+Tobi, 23.11.2026: „Geil wärs wenn er während des Telefonats direkt schon die
+Nummer googlet oder so und ich n schriftliches briefing bekomme und der Kontakt
+benannt wird“ (`Anrufer.kt`, `KI.kt`).
+
+- **Erst nach Freigabe:** Karte „Anrufer erkennen“ → „Anrufer erkennen“ →
+  Androids Abfragen für Telefon (`READ_PHONE_STATE`), Anrufliste, Kontakte und
+  Mitteilungen → „Zulassen“. Fürs Nachschlagen dann „Claude-Schlüssel holen“:
+  Das öffnet die Bewerbungszentrale in Firefox (`#bildschirmzeit-ki`), dort
+  „Schlüssel geben“; sie öffnet `bildschirmzeit://ki#<Schlüssel>`, und die App
+  übernimmt ihn – nur in den zehn Minuten nach dem Tipp auf „Claude-Schlüssel
+  holen“ (sonst könnte jede Webseite einen fremden Schlüssel unterschieben)
+  und nur einen Claude-Schlüssel (`sk-ant-…`). Er steht nur in den
+  SharedPreferences, nie im Log.
+- **Wann:** Androids `PHONE_STATE` (darf eine App weiter im Manifest empfangen,
+  `AnrufEmpfaenger`): beim Klingeln mit Nummer (die gibt Android nur mit
+  `READ_CALL_LOG` mit; sie kommt oft zweimal, gezeigt wird einmal). Kommt keine
+  Nummer, nimmt die App nach dem Auflegen den letzten Anruf aus der Anrufliste –
+  dann kommt die Mitteilung eben gleich nach dem Gespräch.
+- **Bekannte Nummer** (Nummer der Akte, Zentrale mit bis zu vier Ziffern
+  Durchwahl, weitere Nummern aus Briefing, Notizen und Verlauf): sofort eine
+  Mitteilung (Kanal „Anrufer“, hohe Wichtigkeit) mit dem Briefing der
+  Bewerbungszentrale – Stelle, Stand, Termin, Ansprechperson, Forderung,
+  Eintritt, Weg, offene Fragen, dann Claudes Gesprächs-Briefing. Ohne Netz aus
+  der gemerkten Liste. Antippen öffnet die Akte in der Bewerbungszentrale
+  (`#akte/<id>`, Firefox).
+- **Unbekannte Nummer**, nicht in Tobis Kontakten (die gehen nie an Claude; ohne
+  Erlaubnis für die Kontakte wird nichts nachgeschlagen), mit Schlüssel:
+  Mitteilung „Claude schlägt die Nummer nach …“, dann Claude (`claude-opus-5-5`,
+  Aufwand niedrig, Websuche `web_search_20260209` mit höchstens drei Suchen,
+  Rückfall bei Ablehnung, wie die Bewerbungszentrale) mit der Nummer und der
+  Liste der Firmen; Antwort als JSON (wer, Akte aus der Liste, sicher, Hinweis).
+  Höchstens zehn Nummern am Tag, eine Nummer 30 Tage lang nur einmal. Ohne Netz
+  ist die Nummer vorgemerkt und läuft von selbst, sobald Netz da ist (WorkManager
+  mit Netz-Bedingung, dazu der 15-Minuten-Lauf); ein Schlüsselfehler (4xx) nimmt
+  sie heraus und sagt es, 408/429/5xx bleiben vorgemerkt.
+- **Ergebnis:** Mitteilung „040 …: Beispiel GmbH, Personal“ mit Hinweis und, wenn
+  die Nummer zu einer Bewerbung gehört, deren Briefing. Ist sie sicher einer
+  Bewerbung zugeordnet, benennt „Kontakte benennen“ den Kontakt (Name: die
+  Firma), und der Fund geht an `bildschirmzeit_nachschlag_melden` (ohne Netz
+  später); die Bewerbungszentrale trägt die Nummer in die Akte ein, dann passen
+  auch ihre Anrufe. Ruft die Nummer wieder an, zeigt die App gleich das
+  Gefundene.
+- **Aus:** „Nicht mehr erkennen“; Vorgemerktes fällt weg. „Alle Daten löschen“
+  nimmt das Nachgeschlagene mit, Schlüssel und Schalter bleiben.
+- Geprüft von `AnruferTest` (erfundene Nummern und Anrufliste, Claude
+  ersetzt, ohne Netz) und `tests/test-sql.mjs`; die Bewerbungszentrale prüft
+  ihre Seite in `kontakte`, `nachschlagen`, `ki-fuer-widget` und `akte-link`.
 
 ## Der Vertrag zwischen Widget-App, Supabase und Web-Apps
 
@@ -1296,6 +1350,8 @@ android/                     Gradle-Projekt (Kotlin DSL)
     Aktualisierung.kt        WorkManager, Widget-Empfänger, Sperre
     Anrufe.kt                die Anrufliste für die Bewerbungszentrale (nach Freigabe)
     Kontakte.kt              Kontakte für die Nummern aus den Bewerbungen benennen (nach Freigabe)
+    Anrufer.kt               Anrufer erkennen: Briefing-Mitteilung, Nachschlagen, PHONE_STATE, WorkManager
+    KI.kt                    Claude mit Websuche (Tobis Schlüssel, rohes HTTP)
     Takt.kt                  wann gerechnet und gefunkt wird (rein), Wecker, Neustart/Update
     NeueVersion.kt           GitHub releases/latest: Laufnummer, APK, Prüfsumme
     Selbstupdate.kt          Updates von selbst: Regeln (rein), Laden, Installer-Sitzung, Status
@@ -1606,9 +1662,14 @@ spricht mit dem echten Supabase oder GitHub (`Netz.gesperrt`).
   „Zulassen“.
 - 23.11.2026: Release **v21** (Fassung 1.21, aus fa8e03b) mit den Kontakten
   aus den Bewerbungen (Abschnitt oben). 252 JUnit-/Robolectric-Prüfungen (10 neue in `KontakteTest`),
-  86 SQL grün; geändert sind nur die App-Bilder mit der neuen Karte. Offen:
-  Tabelle `bildschirmzeit_kontakt` und die zwei Funktionen in Supabase
-  einspielen, dann in der App „Kontakte benennen“ → „Zulassen“.
+  86 SQL grün; geändert sind nur die App-Bilder mit der neuen Karte. Die
+  Tabelle dazu kam erst in der Fassung je Akte (nächster Eintrag).
+- 23.11.2026: Anrufer erkennen (Abschnitt oben), nächstes Release. 267
+  JUnit-/Robolectric-Prüfungen (15 neue in `AnruferTest`), 101 SQL, 64
+  Web-Modul grün; geändert sind nur die App-Bilder mit der neuen Karte. Die
+  Kontakte-Tabelle ist jetzt je Akte (mit Briefing); die erste Fassung vom
+  23.11. räumt die Datei beim Einspielen selbst weg. Offen: SQL einspielen,
+  dann in der App „Anrufer erkennen“ → „Zulassen“ und „Claude-Schlüssel holen“.
 - Noch nicht auf dem S24 ausprobiert: Größen des Startbildschirms, Akku-
   Verhalten von One UI (ob es die App trotz Widget schlafen legt), ob
   Chrome den Verbinden-Link in der installierten Web-App oder als Tab

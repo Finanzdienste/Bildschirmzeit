@@ -27,7 +27,7 @@ import java.io.IOException
 class KontakteTest {
     private val kontext = RuntimeEnvironment.getApplication()
     private val jetzt = 1_800_000_000_000L
-    private val holenVerboten: (String) -> List<Wunsch> = { throw AssertionError("ohne Freigabe nichts holen") }
+    private val holenVerboten: (String) -> String = { throw AssertionError("ohne Freigabe nichts holen") }
 
     /** Androids Adressbuch, erfunden und stark vereinfacht: RawContacts mit Name und Nummern. */
     class ErfundeneKontakte : ContentProvider() {
@@ -191,7 +191,7 @@ class KontakteTest {
         val heuer = ErfundeneKontakte.anlegen("Frau Heuer", "040 1111-22")
         val fremd = ErfundeneKontakte.anlegen("Max Beispiel", "0170 1111122") // gleiche Endziffern, andere Nummer
         freigeben()
-        assertEquals(2, Kontakte.imTakt(kontext, jetzt) { liste })
+        assertEquals(2, Kontakte.imTakt(kontext, jetzt) { Kontakte.alsJson(liste) })
         assertEquals("Erika Muster (Beispiel GmbH)", ErfundeneKontakte.name(heuer))
         assertEquals("Max Beispiel", ErfundeneKontakte.name(fremd))
         val neu = ErfundeneKontakte.mitName("Muster AG").single()
@@ -202,7 +202,7 @@ class KontakteTest {
 
         // Dieselbe Liste noch einmal: nichts doppelt, und was Tobi von Hand umbenennt, bleibt.
         ErfundeneKontakte.daten.first { it.raw == heuer && it.mime == ErfundeneKontakte.NAME }.wert = "Erika (von Hand)"
-        assertEquals(0, Kontakte.imTakt(kontext, jetzt + Kontakte.ABSTAND_MS) { liste })
+        assertEquals(0, Kontakte.imTakt(kontext, jetzt + Kontakte.ABSTAND_MS) { Kontakte.alsJson(liste) })
         assertEquals("Erika (von Hand)", ErfundeneKontakte.name(heuer))
         assertEquals(3, ErfundeneKontakte.roh.size)
     }
@@ -211,10 +211,10 @@ class KontakteTest {
     fun hoechstensAlleDreissigMinutenHolen() {
         freigeben()
         var geholt = 0
-        Kontakte.imTakt(kontext, jetzt) { geholt++; liste }
-        Kontakte.imTakt(kontext, jetzt + Kontakte.ABSTAND_MS - 1) { geholt++; liste }
+        Kontakte.imTakt(kontext, jetzt) { geholt++; Kontakte.alsJson(liste) }
+        Kontakte.imTakt(kontext, jetzt + Kontakte.ABSTAND_MS - 1) { geholt++; Kontakte.alsJson(liste) }
         assertEquals(1, geholt)
-        Kontakte.imTakt(kontext, jetzt + Kontakte.ABSTAND_MS) { geholt++; liste }
+        Kontakte.imTakt(kontext, jetzt + Kontakte.ABSTAND_MS) { geholt++; Kontakte.alsJson(liste) }
         assertEquals(2, geholt)
         assertTrue("Uhr zurückgestellt", Kontakte.faellig(jetzt, jetzt + 60_000L))
     }
@@ -223,28 +223,28 @@ class KontakteTest {
     fun neueListeAendertNamenUndNimmtWegGefallenesZurueck() {
         val heuer = ErfundeneKontakte.anlegen("Frau Heuer", "040 1111-22")
         freigeben()
-        Kontakte.imTakt(kontext, jetzt) { liste }
+        Kontakte.imTakt(kontext, jetzt) { Kontakte.alsJson(liste) }
         val neu = ErfundeneKontakte.mitName("Muster AG").single()
 
         // Später: Muster AG mit Ansprechperson, die Nummer von Frau Heuer steht nicht mehr in der Liste.
-        Kontakte.imTakt(kontext, jetzt + Kontakte.ABSTAND_MS) { listOf(Wunsch("+4930123456", "Max Muster (Muster AG)")) }
+        Kontakte.imTakt(kontext, jetzt + Kontakte.ABSTAND_MS) { Kontakte.alsJson(listOf(Wunsch("+4930123456", "Max Muster (Muster AG)"))) }
         assertEquals("Max Muster (Muster AG)", ErfundeneKontakte.name(neu))
         assertEquals("kein zweiter Kontakt", 2, ErfundeneKontakte.roh.size)
         assertEquals("Frau Heuer", ErfundeneKontakte.name(heuer))
         assertTrue(speicher.kontakteUmbenannt.isEmpty())
 
         // Leere Liste (Bewerbungszentrale hat noch nichts geschickt): nichts löschen.
-        assertEquals(0, Kontakte.imTakt(kontext, jetzt + 2 * Kontakte.ABSTAND_MS) { emptyList() })
+        assertEquals(0, Kontakte.imTakt(kontext, jetzt + 2 * Kontakte.ABSTAND_MS) { "[]" })
         assertEquals(2, ErfundeneKontakte.roh.size)
     }
 
     @Test
     fun vonHandGeloeschtWirdVergessen() {
         freigeben()
-        Kontakte.imTakt(kontext, jetzt) { liste }
+        Kontakte.imTakt(kontext, jetzt) { Kontakte.alsJson(liste) }
         val neu = ErfundeneKontakte.mitName("Muster AG").single()
         ErfundeneKontakte.roh.remove(neu)
-        Kontakte.imTakt(kontext, jetzt + Kontakte.ABSTAND_MS) { liste.take(1) + Wunsch("+4930999", "Neu GmbH") }
+        Kontakte.imTakt(kontext, jetzt + Kontakte.ABSTAND_MS) { Kontakte.alsJson(liste.take(1) + Wunsch("+4930999", "Neu GmbH")) }
         assertFalse(neu in speicher.kontakteAngelegt)
     }
 
@@ -266,7 +266,7 @@ class KontakteTest {
         val heuer = ErfundeneKontakte.anlegen("Frau Heuer", "040 1111-22")
         val ohneName = ErfundeneKontakte.anlegen(null, "+49 30 123456")
         freigeben()
-        Kontakte.imTakt(kontext, jetzt) { liste }
+        Kontakte.imTakt(kontext, jetzt) { Kontakte.alsJson(liste) }
         assertEquals("Muster AG", ErfundeneKontakte.name(ohneName))
         assertEquals(2, Kontakte.zuruecknehmen(kontext))
         assertEquals("Frau Heuer", ErfundeneKontakte.name(heuer))
@@ -281,7 +281,7 @@ class KontakteTest {
     @Test
     fun alleDatenLoeschenNimmtDieKontakteMit() {
         freigeben()
-        Kontakte.imTakt(kontext, jetzt) { liste }
+        Kontakte.imTakt(kontext, jetzt) { Kontakte.alsJson(liste) }
         assertEquals(2, ErfundeneKontakte.roh.size)
         assertTrue(Rechner.allesLoeschen(kontext, jetzt) { true })
         assertTrue(ErfundeneKontakte.roh.isEmpty())

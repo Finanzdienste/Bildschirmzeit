@@ -111,6 +111,66 @@ class Speicher(context: Context) {
             }
         }
 
+    /** Briefing beim Anruf und Nachschlagen unbekannter Nummern (Anrufer.kt)? Tobi schaltet es in der App an und aus. */
+    var anruferErkennen: Boolean
+        get() = p.getBoolean(ANRUFER_ERKENNEN, false)
+        set(wert) {
+            p.edit { putBoolean(ANRUFER_ERKENNEN, wert) }
+        }
+
+    /** Tobis Claude-Schlüssel aus der Bewerbungszentrale – geheim wie die Kennung: nie ins Log. */
+    var kiSchluessel: String?
+        get() = p.getString(KI_SCHLUESSEL, null)?.takeIf { KI.gueltig(it) }
+        set(wert) {
+            p.edit { if (wert == null) remove(KI_SCHLUESSEL) else putString(KI_SCHLUESSEL, wert) }
+        }
+
+    /** Wann Tobi in der App „Claude-Schlüssel holen“ tippte (ms): Nur kurz danach nimmt die App einen Schlüssel an. */
+    var kiAngefragt: Long
+        get() = p.getLong(KI_ANGEFRAGT, 0L)
+        set(wert) {
+            p.edit { putLong(KI_ANGEFRAGT, wert) }
+        }
+
+    /** Was zu Nummern nachgeschlagen wurde: Vergleichsnummer (Kontakte.vergleich) → Fund. */
+    var nachgeschlagen: Map<String, Fund>
+        get() = textMap(NACHGESCHLAGEN) { o -> Fund.aus(o) }
+        set(wert) {
+            p.edit { putString(NACHGESCHLAGEN, JSONObject().also { o -> wert.forEach { (k, v) -> o.put(k, v.alsJson()) } }.toString()) }
+        }
+
+    /** Vorgemerkte Nummern (+49…) → wann sie anriefen: Nachschlagen geht nur mit Netz und läuft, sobald es da ist. */
+    var nachschlagOffen: Map<String, Long>
+        get() = textMap(NACHSCHLAG_OFFEN) { o -> o.optLong("zeit").takeIf { it > 0 } }
+        set(wert) {
+            p.edit { putString(NACHSCHLAG_OFFEN, JSONObject().also { o -> wert.forEach { (k, v) -> o.put(k, JSONObject().put("zeit", v)) } }.toString()) }
+        }
+
+    /** „Tag|Anzahl“: wie oft heute schon nachgeschlagen wurde (höchstens Anrufer.JE_TAG). */
+    var nachschlagHeute: String?
+        get() = p.getString(NACHSCHLAG_HEUTE, null)
+        set(wert) {
+            p.edit { putString(NACHSCHLAG_HEUTE, wert) }
+        }
+
+    /** „Nummer|ms“ des letzten Klingelns: Android meldet es oft zweimal. */
+    var zuletztGeklingelt: String?
+        get() = p.getString(ZULETZT_GEKLINGELT, null)
+        set(wert) {
+            p.edit { putString(ZULETZT_GEKLINGELT, wert) }
+        }
+
+    private fun <T> textMap(schluessel: String, wert: (JSONObject) -> T?): Map<String, T> {
+        val o = try {
+            JSONObject(p.getString(schluessel, null) ?: return emptyMap())
+        } catch (e: JSONException) {
+            return emptyMap()
+        }
+        val aus = LinkedHashMap<String, T>()
+        for (k in o.keys()) aus[k] = o.optJSONObject(k)?.let(wert) ?: continue
+        return aus
+    }
+
     private fun <T> jsonMap(schluessel: String, wert: (JSONObject, String) -> T?): Map<Long, T> {
         val o = try {
             JSONObject(p.getString(schluessel, null) ?: return emptyMap())
@@ -218,6 +278,13 @@ class Speicher(context: Context) {
         const val KONTAKTE_ANGEWANDT = "kontakte_angewandt"
         const val KONTAKTE_ANGELEGT = "kontakte_angelegt"
         const val KONTAKTE_UMBENANNT = "kontakte_umbenannt"
+        const val ANRUFER_ERKENNEN = "anrufer_erkennen"
+        const val KI_SCHLUESSEL = "ki_schluessel"
+        const val KI_ANGEFRAGT = "ki_angefragt"
+        const val NACHGESCHLAGEN = "nachgeschlagen"
+        const val NACHSCHLAG_OFFEN = "nachschlag_offen"
+        const val NACHSCHLAG_HEUTE = "nachschlag_heute"
+        const val ZULETZT_GEKLINGELT = "zuletzt_geklingelt"
         val SPERRE = Any()
     }
 }
