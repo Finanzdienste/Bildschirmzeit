@@ -1746,6 +1746,11 @@ spricht mit dem echten Supabase oder GitHub (`Netz.gesperrt`).
   Google-Konto Standard ist, und der erste Fehler brach den ganzen Lauf still
   ab. Jetzt Standardkonto, Ausweichen und Fehler je Nummer (Abschnitt
   „Kontakte aus den Bewerbungen“). 273 Prüfungen grün.
+- 25.11.2026: Release **v28** (Fassung 1.28, aus 4be980a) – Seiten, die
+  nicht einzeln stehen, zählen zu „Firefox“, „Sonstiges“ nur noch für Apps
+  ohne Namen (Abschnitt „Diskret“, v28). 273 Prüfungen grün, Lint ohne
+  Fehler; Prüfsumme gleich dem `digest`, Zertifikat `bc6f91b9…759e`,
+  versionCode 28, dieselben 14 Rechte wie v27.
 - Noch nicht auf dem S24 ausprobiert: Größen des Startbildschirms, Akku-
   Verhalten von One UI (ob es die App trotz Widget schlafen legt), ob
   Chrome den Verbinden-Link in der installierten Web-App oder als Tab
