@@ -6,6 +6,7 @@ import android.content.ContentUris
 import android.content.ContentValues
 import android.content.Context
 import android.content.pm.PackageManager
+import android.os.Build
 import android.provider.ContactsContract.CommonDataKinds.Phone
 import android.provider.ContactsContract.CommonDataKinds.StructuredName
 import android.provider.ContactsContract.Data
@@ -120,7 +121,8 @@ object Kontakte {
         if (liste.isEmpty() || stand == speicher.kontakteAngewandt) return 0
         return try {
             val n = anwenden(context.contentResolver, liste, speicher)
-            speicher.kontakteAngewandt = stand
+            // Ging etwas schief (Android lehnt das Anlegen ab), beim nächsten Lauf noch einmal versuchen
+            if (speicher.kontakteFehler == null) speicher.kontakteAngewandt = stand
             n
         } catch (e: SecurityException) {
             0
@@ -144,21 +146,32 @@ object Kontakte {
         val gewuenscht = liste.map { vergleich(it.nummer) }.toSet()
         val fertig = HashSet<Long>()
         var n = 0
+        var fehler: String? = null
+        // Jede Nummer für sich: Lehnt Android einen neuen Kontakt ab, werden die übrigen trotzdem benannt
+        // (bis v26 brach der ganze Lauf beim ersten Fehler ab, und es wurde gar nichts umbenannt).
         for (w in liste) {
-            val kontakte = telefon[vergleich(w.nummer)]
-            if (kontakte.isNullOrEmpty()) {
-                anlegen(cr, w)?.let { angelegt[it] = w.nummer; n++ }
-                continue
-            }
-            for (k in kontakte) {
-                if (!fertig.add(k) || namen[k] == w.name) continue
-                for (raw in rohkontakte(cr, k)) {
-                    if (raw !in angelegt) umbenannt.putIfAbsent(raw, Umbenannt(nameVon(cr, raw).orEmpty(), w.nummer))
-                    nameSetzen(cr, raw, w.name)
+            try {
+                val kontakte = telefon[vergleich(w.nummer)]
+                if (kontakte.isNullOrEmpty()) {
+                    val raw = anlegen(cr, w)
+                    if (raw == null) fehler = "Android hat das Anlegen abgelehnt" else { angelegt[raw] = w.nummer; n++ }
+                    continue
                 }
-                n++
+                for (k in kontakte) {
+                    if (!fertig.add(k) || namen[k] == w.name) continue
+                    for (raw in rohkontakte(cr, k)) {
+                        if (raw !in angelegt) umbenannt.putIfAbsent(raw, Umbenannt(nameVon(cr, raw).orEmpty(), w.nummer))
+                        nameSetzen(cr, raw, w.name)
+                    }
+                    n++
+                }
+            } catch (e: RuntimeException) {
+                if (e is SecurityException) throw e
+                Log.w(LOG, "Kontakt benennen fehlgeschlagen: ${e.javaClass.simpleName}") // ohne Namen und Nummer
+                fehler = (e.message ?: e.javaClass.simpleName).replace(Regex("\\s+"), " ").take(120)
             }
         }
+        speicher.kontakteFehler = fehler
         // Nicht mehr in der Liste: Angelegte weg, Umbenannte bekommen ihren alten Namen zurück.
         for ((raw, nummer) in angelegt.toMap()) {
             if (vergleich(nummer) in gewuenscht) continue
@@ -188,6 +201,7 @@ object Kontakte {
         speicher.kontakteGeholt = 0L
         speicher.kontakteListe = null
         speicher.kontakteAngewandt = null
+        speicher.kontakteFehler = null
         if (!erlaubt(context)) return@allein 0
         val cr = context.contentResolver
         var n = 0
@@ -252,16 +266,21 @@ object Kontakte {
         cr.insert(Data.CONTENT_URI, werte)
     }
 
-    /** Ein neuer Kontakt im Telefonspeicher (kein Konto): Name und die Nummer als „Geschäftlich“. */
+    /**
+     * Ein neuer Kontakt mit Name und der Nummer als „Geschäftlich“. Wohin: Android 16 kennt ein
+     * Standardkonto für neue Kontakte und lehnt Kontakte „nur auf dem Telefon“ ab, wenn das ein
+     * Google-Konto ist. Deshalb erst das Standardkonto, sonst der Telefonspeicher, und lehnt Android
+     * den ab, das Konto, in dem die vorhandenen Kontakte liegen (Google zuerst).
+     */
     private fun anlegen(cr: ContentResolver, w: Wunsch): Long? {
-        val uri = cr.insert(
-            RawContacts.CONTENT_URI,
-            ContentValues().apply {
-                putNull(RawContacts.ACCOUNT_TYPE)
-                putNull(RawContacts.ACCOUNT_NAME)
-            },
-        ) ?: return null
-        val raw = ContentUris.parseId(uri)
+        val erst = standardKonto(cr)
+        val raw = try {
+            rohAnlegen(cr, erst)
+        } catch (e: IllegalArgumentException) {
+            null
+        } catch (e: IllegalStateException) {
+            null
+        } ?: kontoVorhandener(cr)?.takeIf { it != erst }?.let { rohAnlegen(cr, it) } ?: return null
         cr.insert(
             Data.CONTENT_URI,
             ContentValues().apply {
@@ -280,5 +299,56 @@ object Kontakte {
             },
         )
         return raw
+    }
+
+    /** Konto (Typ, Name) oder null für den Telefonspeicher. */
+    private fun rohAnlegen(cr: ContentResolver, konto: Pair<String, String>?): Long? {
+        val uri = cr.insert(
+            RawContacts.CONTENT_URI,
+            ContentValues().apply {
+                if (konto == null) {
+                    putNull(RawContacts.ACCOUNT_TYPE)
+                    putNull(RawContacts.ACCOUNT_NAME)
+                } else {
+                    put(RawContacts.ACCOUNT_TYPE, konto.first)
+                    put(RawContacts.ACCOUNT_NAME, konto.second)
+                }
+            },
+        ) ?: return null
+        return ContentUris.parseId(uri)
+    }
+
+    /** Das Standardkonto für neue Kontakte (ab Android 16), wenn es ein Konto ist; sonst null (Telefonspeicher). */
+    private fun standardKonto(cr: ContentResolver): Pair<String, String>? {
+        if (Build.VERSION.SDK_INT < 36) return null
+        return try {
+            val d = RawContacts.DefaultAccount.getDefaultAccountForNewContacts(cr)
+            val a = d.account
+            val konto = d.state == RawContacts.DefaultAccount.DefaultAccountAndState.DEFAULT_ACCOUNT_STATE_CLOUD ||
+                d.state == RawContacts.DefaultAccount.DefaultAccountAndState.DEFAULT_ACCOUNT_STATE_SIM
+            if (konto && a != null) a.type to a.name else null
+        } catch (e: RuntimeException) {
+            null // manche Hersteller oder Fassungen kennen die Abfrage nicht
+        }
+    }
+
+    /** Das Konto mit den meisten vorhandenen Kontakten, Google bevorzugt. */
+    private fun kontoVorhandener(cr: ContentResolver): Pair<String, String>? {
+        val zaehler = HashMap<Pair<String, String>, Int>()
+        cr.query(
+            RawContacts.CONTENT_URI,
+            arrayOf(RawContacts.ACCOUNT_TYPE, RawContacts.ACCOUNT_NAME),
+            "${RawContacts.DELETED}=0 AND ${RawContacts.ACCOUNT_TYPE} IS NOT NULL",
+            null,
+            null,
+        )?.use { c ->
+            while (c.moveToNext()) {
+                val typ = c.getString(0) ?: continue
+                val name = c.getString(1) ?: continue
+                zaehler.merge(typ to name, 1, Int::plus)
+            }
+        }
+        return zaehler.entries.sortedWith(compareByDescending<Map.Entry<Pair<String, String>, Int>> { it.key.first == "com.google" }.thenByDescending { it.value })
+            .firstOrNull()?.key
     }
 }

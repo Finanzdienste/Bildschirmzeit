@@ -1173,7 +1173,12 @@ die Kontakte nur das Handy; dazwischen liegt Supabase (`Kontakte.kt`).
   und 0049 = 0, ohne Leer- und Trennzeichen), nicht nur die letzten Ziffern wie
   Androids PhoneLookup. Ein Kontakt mit der Nummer bekommt den neuen Namen
   (alle seine RawContacts; der alte Name wird gemerkt); fehlt er, legt die App
-  einen im Telefonspeicher an (kein Konto, Nummer als „Geschäftlich“). Fällt
+  einen neuen an (Nummer als „Geschäftlich“): ins Standardkonto für neue
+  Kontakte (Android 16, `RawContacts.DefaultAccount`), sonst in den
+  Telefonspeicher, und lehnt Android den ab, ins Konto der vorhandenen Kontakte
+  (Google zuerst). Jede Nummer läuft für sich: Ein abgelehnter Kontakt hält die
+  übrigen nicht auf, die Karte nennt den Fehler, und der nächste Lauf versucht
+  es noch einmal (bis v26 brach der ganze Lauf beim ersten Fehler still ab). Fällt
   eine Nummer aus der Liste, ist der angelegte Kontakt wieder weg und der
   umbenannte hat seinen alten Namen. Eine leere Liste ändert nichts. Einen
   angelegten Kontakt, den Tobi löscht, vergisst die App.
@@ -1704,6 +1709,11 @@ spricht mit dem echten Supabase oder GitHub (`Netz.gesperrt`).
   dem Nachholen wären sie alle 15 Minuten wiedergekommen. Jetzt bleiben sie
   vorgemerkt, das Nachschlagen ruht mit dem Grund aus Claudes Antwort
   (Abschnitt „Anrufer erkennen“). 271 Prüfungen grün.
+- 25.11.2026: Auf dem S24 (Android 16) wurde trotz „Kontakte benennen“ nichts
+  umbenannt: Android lehnt Kontakte nur im Telefonspeicher ab, wenn ein
+  Google-Konto Standard ist, und der erste Fehler brach den ganzen Lauf still
+  ab. Jetzt Standardkonto, Ausweichen und Fehler je Nummer (Abschnitt
+  „Kontakte aus den Bewerbungen“). 273 Prüfungen grün.
 - Noch nicht auf dem S24 ausprobiert: Größen des Startbildschirms, Akku-
   Verhalten von One UI (ob es die App trotz Widget schlafen legt), ob
   Chrome den Verbinden-Link in der installierten Web-App oder als Tab

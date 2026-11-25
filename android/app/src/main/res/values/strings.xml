@@ -88,6 +88,7 @@
     <string name="kontakte_an">An. Zuletzt geholt: %1$s. Angelegt: %2$d, umbenannt: %3$d.</string>
     <string name="kontakte_an_noch_nicht">An. Die Namen kommen beim nächsten Lauf, sobald Netz da ist.</string>
     <string name="kontakte_verweigert">Android hat den Zugriff auf die Kontakte nicht erlaubt. In den App-Infos unter Berechtigungen → Kontakte → Zulassen tippen.</string>
+    <string name="kontakte_fehler">Neue Kontakte anlegen ging nicht (%1$s). Umbenennen geht trotzdem, die App versucht es weiter.</string>
     <string name="kontakte_zurueck">Nicht mehr benannt. Die angelegten Kontakte sind gelöscht, umbenannte haben ihren alten Namen.</string>
     <string name="anrufer_titel">Anrufer erkennen</string>
     <string name="anrufer_text">Ruft eine Nummer aus deinen Bewerbungen an, zeigt eine Mitteilung gleich das Briefing: Stelle, Stand, Ansprechperson, deine Forderung, offene Fragen. Ist die Nummer unbekannt und nicht in deinen Kontakten, schlägt Claude sie mit deinem Claude-Schlüssel im Netz nach (ein paar Cent je Suche, höchstens zehn am Tag); ohne Netz, sobald es wieder da ist. Gehört sie zu einer Bewerbung oder einem Personalvermittler, bekommt der Kontakt den Namen (mit „Kontakte benennen“) und die Bewerbungszentrale die Nummer. Anrufe der letzten 30 Tage schlägt sie auch nach. Nummern aus deinen Kontakten gehen nie an Claude – außer Kontakte, die du „Job …“ genannt hast.</string>

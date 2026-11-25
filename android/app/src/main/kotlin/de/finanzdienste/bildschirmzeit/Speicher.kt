@@ -99,6 +99,13 @@ class Speicher(context: Context) {
             p.edit { putString(KONTAKTE_ANGELEGT, JSONObject().also { o -> wert.forEach { (k, v) -> o.put(k.toString(), v) } }.toString()) }
         }
 
+    /** Was beim letzten Benennen schiefging (Android lehnt das Anlegen ab), für die Karte; null, wenn alles ging. */
+    var kontakteFehler: String?
+        get() = p.getString(KONTAKTE_FEHLER, null)
+        set(wert) {
+            p.edit { if (wert == null) remove(KONTAKTE_FEHLER) else putString(KONTAKTE_FEHLER, wert) }
+        }
+
     /** Die Kontakte, die die App umbenannt hat: RawContact-Id → alter Name und Nummer. */
     var kontakteUmbenannt: Map<Long, Umbenannt>
         get() = jsonMap(KONTAKTE_UMBENANNT) { o, k -> o.optJSONObject(k)?.let { Umbenannt(it.optString("alt"), it.optString("nummer")) } }
@@ -292,6 +299,7 @@ class Speicher(context: Context) {
         const val KONTAKTE_ANGEWANDT = "kontakte_angewandt"
         const val KONTAKTE_ANGELEGT = "kontakte_angelegt"
         const val KONTAKTE_UMBENANNT = "kontakte_umbenannt"
+        const val KONTAKTE_FEHLER = "kontakte_fehler"
         const val ANRUFER_ERKENNEN = "anrufer_erkennen"
         const val KI_SCHLUESSEL = "ki_schluessel"
         const val KI_ANGEFRAGT = "ki_angefragt"

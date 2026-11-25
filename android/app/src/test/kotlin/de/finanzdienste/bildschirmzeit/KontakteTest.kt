@@ -36,18 +36,25 @@ class KontakteTest {
         companion object {
             val roh = LinkedHashMap<Long, Long>() // RawContact → Kontakt
             val daten = ArrayList<Daten>()
+            val konten = HashMap<Long, Pair<String, String>>() // RawContact → Konto (Typ, Name); fehlt: Telefonspeicher
             private var naechste = 100L
+
+            /** Wie Android 16 mit einem Google-Konto als Standard: Kontakte „nur auf dem Telefon“ werden abgelehnt. */
+            var lokalAbgelehnt = false
 
             fun leeren() {
                 roh.clear()
                 daten.clear()
+                konten.clear()
+                lokalAbgelehnt = false
                 naechste = 100L
             }
 
             /** Ein Kontakt mit Name und Nummern; gibt die Id des RawContacts zurück. */
-            fun anlegen(name: String?, vararg nummern: String, kontakt: Long? = null): Long {
+            fun anlegen(name: String?, vararg nummern: String, kontakt: Long? = null, konto: Pair<String, String>? = null): Long {
                 val raw = naechste++
                 roh[raw] = kontakt ?: raw
+                if (konto != null) konten[raw] = konto
                 if (name != null) daten += Daten(raw, NAME, name)
                 for (n in nummern) daten += Daten(raw, TELEFON, n)
                 return raw
@@ -74,6 +81,8 @@ class KontakteTest {
                     val raw = s[1].toLong()
                     if (raw in roh) c.addRow(arrayOf<Any?>(raw, 0))
                 }
+                s == listOf("raw_contacts") && projection?.contains(ContactsContract.RawContacts.ACCOUNT_TYPE) == true ->
+                    for ((raw, k) in konten) if (raw in roh) c.addRow(arrayOf<Any?>(k.first, k.second))
                 s == listOf("raw_contacts") -> {
                     val kontakt = selectionArgs!![0].toLong()
                     for ((raw, k) in roh) if (k == kontakt) c.addRow(arrayOf<Any?>(raw))
@@ -91,9 +100,11 @@ class KontakteTest {
             val v = values!!
             return when (uri.pathSegments) {
                 listOf("raw_contacts") -> {
-                    assertNull("Telefonspeicher, kein Konto", v.getAsString(ContactsContract.RawContacts.ACCOUNT_TYPE))
+                    val typ = v.getAsString(ContactsContract.RawContacts.ACCOUNT_TYPE)
+                    if (typ == null && lokalAbgelehnt) throw IllegalArgumentException("Cannot add contacts to local or SIM accounts when not set as default account")
                     val raw = naechste++
                     roh[raw] = raw
+                    if (typ != null) konten[raw] = typ to v.getAsString(ContactsContract.RawContacts.ACCOUNT_NAME)
                     ContentUris.withAppendedId(uri, raw)
                 }
                 listOf("data") -> {
@@ -138,6 +149,7 @@ class KontakteTest {
         speicher.kontakteGeholt = 0L
         speicher.kontakteListe = null
         speicher.kontakteAngewandt = null
+        speicher.kontakteFehler = null
         speicher.kontakteAngelegt = emptyMap()
         speicher.kontakteUmbenannt = emptyMap()
     }
@@ -205,6 +217,42 @@ class KontakteTest {
         assertEquals(0, Kontakte.imTakt(kontext, jetzt + Kontakte.ABSTAND_MS) { Kontakte.alsJson(liste) })
         assertEquals("Erika (von Hand)", ErfundeneKontakte.name(heuer))
         assertEquals(3, ErfundeneKontakte.roh.size)
+    }
+
+    @Test
+    fun androidLehntKontakteNurAufDemTelefonAb() {
+        // Tobi, 25.11.2026: „Telefonnummern noch immer nicht korrekt“ – Android 16 mit Google als Standardkonto:
+        // Der neue Kontakt kommt ins Google-Konto, der vorhandene wird umbenannt.
+        freigeben()
+        ErfundeneKontakte.lokalAbgelehnt = true
+        val google = "com.google" to "konto@example.org"
+        val vorhanden = ErfundeneKontakte.anlegen("Job Neu 1", "040 1111 22", konto = google)
+        speicher.kontakteListe = Kontakte.alsJson(liste.reversed()) // zuerst die Nummer, die angelegt werden muss
+        assertEquals(2, Kontakte.benennen(kontext))
+        assertEquals("Erika Muster (Beispiel GmbH)", ErfundeneKontakte.name(vorhanden))
+        val neu = ErfundeneKontakte.mitName("Muster AG").single()
+        assertEquals(google, ErfundeneKontakte.konten[neu])
+        assertNull(speicher.kontakteFehler)
+        assertTrue(speicher.kontakteAngelegt.containsKey(neu))
+    }
+
+    @Test
+    fun einFehlerHaeltDieAnderenNichtAuf() {
+        // Kein Konto zum Ausweichen: Der neue Kontakt fehlt, umbenannt wird trotzdem, die Karte sagt es, der nächste Lauf versucht es wieder.
+        freigeben()
+        ErfundeneKontakte.lokalAbgelehnt = true
+        val vorhanden = ErfundeneKontakte.anlegen("Job Neu 1", "040 1111 22")
+        speicher.kontakteListe = Kontakte.alsJson(liste.reversed())
+        assertEquals(1, Kontakte.benennen(kontext))
+        assertEquals("Erika Muster (Beispiel GmbH)", ErfundeneKontakte.name(vorhanden))
+        assertTrue(ErfundeneKontakte.mitName("Muster AG").isEmpty())
+        assertEquals("Android hat das Anlegen abgelehnt", speicher.kontakteFehler)
+        assertNull("nicht als erledigt gemerkt", speicher.kontakteAngewandt)
+        ErfundeneKontakte.lokalAbgelehnt = false
+        assertEquals(1, Kontakte.benennen(kontext))
+        assertEquals(1, ErfundeneKontakte.mitName("Muster AG").size)
+        assertNull(speicher.kontakteFehler)
+        assertTrue(speicher.kontakteAngewandt != null)
     }
 
     @Test

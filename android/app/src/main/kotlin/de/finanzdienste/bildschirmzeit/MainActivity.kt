@@ -799,7 +799,8 @@ class MainActivity : Activity(), UpdateBeobachter {
             when {
                 !an -> null
                 zuletzt <= 0L -> getString(R.string.kontakte_an_noch_nicht)
-                else -> getString(R.string.kontakte_an, anrufeZeit(zuletzt), speicher.kontakteAngelegt.size, speicher.kontakteUmbenannt.size)
+                else -> getString(R.string.kontakte_an, anrufeZeit(zuletzt), speicher.kontakteAngelegt.size, speicher.kontakteUmbenannt.size) +
+                    (speicher.kontakteFehler?.let { "\n" + getString(R.string.kontakte_fehler, it) } ?: "")
             },
         )
         findViewById<Button>(R.id.kontakte_knopf).setText(if (an) R.string.kontakte_aus else R.string.kontakte_freigeben)
