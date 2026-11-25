@@ -157,9 +157,10 @@ fun auswerten(
         }
     }
     val einzeln = einzelneDomains(summe, immer = nur, verborgen = verborgen)
-    // Seiten zusammen (ab 5 Minuten einzeln), Apps, die nie mit Namen erscheinen, zu „Sonstiges“ (Diskret.kt).
+    val firefox = firefoxSchluessel(summe.keys)
+    // Seiten zusammen (ab 5 Minuten einzeln, der Rest zu Firefox), Apps, die nie mit Namen erscheinen, zu „Sonstiges“ (Diskret.kt).
     fun gruppe(k: String, name: String): String =
-        if (seiteVon(k) == null && appVerborgen(k, name)) SONSTIGE_WEBSEITEN else anzeigeSchluessel(k, einzeln)
+        if (seiteVon(k) == null && appVerborgen(k, name)) SONSTIGES else anzeigeSchluessel(k, einzeln, firefox)
     val tage = z.tage.map { d ->
         val tag = verlauf[d]
         when {
@@ -174,7 +175,7 @@ fun auswerten(
         val g = gruppe(k, namen[k] ?: k)
         gruppiert[g] = (gruppiert[g] ?: 0L) + s
     }
-    val alle = sortiert(gruppiert.map { (k, s) -> Posten(k, anzeigename(k) ?: namen[k] ?: k, s) })
+    val alle = sortiert(gruppiert.map { (k, s) -> Posten(k, anzeigename(k) ?: namen[k] ?: if (k == firefox) FIREFOX_NAME else k, s) })
     val apps = if (nur == null) alle else alle.filter { it.schluessel == nur }
     return Auswertung(z, heute, tage, apps, datenSeit, nur, alle.sumOf { it.sekunden })
 }

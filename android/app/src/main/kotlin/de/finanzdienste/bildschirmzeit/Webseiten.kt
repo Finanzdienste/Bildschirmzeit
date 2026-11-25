@@ -22,7 +22,7 @@ import java.io.IOException
  * der Rest bleibt der Browser. Gezeigt (Widget, Statistik) wird sie
  * zusammengefasst (webseitenZusammenfassen): dieselbe Domain aus beiden
  * Browsern addiert, ab 5 Minuten (am Tag bzw. im Zeitraum) einzeln, sonst
- * „Sonstige Webseiten“. Die Gesamtzeit ändert sich nie. Rein und ohne Android
+ * zu „Firefox“ (seit v28). Die Gesamtzeit ändert sich nie. Rein und ohne Android
  * getestet in WebseitenTest.
  */
 
@@ -47,12 +47,25 @@ const val WEBSEITE_EINZELN_SEKUNDEN = 5 * 60L
 /** Schlüsselraum der gezeigten Seiten (beide Browser zusammen): „webseite:youtube.com“. */
 const val WEBSEITE = "webseite:"
 
-/** Alle kleineren Seiten zusammen. */
-const val SONSTIGE_WEBSEITEN = "webseite:*"
+/**
+ * Apps, die nie mit Namen erscheinen (Dating, selbst zusammengelegt; Diskret.kt):
+ * „Sonstiges“. Bis v27 standen hier auch alle Seiten, die nicht einzeln stehen –
+ * seit v28 zählen die zu Firefox (FIREFOX_NAME). Der Wert ist noch von damals.
+ */
+const val SONSTIGES = "webseite:*"
 const val SONSTIGE_NAME = "Sonstiges"
 
-/** Im Widget ist neben der Zeit weniger Platz: dort so (die blaue Kachel „…“ sagt, dass es Seiten sind). */
+/** Im Widget (dort ist neben der Zeit weniger Platz). */
 const val SONSTIGE_KURZ = "Sonstiges"
+
+/**
+ * Seiten, die nicht einzeln stehen – unter 5 Minuten, ohne Namen (neuer Tab,
+ * Suche, privat, Inkognito), Erotik und Dating, selbst zusammengelegte –, aus
+ * Firefox und Chrome zählen seit v28 zu „Firefox“, zusammen mit Firefox selbst.
+ * Tobi, 25.11.: „Aber statt sonstiges können wir das ja einfach Firefox nennen.
+ * Und Dating Apps sind dann stattdessen sonstiges“.
+ */
+const val FIREFOX_NAME = "Firefox"
 
 /**
  * Hier liegen Tobis Web-Apps (WebApp, etwa Workout). In Chrome zählen
@@ -62,8 +75,8 @@ const val WEB_APPS_DOMAIN = "finanzdienste.github.io"
 
 /**
  * „Eine Seite, aber ohne erkennbare Domain“: neuer Tab, Suchbegriffe statt
- * Adresse, about:, private und Inkognito-Tabs. Zählt zu „Sonstige Webseiten“,
- * nie einzeln – Tobi, 16.11., Widget mit Chrome als eigenem Eintrag: „Eigentlich dürften
+ * Adresse, about:, private und Inkognito-Tabs. Zählt zu „Firefox“ (seit v28,
+ * vorher „Sonstiges“), nie einzeln – Tobi, 16.11., Widget mit Chrome als eigenem Eintrag: „Eigentlich dürften
  * Chrome und Firefox ja garnicht mehr auftauchen oder?“
  */
 const val OHNE_DOMAIN = "?"
@@ -146,10 +159,10 @@ interface Knoten {
 sealed interface Befund {
     data class Seite(val domain: String) : Befund
 
-    /** Leiste da, aber keine Domain (neuer Tab, Startseite, about:, Suchbegriffe): „Sonstige Webseiten“. */
+    /** Leiste da, aber keine Domain (neuer Tab, Startseite, about:, Suchbegriffe): zählt zu „Firefox“. */
     data object Keine : Befund
 
-    /** Ein privater bzw. Inkognito-Tab: keine Domain merken – „Sonstige Webseiten“. */
+    /** Ein privater bzw. Inkognito-Tab: keine Domain merken – zählt zu „Firefox“. */
     data object Privat : Befund
 
     /** Kein Web: eine installierte Web-App oder ein Custom Tab ohne Leiste – die Zeit bleibt beim Browser. */
@@ -399,24 +412,45 @@ fun einzelneDomains(sekunden: Map<String, Long>, immer: String? = null, verborge
     val jeDomain = HashMap<String, Long>()
     for ((k, s) in sekunden) seiteVon(k)?.let { (_, d) -> if (d != OHNE_DOMAIN && !verborgen(d)) jeDomain[d] = (jeDomain[d] ?: 0L) + s }
     val aus = jeDomain.filterValues { it >= WEBSEITE_EINZELN_SEKUNDEN }.keys.toMutableSet()
-    val angetippt = immer?.takeIf { it.startsWith(WEBSEITE) && it != SONSTIGE_WEBSEITEN && it != WEBSEITE + OHNE_DOMAIN }?.removePrefix(WEBSEITE)
+    val angetippt = immer?.takeIf { it.startsWith(WEBSEITE) && it != SONSTIGES && it != WEBSEITE + OHNE_DOMAIN }?.removePrefix(WEBSEITE)
     if (angetippt != null && !verborgen(angetippt)) aus += angetippt
     return aus
 }
 
-/** Unter welchem Schlüssel ein Posten gezeigt wird: eine Seite (beide Browser zusammen) oder „Sonstige Webseiten“. */
-fun anzeigeSchluessel(schluessel: String, einzeln: Set<String>): String {
+/**
+ * Unter welchem Schlüssel ein Posten gezeigt wird: eine Seite (beide Browser
+ * zusammen) oder – was nicht einzeln steht – Firefox (`firefox`, das Paket aus
+ * firefoxSchluessel).
+ */
+fun anzeigeSchluessel(schluessel: String, einzeln: Set<String>, firefox: String = FIREFOXE.first()): String {
     val (_, d) = seiteVon(schluessel) ?: return schluessel
-    return if (d in einzeln) WEBSEITE + d else SONSTIGE_WEBSEITEN
+    return if (d in einzeln) WEBSEITE + d else firefox
 }
 
-/** Ist das eine gezeigte Seite (oder „Sonstige Webseiten“) oder ein Seiten-Posten im Verlauf? */
+/**
+ * Das Paket, unter dem „Firefox“ steht: das Firefox, das in den Schlüsseln
+ * vorkommt (selbst oder mit Seiten), sonst das gewöhnliche.
+ */
+fun firefoxSchluessel(schluessel: Iterable<String>): String =
+    schluessel.firstOrNull { it in FIREFOXE }
+        ?: schluessel.firstNotNullOfOrNull { k -> seiteVon(k)?.first?.takeIf { it in FIREFOXE } }
+        ?: FIREFOXE.first()
+
+/** Der Name des Eintrags `k`, der für Seiten auch Firefox sein kann (dann „Firefox“, wenn Firefox selbst nicht dabei ist). */
+private fun gezeigterName(k: String, firefox: String, bisher: String?, p: Posten): String =
+    anzeigename(k) ?: when {
+        k != firefox || p.schluessel == firefox -> p.name
+        else -> bisher ?: FIREFOX_NAME
+    }
+
+/** Ist das eine gezeigte Seite (oder „Sonstiges“, Wert von früher) oder ein Seiten-Posten im Verlauf? */
 fun istWebseite(schluessel: String): Boolean = schluessel.startsWith(WEBSEITE) || seiteVon(schluessel) != null
 
 /**
  * Die Liste für Widget und App: Seiten aus Chrome und Firefox zusammen, ab
- * 5 Minuten einzeln, der Rest als „Sonstige Webseiten“. Die Browser selbst
- * bleiben, wie sie sind (ihre Zeit ohne erkannte Seite).
+ * 5 Minuten einzeln, der Rest zählt zu Firefox (seit v28, FIREFOX_NAME).
+ * Chrome bleibt, wie es ist (seine Zeit ohne erkannte Seite); Apps, die nie
+ * mit Namen erscheinen, stehen unter „Sonstiges“.
  */
 fun webseitenZusammenfassen(
     posten: List<Posten>,
@@ -425,13 +459,14 @@ fun webseitenZusammenfassen(
 ): List<Posten> {
     if (posten.none { seiteVon(it.schluessel) != null || appVerborgen(it.schluessel, it.name) }) return posten
     val einzeln = einzelneDomains(posten.associate { it.schluessel to it.sekunden }, verborgen = verborgen)
+    val firefox = firefoxSchluessel(posten.map { it.schluessel })
     val summe = LinkedHashMap<String, Long>()
     val namen = HashMap<String, String>()
     for (p in posten) {
-        // Eine App, die nie mit Namen erscheint (Dating, selbst zusammengelegt): auch „Sonstiges“.
-        val k = if (seiteVon(p.schluessel) == null && appVerborgen(p.schluessel, p.name)) SONSTIGE_WEBSEITEN else anzeigeSchluessel(p.schluessel, einzeln)
+        // Eine App, die nie mit Namen erscheint (Dating, selbst zusammengelegt): „Sonstiges“.
+        val k = if (seiteVon(p.schluessel) == null && appVerborgen(p.schluessel, p.name)) SONSTIGES else anzeigeSchluessel(p.schluessel, einzeln, firefox)
         summe[k] = (summe[k] ?: 0L) + p.sekunden
-        namen[k] = anzeigename(k) ?: p.name
+        namen[k] = gezeigterName(k, firefox, namen[k], p)
     }
     return sortiert(summe.map { (k, s) -> Posten(k, namen.getValue(k), s) })
 }

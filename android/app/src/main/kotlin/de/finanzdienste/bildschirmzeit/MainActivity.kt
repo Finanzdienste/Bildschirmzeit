@@ -495,9 +495,10 @@ class MainActivity : Activity(), UpdateBeobachter {
             findViewById<ImageView>(R.id.app_kopf_symbol).setImageBitmap(Symbole.bild(this, Posten(gewaehlt.schluessel, name, 0L), (28 * dichte).roundToInt()))
             findViewById<TextView>(R.id.app_kopf_name).text = name
             liste.visibility = View.GONE
-            // Eine Seite oder App (nicht „Sonstiges“ selbst): lässt sich unter „Sonstiges“ legen.
+            // Eine Seite lässt sich zu „Firefox“ legen, eine App unter „Sonstiges“ – nicht die beiden selbst.
             val knopf = findViewById<Button>(R.id.seite_zusammenfassen)
-            knopf.visibility = if (gewaehlt.schluessel != SONSTIGE_WEBSEITEN) View.VISIBLE else View.GONE
+            knopf.visibility = if (gewaehlt.schluessel != SONSTIGES && gewaehlt.schluessel !in FIREFOXE) View.VISIBLE else View.GONE
+            knopf.setText(if (gewaehlt.schluessel.startsWith(WEBSEITE)) R.string.seite_zusammenfassen else R.string.app_zusammenfassen)
             knopf.setOnClickListener { zusammenfassenFragen(gewaehlt.schluessel, name) }
         } else {
             kopf.visibility = View.GONE
@@ -511,7 +512,7 @@ class MainActivity : Activity(), UpdateBeobachter {
                 zeile.findViewById<TextView>(R.id.zeit).text = dauerText(p.sekunden)
                 val anteil = anteilText(p.sekunden, a.gesamt)
                 zeile.findViewById<TextView>(R.id.anteil).text = anteil
-                val seite = if (istWebseite(p.schluessel) && p.schluessel != SONSTIGE_WEBSEITEN) ", Webseite" else ""
+                val seite = if (istWebseite(p.schluessel) && p.schluessel != SONSTIGES) ", Webseite" else ""
                 zeile.contentDescription = "${p.name}$seite, ${dauerText(p.sekunden)}, $anteil"
                 zeile.setOnClickListener { appWaehlen(p) }
                 liste.addView(zeile)
@@ -584,8 +585,8 @@ class MainActivity : Activity(), UpdateBeobachter {
     }
 
     /**
-     * Eine Seite oder App unter „Sonstiges“ legen – nach Rückfrage (bei einer
-     * Seite wird ihr Name dabei auch aus dem Verlauf gelöscht).
+     * Eine Seite zu „Firefox“ oder eine App unter „Sonstiges“ legen – nach
+     * Rückfrage (bei einer Seite wird ihr Name dabei auch aus dem Verlauf gelöscht).
      */
     private fun zusammenfassenFragen(schluessel: String, name: String) {
         val seite = schluessel.startsWith(WEBSEITE)
@@ -615,7 +616,7 @@ class MainActivity : Activity(), UpdateBeobachter {
             }
             Aktualisierung.neuZeichnen(ctx)
             imVordergrund {
-                Toast.makeText(this, getString(R.string.seite_zusammengefasst, name), Toast.LENGTH_SHORT).show()
+                Toast.makeText(this, getString(if (domain != null) R.string.seite_zusammengefasst else R.string.app_zusammengefasst, name), Toast.LENGTH_SHORT).show()
                 alleAppsZeigen()
                 diskretZeigen()
             }

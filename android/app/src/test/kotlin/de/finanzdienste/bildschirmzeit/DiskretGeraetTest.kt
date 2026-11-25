@@ -16,6 +16,7 @@ import android.os.Process
 import android.provider.Settings
 import android.view.View
 import android.view.ViewGroup
+import android.widget.Button
 import android.widget.TextView
 import androidx.work.Configuration
 import androidx.work.WorkManager
@@ -102,7 +103,7 @@ class DiskretGeraetTest {
 
     private fun beobachtungenText() = File(File(kontext.noBackupFilesDir, Beobachtungen.ORDNER), "beobachtungen.txt").readText()
 
-    /** Beim ersten Lauf nach dem Update schreibt die Rechnung Gespeichertes von Erotikseiten um; das Widget zeigt nur „Sonstige“. */
+    /** Beim ersten Lauf nach dem Update schreibt die Rechnung Gespeichertes von Erotikseiten um; das Widget zeigt nur „Firefox“. */
     @Test
     fun nachDemUpdateOhneNamen() {
         benutzt(ff, um(20), um(21))
@@ -116,7 +117,7 @@ class DiskretGeraetTest {
 
         val e = Rechner.berechnen(kontext, netz = false, jetzt = um(21, 30))
         // Gleich lang: nach Name (sortiert).
-        assertEquals(listOf("Sonstiges" to 30 * 60L, "youtube.com" to 30 * 60L), e.posten.map { it.name to it.sekunden })
+        assertEquals(listOf("Firefox" to 30 * 60L, "youtube.com" to 30 * 60L), e.posten.map { it.name to it.sekunden })
         assertEquals(DISKRET_STAND, Speicher(kontext).erotikStand)
         assertFalse(beobachtungenText().contains("porno"))
         val alt = Verlauf(kontext).lesen(gestern)!!
@@ -125,7 +126,7 @@ class DiskretGeraetTest {
         assertTrue(Verlauf(kontext).lesen(heute)!!.posten.none { "porno" in it.schluessel })
     }
 
-    /** In der Statistik eine Seite antippen → „Unter „Sonstige“ zusammenfassen“ → sie steht nie mehr mit Namen da. */
+    /** In der Statistik eine Seite antippen → „Unter „Firefox“ zusammenfassen“ → sie steht nie mehr mit Namen da. */
     @Test
     fun eineSeiteSelbstZusammenfassen() {
         // Ohne Erlaubnis rechnet die App selbst nichts in den Verlauf (sonst mit der echten Uhr) – wie in AppStatistikTest.
@@ -145,13 +146,14 @@ class DiskretGeraetTest {
         assertTrue(namen().toString(), "meine-seite.de" in namen())
         (0 until liste.childCount).map { liste.getChildAt(it) }.first { it.findViewById<TextView>(R.id.name).text == "meine-seite.de" }.performClick()
         warten()
-        val knopf = a.findViewById<View>(R.id.seite_zusammenfassen)
+        val knopf = a.findViewById<Button>(R.id.seite_zusammenfassen)
         assertEquals(View.VISIBLE, knopf.visibility)
+        assertEquals("Unter „Firefox“ zusammenfassen", knopf.text.toString())
         knopf.performClick()
         ShadowAlertDialog.getLatestAlertDialog().getButton(DialogInterface.BUTTON_POSITIVE).performClick()
         warten()
         assertEquals(setOf("meine-seite.de"), Verborgen(kontext).eigene())
-        assertTrue(namen().toString(), "meine-seite.de" !in namen() && "Sonstiges" in namen())
+        assertTrue(namen().toString(), "meine-seite.de" !in namen() && "Firefox" in namen())
         assertFalse(beobachtungenText().contains("meine-seite"))
         assertTrue(Verlauf(kontext).lesen(heute)!!.posten.none { "meine-seite" in it.schluessel })
         // Die Karte „Diskret“ sagt es und kann es zurücknehmen (für die Zukunft).
@@ -162,8 +164,8 @@ class DiskretGeraetTest {
         warten()
         assertTrue(Verborgen(kontext).eigene().isEmpty())
         assertEquals(View.GONE, zeigen.visibility)
-        // „Sonstiges“ selbst hat keinen solchen Knopf.
-        (0 until liste.childCount).map { liste.getChildAt(it) }.first { it.findViewById<TextView>(R.id.name).text == "Sonstiges" }.performClick()
+        // „Firefox“ selbst hat keinen solchen Knopf.
+        (0 until liste.childCount).map { liste.getChildAt(it) }.first { it.findViewById<TextView>(R.id.name).text == "Firefox" }.performClick()
         warten()
         assertEquals(View.GONE, a.findViewById<View>(R.id.seite_zusammenfassen).visibility)
     }
@@ -198,11 +200,19 @@ class DiskretGeraetTest {
         fun namen() = (0 until liste.childCount).map { liste.getChildAt(it).findViewById<TextView>(R.id.name).text.toString() }
         (0 until liste.childCount).map { liste.getChildAt(it) }.first { it.findViewById<TextView>(R.id.name).text == "Spiel" }.performClick()
         warten()
-        a.findViewById<View>(R.id.seite_zusammenfassen).performClick()
+        val knopf = a.findViewById<Button>(R.id.seite_zusammenfassen)
+        assertEquals("Unter „Sonstiges“ zusammenfassen", knopf.text.toString())
+        knopf.performClick()
         ShadowAlertDialog.getLatestAlertDialog().getButton(DialogInterface.BUTTON_POSITIVE).performClick()
         warten()
         assertEquals(setOf(Verborgen.APP + "com.beispiel.spiel"), Verborgen(kontext).eigene())
         assertEquals(listOf("Sonstiges", "Chat"), namen())
+        // „Sonstiges“ selbst hat keinen solchen Knopf.
+        (0 until liste.childCount).map { liste.getChildAt(it) }.first { it.findViewById<TextView>(R.id.name).text == "Sonstiges" }.performClick()
+        warten()
+        assertEquals(View.GONE, knopf.visibility)
+        a.findViewById<View>(R.id.alle_apps).performClick()
+        warten()
         // Der Verlauf bleibt bei Apps, wie er ist (Android kennt die App ohnehin); nur die Anzeige fasst zusammen.
         assertTrue(Verlauf(kontext).lesen(heute)!!.posten.any { it.schluessel == "com.beispiel.spiel" })
         a.findViewById<View>(R.id.diskret_wieder_zeigen).performClick()

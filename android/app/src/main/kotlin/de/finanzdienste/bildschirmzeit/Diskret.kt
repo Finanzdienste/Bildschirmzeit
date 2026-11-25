@@ -8,8 +8,9 @@ import java.io.IOException
  * Diskret: Manches soll nie mit Namen erscheinen – das Widget steht auf dem
  * Startbildschirm, den jeder sieht. Erotikseiten (Erotik) sowie Dating-Apps
  * und -Seiten (Partnersuche) erkennt die App selbst, alles andere legt Tobi in
- * der Statistik mit einem Tipp dazu (Verborgen). Das zählt immer zu
- * „Sonstiges“. Bei Seiten zudem: Der Dienst
+ * der Statistik mit einem Tipp dazu (Verborgen). Seiten zählen dann immer zu
+ * „Firefox“, Apps stehen unter „Sonstiges“ (seit v28; vorher beides
+ * „Sonstiges“). Bei Seiten zudem: Der Dienst
  * merkt sich für sie nur „eine Seite ohne Namen“ (OHNE_DOMAIN), und was schon
  * mit Namen gespeichert war, wird umgeschrieben (namenEntfernen) – im Verlauf
  * und in den Beobachtungen auf dem Handy steht der Name danach nicht mehr.
@@ -184,8 +185,8 @@ class Verborgen(context: Context) {
 
 /**
  * Ein Tag ohne die Namen der Seiten, für die `weg` gilt: Ihre Posten
- * („seite:<paket>/<domain>“) gehen in „seite:<paket>/?“ auf (Summe, Name wie
- * „Sonstige Webseiten“). null: nichts zu tun.
+ * („seite:<paket>/<domain>“) gehen in „seite:<paket>/?“ auf (Summe, Name
+ * „Firefox“, dorthin zählen sie). null: nichts zu tun.
  */
 fun ohneNamen(tag: Tag, weg: (String) -> Boolean): Tag? {
     if (tag.posten.none { p -> seiteVon(p.schluessel)?.let { (_, d) -> d != OHNE_DOMAIN && weg(d) } == true }) return null
@@ -195,7 +196,7 @@ fun ohneNamen(tag: Tag, weg: (String) -> Boolean): Tag? {
         val seite = seiteVon(p.schluessel)
         val k = if (seite != null && seite.second != OHNE_DOMAIN && weg(seite.second)) seitenSchluessel(seite.first, OHNE_DOMAIN) else p.schluessel
         summe[k] = (summe[k] ?: 0L) + p.sekunden
-        namen[k] = if (k == p.schluessel) p.name else SONSTIGE_NAME
+        namen[k] = if (k == p.schluessel) p.name else FIREFOX_NAME
     }
     return tag.copy(posten = sortiert(summe.map { (k, s) -> Posten(k, namen.getValue(k), s) }))
 }

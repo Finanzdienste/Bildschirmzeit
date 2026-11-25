@@ -29,7 +29,8 @@ noch nicht eingerichtet, dunkel eingerichtet), `vorschau-app-monat-*.png`
 (ein Monat mit Lücken), `vorschau-app-tag-hell.png` (der Reiter Tag),
 `vorschau-app-eine-hell.png` / `-dunkel.png` (eine App angetippt: ihre Woche),
 `vorschau-webseiten-dunkel.png` (das Widget mit youtube.com und wikipedia.org
-als eigene Einträge und „Sonstiges“, Kachel der Seiten blau),
+als eigene Einträge, Kachel der Seiten blau; „Firefox“ samt den kleinen Seiten
+und „Sonstiges“ für Apps ohne Namen),
 `vorschau-app-einrichten-hell.png` (die App ohne Erlaubnis: deren Karte vor
 der Statistik, mit dem Weg über die eingeschränkte Einstellung).
 
@@ -94,6 +95,13 @@ der Statistik, mit dem Weg über die eingeschränkte Einstellung).
   Web-Apps steht an vier Stellen (`BZ_APPS` im Modul, Tabelle und
   `bildschirmzeit_melden` in Supabase, `WebApp` in der App);
   `tests/test-web.mjs` prüft, dass alle gleich sind (unten „Der Vertrag“).
+- „Aber statt sonstiges können wir das ja einfach Firefox nennen. Und Dating
+  Apps sind dann stattdessen sonstiges“ (25.11.) – seit v28 zählen Seiten,
+  die nicht einzeln stehen (klein, ohne Namen, Erotik, Dating, selbst
+  zusammengelegt), aus beiden Browsern zu „Firefox“, zusammen mit Firefox
+  selbst. „Sonstiges“ haben nur noch Apps ohne Namen (Dating, selbst
+  zusammengelegt). Entschieden: auch der Kleinkram aus Chrome zählt zu
+  „Firefox“, sonst stünde Chrome wieder einzeln da (unten „Diskret“, v28).
 - Diskret (17.11.): bestimmte Seiten und Apps nie mit Namen – das Widget steht
   auf dem Startbildschirm, den jeder sieht. Erotikseiten sowie Dating-Apps und
   -Seiten erkennt die App selbst, alles andere legt Tobi mit einem Tipp unter
@@ -926,11 +934,12 @@ Bilder `vorschau-app-eine-hell.png` / `-dunkel.png`.
   Seite. Gezeigt wird zusammengefasst (`webseitenZusammenfassen`, in der
   Statistik `auswerten`): dieselbe Domain aus beiden Browsern addiert
   (`webseite:<domain>`), einzeln ab 5 Minuten im Tag (Widget) bzw. im
-  Zeitraum (Tag, Woche, Monat), der Rest als „Sonstiges“ (blaue Kachel „…“;
-  bis v13 „Sonstige Webseiten“, im Widget „Sonstige Seiten“ – die volle
-  Fassung war in Tobis 4×2 abgeschnitten). Eine angetippte Seite zählt in
-  jeder Woche einzeln, „Sonstiges“ lässt sich auch antippen. Die Gesamtzeit
-  ändert sich nie.
+  Zeitraum (Tag, Woche, Monat), der Rest zählt zu „Firefox“ (seit v28,
+  zusammen mit Firefox selbst und mit dessen Symbol; bis v27 „Sonstiges“ mit
+  der blauen Kachel „…“, bis v13 „Sonstige Webseiten“, im Widget „Sonstige
+  Seiten“ – die volle Fassung war in Tobis 4×2 abgeschnitten). Eine
+  angetippte Seite zählt in jeder Woche einzeln, „Firefox“ lässt sich auch
+  antippen. Die Gesamtzeit ändert sich nie.
 
 ![Widget mit Webseiten, dunkel](docs/vorschau-webseiten-dunkel.png)
 
@@ -1006,8 +1015,8 @@ in Chrome noch keine Seite“), damit man sieht, ob beide gelesen werden.
 Beobachtungen von vor v11 bleiben, wie sie waren (ihr „keine Seite“ lässt sich
 nicht nachträglich trennen).
 Geprüft: `WebseitenTest.wasDerDienstSichMerkt` (die drei Arten, `?` nie
-einzeln), `WebseitenGeraetTest.chromeUndFirefoxZusammenKleineUnterSonstige`
-(Suche → Sonstige, Web-App → Chrome, Summe gleich),
+einzeln), `WebseitenGeraetTest.chromeUndFirefoxZusammenKleineZuFirefox`
+(Suche → seit v28 Firefox, Web-App → Chrome, Summe gleich),
 `karteVierAusAnUndWasZuletztKam` (je Browser, `?` zählt nicht als erkannt).
 
 **v12 – woher die Browserzeit kommt:** Tobi, 16.11., 21:07 (Widget mit
@@ -1020,7 +1029,7 @@ erfasst (die Bedienungshilfe lief nicht oder hat den Browser nie erkannt).
 Sekunden je Browser, keine Seiten; „Alle Daten löschen“ nimmt sie mit), Karte
 4 zeigt sie: „Chrome heute 2 Std. 4 Min.: 1 Std. 30 Min. Seiten, 10 Min.
 ohne Namen, 24 Min. nicht erfasst.“ Geprüft: `WebseitenTest.browserZeitAufgeschluesselt`,
-`WebseitenGeraetTest.chromeUndFirefoxZusammenKleineUnterSonstige` (die Aufteilung
+`WebseitenGeraetTest.chromeUndFirefoxZusammenKleineZuFirefox` (die Aufteilung
 nach einer echten Rechnung).
 
 **Geprüft (v10):** `WebseitenTest.chromeLeiste` (url_bar mit und ohne Fokus,
@@ -1028,10 +1037,10 @@ Suchbegriffe, neuer Tab, Inkognito, Web-App, Custom Tab, Vollbild),
 `webAppsInChromeKeineSeite`, `zusammenfassenBeideBrowserAbFuenfMinuten`
 (addiert, genau 5 Minuten, Sonstige, Summe gleich),
 `statistikFasstJeZeitraumZusammen` (Woche einzeln, Tag „Sonstige“, angetippt
-in jedem Zeitraum); `WebseitenGeraetTest.chromeUndFirefoxZusammenKleineUnterSonstige`
+in jedem Zeitraum); `WebseitenGeraetTest.chromeUndFirefoxZusammenKleineZuFirefox`
 (Rechnung mit Androids Ereignissen: youtube.com 50 Min. aus beiden Browsern,
-Chrome nach der Web-App, „Sonstige Webseiten“, Summe 100 Min., im Verlauf je
-Browser); `VorschauTest.sonstigeSeitenGanzImWidget`. Nebenbei:
+Chrome nach der Web-App, damals „Sonstige Webseiten“, seit v28 „Firefox“,
+Summe 100 Min., im Verlauf je Browser); `VorschauTest.sonstigeSeitenGanzImWidget`. Nebenbei:
 `AppStatistikTest.appUeberstehtDrehenAberNichtDasWidget` hing am echten Datum
 (nach dem Drehen galt die echte Uhr, ab 16.11. eine Woche ohne erfundene
 Daten) – jetzt mit fester Uhr.
@@ -1072,14 +1081,15 @@ Tobis Wunsch vom 17.11.
   Teils (so nicht sussex.ac.uk, essex.gov.uk). Ändert sich die Erkennung,
   `DISKRET_STAND` erhöhen.
 - **Verborgen**: Jede andere Seite oder App legt Tobi in der Statistik selbst
-  dazu – antippen → unten in der Karte „Unter „Sonstiges“ zusammenfassen“ →
-  Rückfrage. Die Liste liegt in `noBackupFilesDir/webseiten/verborgen.txt`
+  dazu – antippen → unten in der Karte „Unter „Firefox“ zusammenfassen“ (eine
+  Seite) bzw. „Unter „Sonstiges“ zusammenfassen“ (eine App) → Rückfrage. Die Liste liegt in `noBackupFilesDir/webseiten/verborgen.txt`
   (nie in der Sicherung, nie im Netz). Die Karte „Diskret“ sagt, wie viele es
   sind, „Wieder einzeln zeigen“ leert die Liste (gilt nur für die Zukunft).
   „Alle Daten löschen“ leert sie auch.
-- Solche Seiten zählen immer zu „Sonstiges“: Der Dienst merkt sich
-  für sie nur „eine Seite ohne Namen“ (`zuMerken(…, verborgen)` → `?`), die
-  Anzeige legt sie unter „Sonstiges“ (`einzelneDomains(…, verborgen)`), und was
+- Solche Seiten zählen immer zu „Firefox“ (seit v28, vorher „Sonstiges“):
+  Der Dienst merkt sich für sie nur „eine Seite ohne Namen“
+  (`zuMerken(…, verborgen)` → `?`), die Anzeige legt sie zu Firefox
+  (`einzelneDomains(…, verborgen)`), und was
   schon mit Namen gespeichert war, wird umgeschrieben (`namenEntfernen`:
   jeder Tag im Verlauf und die Beobachtungen; die Zeiten bleiben, `androidTeil`
   ist gleich, also zählt `nieWeniger` nichts doppelt). Für die Erkennung
@@ -1109,9 +1119,31 @@ Geprüft: `DiskretTest.datingAppsUndSeiten`, `appsUnterSonstiges`,
 `bekannteSeitenNurAlsPruefsumme`; `DiskretGeraetTest.datingAppNurAlsSonstiges`,
 `eineAppSelbstZusammenfassen`.
 
+**v28 – Seiten zu „Firefox“, „Sonstiges“ nur noch für Apps** (Tobi, 25.11.:
+„Aber statt sonstiges können wir das ja einfach Firefox nennen. Und Dating
+Apps sind dann stattdessen sonstiges“):
+- Was an Seiten nicht einzeln steht – unter 5 Minuten, ohne Namen (neuer
+  Tab, Suche, privat, Inkognito), Erotik- und Dating-Seiten, selbst
+  zusammengelegte –, zählt aus beiden Browsern zu Firefox: ein Eintrag
+  „Firefox“ mit dem Firefox-Symbol, zusammen mit Firefox' eigener Zeit
+  (`firefoxSchluessel`, `anzeigeSchluessel(…, firefox)`). Auch der Kleinkram
+  aus Chrome zählt dorthin, sonst stünde Chrome wieder einzeln da.
+- „Sonstiges“ (jetzt graue Kachel „…“) haben nur noch Apps, die nie mit Namen
+  erscheinen: Dating-Apps und selbst zusammengelegte.
+- Der Knopf heißt bei einer Seite „Unter „Firefox“ zusammenfassen“, bei
+  einer App „Unter „Sonstiges“ zusammenfassen“; „Firefox“ und „Sonstiges“
+  selbst haben keinen.
+- Gespeichert wird wie bisher, nur die Anzeige fasst anders zusammen – auch
+  rückwirkend.
+Geprüft: `WebseitenTest.zusammenfassenBeideBrowserAbFuenfMinuten` (Firefox
+mit den kleinen aus beiden Browsern), `statistikFasstJeZeitraumZusammen`,
+`wasDerDienstSichMerkt`, `DiskretTest.angezeigtNurAlsFirefox`,
+`DiskretGeraetTest` (Knöpfe und ihre Namen),
+`WebseitenGeraetTest.chromeUndFirefoxZusammenKleineZuFirefox`; gegen v27 rot.
+
 **Geprüft:** `DiskretTest` (Erkennung mit Fehltreffer-Proben, der Dienst
-merkt keinen Namen, Anzeige und Statistik nur „Sonstiges“, ein Tag ohne
-Namen mit gleicher Zeit) und `DiskretGeraetTest` (nach dem Update ohne Namen
+merkt keinen Namen, Anzeige und Statistik nur „Firefox“ bzw. für Apps
+„Sonstiges“, ein Tag ohne Namen mit gleicher Zeit) und `DiskretGeraetTest` (nach dem Update ohne Namen
 in Widget, Verlauf und Beobachtungen; eine Seite selbst zusammenfassen mit
 Rückfrage, Karte „Diskret“, „Wieder einzeln zeigen“; „Alle Daten löschen“).
 

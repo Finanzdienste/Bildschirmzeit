@@ -115,8 +115,9 @@ class VorschauTest {
      * größten Webseiten als einzelnen Punkt auflisten lassen?“ und 16.11.:
      * „Das gleiche für Chrome. … alles unter fünf min unter sonstige websiten
      * … Also Chrome und Firefox addiert“ – youtube.com und wikipedia.org (beide
-     * Browser zusammen) zwischen den Apps, die kleinen als „Sonstige
-     * Webseiten“, mit der blauen Kachel der Seiten.
+     * Browser zusammen) zwischen den Apps, mit der blauen Kachel der Seiten;
+     * die kleinen zählen seit v28 zu „Firefox“, Apps ohne Namen (Dating, selbst
+     * zusammengelegt) stehen unter „Sonstiges“.
      */
     private fun mitSeiten() = beispiel().copy(
         posten = sortiert(
@@ -125,9 +126,9 @@ class VorschauTest {
                 Posten("boxenstopp", "Boxenstopp", 69 * 60L),
                 Posten("com.beispiel.chat", "WhatsApp", 54 * 60L),
                 Posten("workout", "Workout", 41 * 60L),
-                Posten(SONSTIGE_WEBSEITEN, SONSTIGE_NAME, 23 * 60L),
+                Posten("org.mozilla.firefox", "Firefox", 32 * 60L),
                 Posten(WEBSEITE + "wikipedia.org", "wikipedia.org", 17 * 60L),
-                Posten("org.mozilla.firefox", "Firefox", 9 * 60L),
+                Posten(SONSTIGES, SONSTIGE_NAME, 12 * 60L),
                 Posten("com.beispiel.karten", "Karten", 6 * 60L),
                 Posten("com.android.chrome", "Chrome", 3 * 60L),
             ),

@@ -38,20 +38,22 @@ class DiskretTest {
         assertEquals(true to "beispiel-porno.de", zuMerken(ff, Befund.Seite("beispiel-porno.de")))
     }
 
+    /** Seit v28 zählen sie zu „Firefox“ (Tobi, 25.11.: „statt sonstiges können wir das ja einfach Firefox nennen“). */
     @Test
-    fun angezeigtNurAlsSonstige() {
+    fun angezeigtNurAlsFirefox() {
         val posten = listOf(
             Posten(seitenSchluessel(ff, "beispiel-porno.de"), "beispiel-porno.de", 3600L),
             Posten(seitenSchluessel(CHROME, "meine-seite.de"), "meine-seite.de", 900L),
             Posten(seitenSchluessel(ff, "youtube.com"), "youtube.com", 600L),
         )
         val gezeigt = webseitenZusammenfassen(posten, verborgen = { Erotik.ist(it) || it == "meine-seite.de" })
-        assertEquals(listOf("Sonstiges" to 4500L, "youtube.com" to 600L), gezeigt.map { it.name to it.sekunden })
+        assertEquals(listOf("Firefox" to 4500L, "youtube.com" to 600L), gezeigt.map { it.name to it.sekunden })
+        assertEquals(ff, gezeigt.first().schluessel)
         // Auch in der Statistik, und eine verborgene lässt sich nicht als einzelne Seite wählen.
         val tag = LocalDate.of(2026, 11, 16)
         val verlauf = mapOf(tag to Tag(tag, sortiert(posten), fertig = true))
         val a = auswerten(Zeitraum.um(Reiter.TAG, tag), verlauf, tag, tag, verborgen = { Erotik.ist(it) || it == "meine-seite.de" })
-        assertEquals(listOf("Sonstiges", "youtube.com"), a.apps.map { it.name })
+        assertEquals(listOf("Firefox", "youtube.com"), a.apps.map { it.name })
         val nur = auswerten(Zeitraum.um(Reiter.TAG, tag), verlauf, tag, tag, nur = WEBSEITE + "meine-seite.de", verborgen = { it == "meine-seite.de" })
         assertEquals(0L, nur.gesamt)
     }
@@ -81,7 +83,7 @@ class DiskretTest {
         // Nichts zu tun: null.
         assertNull(ohneNamen(neu, Erotik::ist))
     }
-    /** Tobi, 17.11.: Dating-Apps (und -Seiten) auch unter „Sonstiges“. */
+    /** Tobi, 17.11.: Dating-Apps (und -Seiten) auch nie mit Namen – die Apps unter „Sonstiges“, die Seiten zu „Firefox“. */
     @Test
     fun datingAppsUndSeiten() {
         assertTrue(Partnersuche.app("com.tinder", "Tinder"))
@@ -115,7 +117,7 @@ class DiskretTest {
         val a = auswerten(Zeitraum.um(Reiter.TAG, tag), verlauf, tag, tag, appVerborgen = Partnersuche::app)
         assertEquals(listOf("Sonstiges", "Chat", "youtube.com"), a.apps.map { it.name })
         // youtube.com (400 s) steht einzeln; in „Sonstiges“ nur die Dating-App.
-        assertEquals(1200L, auswerten(Zeitraum.um(Reiter.TAG, tag), verlauf, tag, tag, nur = SONSTIGE_WEBSEITEN, appVerborgen = Partnersuche::app).gesamt)
+        assertEquals(1200L, auswerten(Zeitraum.um(Reiter.TAG, tag), verlauf, tag, tag, nur = SONSTIGES, appVerborgen = Partnersuche::app).gesamt)
     }
 
     /** Die Liste bekannter Seiten steht nur als Prüfsumme im Code. */

@@ -33,7 +33,8 @@ object Symbole {
      * im Netz zu fragen), und klar anders als ein App-Symbol.
      */
     fun bild(context: Context, posten: Posten, groesse: Int): Bitmap {
-        if (posten.schluessel == SONSTIGE_WEBSEITEN) return buchstabe("…", groesse, SEITE_FARBE)
+        // „Sonstiges“ sind seit v28 nur noch Apps: grau wie ein App-Ersatz, nicht blau wie eine Seite.
+        if (posten.schluessel == SONSTIGES) return buchstabe("…", groesse)
         if (istWebseite(posten.schluessel)) return buchstabe(posten.name, groesse, SEITE_FARBE)
         return drawable(context, posten)?.toBitmap(groesse, groesse, Bitmap.Config.ARGB_8888) ?: buchstabe(posten.name, groesse)
     }
