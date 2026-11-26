@@ -24,8 +24,9 @@ Tobi, 15.11.: „Sowas sollst du immer konkret mit angeben“. Was läuft, zeigt
   mit `/effort max` reicht, läuft schon“.
 - Mehr (vorschlagen, auf Antwort warten): `/model fable` mit `/effort high`
   nur, wenn eine Ursache nach dem ersten Durchgang unklar bleibt oder ein
-  Fehler nach einer Korrektur wiederkommt. Fable kostet Nutzungsguthaben
-  („Requires usage credits“), das gehört in den Vorschlag.
+  Fehler nach einer Korrektur wiederkommt. Fable kostet kein
+  Nutzungsguthaben (Tobi, 26.11.2026: „Nein fable kostet kein
+  nutzungsguthaben“; der frühere Hinweis „Requires usage credits“ gilt nicht mehr).
 - Weniger (erledigen, am Ende ein Satz): Für reine Texte, README und Zahlen
   reicht `/effort high`; für eine einzelne schwere Frage dann „ultrathink“ in
   der Nachricht.
