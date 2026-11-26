@@ -1760,7 +1760,7 @@ spricht mit dem echten Supabase oder GitHub (`Netz.gesperrt`).
   ohne Namen (Abschnitt „Diskret“, v28). 273 Prüfungen grün, Lint ohne
   Fehler; Prüfsumme gleich dem `digest`, Zertifikat `bc6f91b9…759e`,
   versionCode 28, dieselben 14 Rechte wie v27.
-- 26.11.2026: Platzhalter „Job Neu …“ in den Kontakten: mit Bewerbungsnummer
+- 26.11.2026: Release **v29** (aus a348cdc): Platzhalter „Job Neu …“ in den Kontakten: mit Bewerbungsnummer
   umbenannt, sonst gelöscht (Abschnitt „Kontakte aus den Bewerbungen“).
   275 Prüfungen grün (2 neue in `KontakteTest`, eine ohne Netz).
 - Noch nicht auf dem S24 ausprobiert: Größen des Startbildschirms, Akku-
