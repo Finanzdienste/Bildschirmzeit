@@ -152,6 +152,7 @@ class KontakteTest {
         speicher.kontakteFehler = null
         speicher.kontakteAngelegt = emptyMap()
         speicher.kontakteUmbenannt = emptyMap()
+        speicher.kontakteGeloescht = emptyList()
     }
 
     @After
@@ -324,6 +325,57 @@ class KontakteTest {
         assertTrue(speicher.kontakteUmbenannt.isEmpty() && speicher.kontakteAngelegt.isEmpty())
         assertNull(speicher.kontakteListe)
         assertEquals(0, Kontakte.imTakt(kontext, jetzt + Kontakte.ABSTAND_MS, holenVerboten))
+    }
+
+    /** Tobi, 26.11.2026: „lass machen dass die widget app auch selbst benannte Kontakte wieder löscht“ – nur die Platzhalter „Job Neu …“. */
+    @Test
+    fun platzhalterOhneBewerbungVerschwindenAuchOhneNetz() {
+        val spam = ErfundeneKontakte.anlegen("Job Neu 2", "+49 30 9999 0001")
+        val zwei = ErfundeneKontakte.anlegen("job neu 4", "040 9999 0002", "0170 9999 0003")
+        val mama = ErfundeneKontakte.anlegen("Mama", "040 9999 0004")
+        val coach = ErfundeneKontakte.anlegen("Job Coach Anna", "040 9999 0005") // kein Platzhalter
+        freigeben()
+        // Noch keine Liste von der Bewerbungszentrale: nichts löschen, die App weiß nicht, welche Nummern dazugehören.
+        assertEquals(0, Kontakte.imTakt(kontext, jetzt) { "[]" })
+        assertTrue(spam in ErfundeneKontakte.roh)
+
+        speicher.kontakteListe = Kontakte.alsJson(liste) // früher geholt
+        speicher.kontakteGeholt = 0L
+        // Netz.gesperrt: Supabase antwortet nicht – aufgeräumt wird trotzdem, aus dem Gemerkten.
+        assertEquals("2 angelegt, 2 Platzhalter weg", 4, Kontakte.imTakt(kontext, jetzt))
+        assertFalse(spam in ErfundeneKontakte.roh)
+        assertFalse(zwei in ErfundeneKontakte.roh)
+        assertEquals("Mama", ErfundeneKontakte.name(mama))
+        assertEquals("Job Coach Anna", ErfundeneKontakte.name(coach))
+        assertEquals(
+            listOf(Geloescht("Job Neu 2", listOf("+49 30 9999 0001")), Geloescht("job neu 4", listOf("040 9999 0002", "0170 9999 0003"))),
+            speicher.kontakteGeloescht,
+        )
+        assertEquals("nichts mehr zu tun", 0, Kontakte.imTakt(kontext, jetzt + 60_000L) { throw IOException("kein Netz") })
+
+        // „Nicht mehr benennen“: Die Platzhalter kommen so zurück, wie Tobi sie hatte.
+        Kontakte.zuruecknehmen(kontext)
+        val zurueck = ErfundeneKontakte.mitName("job neu 4").single()
+        assertEquals(listOf<String?>("040 9999 0002", "0170 9999 0003"), ErfundeneKontakte.nummern(zurueck))
+        assertEquals(1, ErfundeneKontakte.mitName("Job Neu 2").size)
+        assertTrue(speicher.kontakteGeloescht.isEmpty())
+    }
+
+    @Test
+    fun platzhalterMitNummerAusDerBewerbungBekommtDenNamen() {
+        freigeben()
+        Kontakte.imTakt(kontext, jetzt) { Kontakte.alsJson(liste) }
+        // Später legt Tobi für einen Anruf der Muster AG einen Platzhalter an; die Liste ändert sich nicht.
+        val job = ErfundeneKontakte.anlegen("Job Neu 5", "030 123456")
+        assertEquals(1, Kontakte.imTakt(kontext, jetzt + 60_000L, holenVerboten))
+        assertEquals("Muster AG", ErfundeneKontakte.name(job))
+        assertEquals(Umbenannt("Job Neu 5", "+4930123456"), speicher.kontakteUmbenannt[job])
+        assertTrue(speicher.kontakteGeloescht.isEmpty())
+
+        // Fällt die Nummer aus der Liste, bekommt er erst seinen alten Namen und ist dann als Platzhalter weg.
+        Kontakte.imTakt(kontext, jetzt + Kontakte.ABSTAND_MS) { Kontakte.alsJson(liste.take(1)) }
+        assertFalse(job in ErfundeneKontakte.roh)
+        assertEquals(listOf(Geloescht("Job Neu 5", listOf("030 123456"))), speicher.kontakteGeloescht)
     }
 
     @Test

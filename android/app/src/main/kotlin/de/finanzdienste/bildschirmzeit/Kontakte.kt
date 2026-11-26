@@ -23,6 +23,9 @@ data class Wunsch(val nummer: String, val name: String)
 /** Ein Kontakt, den die App umbenannt hat: sein alter Name (leer: hatte keinen) und die Nummer, für die er umbenannt wurde. */
 data class Umbenannt(val alt: String, val nummer: String)
 
+/** Ein Platzhalter „Job Neu …“, den die App gelöscht hat: Name und Nummern, damit „Nicht mehr benennen“ ihn wieder anlegt. */
+data class Geloescht(val name: String, val nummern: List<String>)
+
 /**
  * Kontakte für die Nummern aus den Bewerbungen (Tobi, 23.11.2026: „Du kannst
  * meine Telefon Kontakte auch umbennenen“). Die Bewerbungszentrale legt je
@@ -39,11 +42,22 @@ data class Umbenannt(val alt: String, val nummer: String)
  * sie den angelegten Kontakt wieder und gibt einem umbenannten seinen alten
  * Namen zurück; „Nicht mehr benennen“ tut das für alle. Ohne Netz bleibt es
  * beim zuletzt geholten Stand, nichts geht verloren.
+ *
+ * Tobis Platzhalter „Job Neu 2“ & Co. (Tobi, 26.11.2026: „lass machen dass die
+ * widget app auch selbst benannte Kontakte wieder löscht“): Gehört die Nummer zu
+ * einer Bewerbung, bekommt der Kontakt deren Namen, sonst löscht die App ihn –
+ * „Anrufer erkennen“ schlägt die Nummer dann wie jede unbekannte nach. Andere
+ * selbst benannte Kontakte fasst sie nie an.
  */
 object Kontakte {
     const val ABSTAND_MS = 30 * 60_000L
     const val HOECHSTENS = 500
     private val NUMMER = Regex("^\\+?[0-9]{3,32}$")
+
+    /** Nur Tobis Platzhalter „Job Neu …“ (beliebige Schreibweise), nicht jeder Kontakt mit „Job“ im Namen. */
+    private val PLATZHALTER = Regex("^\\s*job\\s*neu\\b", RegexOption.IGNORE_CASE)
+
+    fun platzhalter(name: String?): Boolean = name != null && PLATZHALTER.containsMatchIn(name)
 
     fun erlaubt(context: Context): Boolean =
         context.checkSelfPermission(Manifest.permission.READ_CONTACTS) == PackageManager.PERMISSION_GRANTED &&
@@ -117,13 +131,18 @@ object Kontakte {
         val speicher = Speicher(context)
         if (!speicher.kontakteBenennen || !erlaubt(context)) return 0
         val liste = (ausJson(speicher.kontakteListe) + Anrufer.wuensche(speicher)).distinctBy { vergleich(it.nummer) }
+        // Leer: Die Bewerbungszentrale hat noch nichts geschickt – dann weiß die App nicht, welche Nummern dazugehören.
+        if (liste.isEmpty()) return 0
         val stand = alsJson(liste)
-        if (liste.isEmpty() || stand == speicher.kontakteAngewandt) return 0
         return try {
-            val n = anwenden(context.contentResolver, liste, speicher)
-            // Ging etwas schief (Android lehnt das Anlegen ab), beim nächsten Lauf noch einmal versuchen
-            if (speicher.kontakteFehler == null) speicher.kontakteAngewandt = stand
-            n
+            var n = 0
+            if (stand != speicher.kontakteAngewandt) {
+                n += anwenden(context.contentResolver, liste, speicher)
+                // Ging etwas schief (Android lehnt das Anlegen ab), beim nächsten Lauf noch einmal versuchen
+                if (speicher.kontakteFehler == null) speicher.kontakteAngewandt = stand
+            }
+            // Platzhalter bei jedem Lauf: Tobi legt sie an, wann er will, auch ohne dass sich die Liste ändert.
+            n + platzhalterAufraeumen(context.contentResolver, liste, speicher)
         } catch (e: SecurityException) {
             0
         }
@@ -214,12 +233,56 @@ object Kontakte {
                 if (gibtEs(cr, raw)) nameSetzen(cr, raw, u.alt)
                 n++
             }
+            // Gelöschte Platzhalter kommen zurück, so wie Tobi sie hatte.
+            for (g in speicher.kontakteGeloescht) {
+                if (g.nummern.isEmpty()) continue
+                if (anlegen(cr, Wunsch(g.nummern.first(), g.name), g.nummern.drop(1)) != null) n++
+            }
         } catch (e: SecurityException) {
             return@allein 0
         }
         speicher.kontakteAngelegt = emptyMap()
         speicher.kontakteUmbenannt = emptyMap()
+        speicher.kontakteGeloescht = emptyList()
         n
+    }
+
+    /**
+     * Platzhalter „Job Neu …“: mit einer Nummer aus der Liste umbenennen (der alte Name wird gemerkt wie sonst auch),
+     * ohne löschen und Name und Nummern merken. Gibt zurück, wie viele Kontakte es betraf.
+     */
+    private fun platzhalterAufraeumen(cr: ContentResolver, liste: List<Wunsch>, speicher: Speicher): Int {
+        val wunsch = liste.associateBy { vergleich(it.nummer) }
+        val gefunden = LinkedHashMap<Long, Pair<String, MutableList<String>>>() // Kontakt → Name, Nummern
+        cr.query(Phone.CONTENT_URI, arrayOf(Phone.CONTACT_ID, Phone.NUMBER, Phone.DISPLAY_NAME), null, null, null)?.use { c ->
+            while (c.moveToNext()) {
+                val name = c.getString(2)
+                if (!platzhalter(name)) continue
+                gefunden.getOrPut(c.getLong(0)) { name!! to ArrayList() }.second += c.getString(1).orEmpty()
+            }
+        }
+        if (gefunden.isEmpty()) return 0
+        val umbenannt = speicher.kontakteUmbenannt.toMutableMap()
+        val geloescht = speicher.kontakteGeloescht.toMutableList()
+        var n = 0
+        for ((kontakt, eintrag) in gefunden) {
+            val (name, nummern) = eintrag
+            val w = nummern.firstNotNullOfOrNull { wunsch[vergleich(it)] }
+            for (raw in rohkontakte(cr, kontakt)) {
+                if (w != null) {
+                    umbenannt.putIfAbsent(raw, Umbenannt(nameVon(cr, raw).orEmpty(), w.nummer))
+                    nameSetzen(cr, raw, w.name)
+                } else {
+                    cr.delete(ContentUris.withAppendedId(RawContacts.CONTENT_URI, raw), null, null)
+                }
+            }
+            if (w == null) geloescht += Geloescht(name, nummern.filter { it.isNotBlank() }.distinct())
+            n++
+        }
+        speicher.kontakteUmbenannt = umbenannt
+        speicher.kontakteGeloescht = geloescht
+        Log.i(LOG, "Platzhalter: $n aufgeräumt") // ohne Namen und Nummern
+        return n
     }
 
     private fun gibtEs(cr: ContentResolver, raw: Long): Boolean =
@@ -272,7 +335,7 @@ object Kontakte {
      * Google-Konto ist. Deshalb erst das Standardkonto, sonst der Telefonspeicher, und lehnt Android
      * den ab, das Konto, in dem die vorhandenen Kontakte liegen (Google zuerst).
      */
-    private fun anlegen(cr: ContentResolver, w: Wunsch): Long? {
+    private fun anlegen(cr: ContentResolver, w: Wunsch, weitere: List<String> = emptyList()): Long? {
         val erst = standardKonto(cr)
         val raw = try {
             rohAnlegen(cr, erst)
@@ -289,15 +352,17 @@ object Kontakte {
                 put(StructuredName.DISPLAY_NAME, w.name)
             },
         )
-        cr.insert(
-            Data.CONTENT_URI,
-            ContentValues().apply {
-                put(Data.RAW_CONTACT_ID, raw)
-                put(Data.MIMETYPE, Phone.CONTENT_ITEM_TYPE)
-                put(Phone.NUMBER, w.nummer)
-                put(Phone.TYPE, Phone.TYPE_WORK)
-            },
-        )
+        for (nummer in listOf(w.nummer) + weitere) {
+            cr.insert(
+                Data.CONTENT_URI,
+                ContentValues().apply {
+                    put(Data.RAW_CONTACT_ID, raw)
+                    put(Data.MIMETYPE, Phone.CONTENT_ITEM_TYPE)
+                    put(Phone.NUMBER, nummer)
+                    put(Phone.TYPE, Phone.TYPE_WORK)
+                },
+            )
+        }
         return raw
     }
 

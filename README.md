@@ -1214,8 +1214,17 @@ die Kontakte nur das Handy; dazwischen liegt Supabase (`Kontakte.kt`).
   eine Nummer aus der Liste, ist der angelegte Kontakt wieder weg und der
   umbenannte hat seinen alten Namen. Eine leere Liste ändert nichts. Einen
   angelegten Kontakt, den Tobi löscht, vergisst die App.
-- **Aus:** „Nicht mehr benennen“ löscht alle angelegten Kontakte und gibt den
-  umbenannten ihren alten Namen zurück (ohne Netz, nur auf dem Handy). „Alle
+- **Platzhalter „Job Neu …“** (Tobi, 26.11.2026: „lass machen dass die widget
+  app auch selbst benannte Kontakte wieder löscht“): Bei jedem Lauf, auch ohne
+  neue Liste und ohne Netz. Gehört eine Nummer des Platzhalters zu einer
+  Bewerbung, bekommt er deren Namen (alter Name gemerkt wie oben), sonst löscht
+  die App ihn und merkt Name und Nummern (`kontakte_geloescht`, höchstens 200).
+  „Anrufer erkennen“ schlägt die Nummer danach wie jede unbekannte nach. Nur
+  Namen, die mit „Job Neu“ anfangen (Groß/klein egal); „Job Coach Anna“ und alle
+  anderen selbst benannten Kontakte bleiben. Ohne Liste der Bewerbungszentrale
+  passiert nichts.
+- **Aus:** „Nicht mehr benennen“ löscht alle angelegten Kontakte, gibt den
+  umbenannten ihren alten Namen zurück und legt gelöschte Platzhalter wieder an (ohne Netz, nur auf dem Handy). „Alle
   Daten löschen“ ebenso; Supabase nimmt die Liste mit der Anmeldung mit.
 - Geprüft von `KontakteTest` (erfundenes Adressbuch, auch ohne Netz) und
   `tests/test-sql.mjs`; die Bewerbungszentrale prüft ihre Seite in ihren Tests
@@ -1751,6 +1760,9 @@ spricht mit dem echten Supabase oder GitHub (`Netz.gesperrt`).
   ohne Namen (Abschnitt „Diskret“, v28). 273 Prüfungen grün, Lint ohne
   Fehler; Prüfsumme gleich dem `digest`, Zertifikat `bc6f91b9…759e`,
   versionCode 28, dieselben 14 Rechte wie v27.
+- 26.11.2026: Platzhalter „Job Neu …“ in den Kontakten: mit Bewerbungsnummer
+  umbenannt, sonst gelöscht (Abschnitt „Kontakte aus den Bewerbungen“).
+  275 Prüfungen grün (2 neue in `KontakteTest`, eine ohne Netz).
 - Noch nicht auf dem S24 ausprobiert: Größen des Startbildschirms, Akku-
   Verhalten von One UI (ob es die App trotz Widget schlafen legt), ob
   Chrome den Verbinden-Link in der installierten Web-App oder als Tab

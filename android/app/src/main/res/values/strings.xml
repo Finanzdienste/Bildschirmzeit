@@ -84,14 +84,14 @@
     <string name="anrufe_an_noch_nicht">Geteilt. Gemeldet wird beim nächsten Lauf, sobald Netz da ist.</string>
     <string name="anrufe_verweigert">Android hat den Zugriff auf die Anrufliste nicht erlaubt. In den App-Infos unter Berechtigungen → Anrufliste → Zulassen tippen.</string>
     <string name="kontakte_titel">Kontakte aus den Bewerbungen</string>
-    <string name="kontakte_text">Gibt den Nummern aus deinen Bewerbungen einen Namen, etwa „Erika Muster (Beispiel GmbH)“: Ein Kontakt mit der Nummer wird umbenannt, fehlt er, legt die App einen im Telefonspeicher an. Die Namen legt die Bewerbungszentrale bei Supabase ab, die App holt sie alle 30 Minuten; ohne Netz bleibt es beim letzten Stand. „Nicht mehr benennen“ löscht die angelegten Kontakte und gibt umbenannten ihren alten Namen zurück.</string>
+    <string name="kontakte_text">Gibt den Nummern aus deinen Bewerbungen einen Namen, etwa „Erika Muster (Beispiel GmbH)“: Ein Kontakt mit der Nummer wird umbenannt, fehlt er, legt die App einen im Telefonspeicher an. Die Namen legt die Bewerbungszentrale bei Supabase ab, die App holt sie alle 30 Minuten; ohne Netz bleibt es beim letzten Stand. Deine Platzhalter „Job Neu …“ bekommen den Namen aus der Bewerbung oder werden gelöscht, wenn die Nummer zu keiner gehört (andere Kontakte bleiben, wie sie sind). „Nicht mehr benennen“ löscht die angelegten Kontakte, gibt umbenannten ihren alten Namen zurück und legt gelöschte Platzhalter wieder an.</string>
     <string name="kontakte_freigeben">Kontakte benennen</string>
     <string name="kontakte_aus">Nicht mehr benennen</string>
-    <string name="kontakte_an">An. Zuletzt geholt: %1$s. Angelegt: %2$d, umbenannt: %3$d.</string>
+    <string name="kontakte_an">An. Zuletzt geholt: %1$s. Angelegt: %2$d, umbenannt: %3$d, Platzhalter gelöscht: %4$d.</string>
     <string name="kontakte_an_noch_nicht">An. Die Namen kommen beim nächsten Lauf, sobald Netz da ist.</string>
     <string name="kontakte_verweigert">Android hat den Zugriff auf die Kontakte nicht erlaubt. In den App-Infos unter Berechtigungen → Kontakte → Zulassen tippen.</string>
     <string name="kontakte_fehler">Neue Kontakte anlegen ging nicht (%1$s). Umbenennen geht trotzdem, die App versucht es weiter.</string>
-    <string name="kontakte_zurueck">Nicht mehr benannt. Die angelegten Kontakte sind gelöscht, umbenannte haben ihren alten Namen.</string>
+    <string name="kontakte_zurueck">Nicht mehr benannt. Die angelegten Kontakte sind gelöscht, umbenannte haben ihren alten Namen, gelöschte Platzhalter sind wieder da.</string>
     <string name="anrufer_titel">Anrufer erkennen</string>
     <string name="anrufer_text">Ruft eine Nummer aus deinen Bewerbungen an, zeigt eine Mitteilung gleich das Briefing: Stelle, Stand, Ansprechperson, deine Forderung, offene Fragen. Ist die Nummer unbekannt und nicht in deinen Kontakten, schlägt Claude sie mit deinem Claude-Schlüssel im Netz nach (ein paar Cent je Suche, höchstens zehn am Tag); ohne Netz, sobald es wieder da ist. Gehört sie zu einer Bewerbung oder einem Personalvermittler, bekommt der Kontakt den Namen (mit „Kontakte benennen“) und die Bewerbungszentrale die Nummer. Anrufe der letzten 30 Tage schlägt sie auch nach. Nummern aus deinen Kontakten gehen nie an Claude – außer Kontakte, die du „Job …“ genannt hast.</string>
     <string name="anrufer_freigeben">Anrufer erkennen</string>

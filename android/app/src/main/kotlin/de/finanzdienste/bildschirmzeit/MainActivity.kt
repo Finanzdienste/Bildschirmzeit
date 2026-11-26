@@ -800,7 +800,7 @@ class MainActivity : Activity(), UpdateBeobachter {
             when {
                 !an -> null
                 zuletzt <= 0L -> getString(R.string.kontakte_an_noch_nicht)
-                else -> getString(R.string.kontakte_an, anrufeZeit(zuletzt), speicher.kontakteAngelegt.size, speicher.kontakteUmbenannt.size) +
+                else -> getString(R.string.kontakte_an, anrufeZeit(zuletzt), speicher.kontakteAngelegt.size, speicher.kontakteUmbenannt.size, speicher.kontakteGeloescht.size) +
                     (speicher.kontakteFehler?.let { "\n" + getString(R.string.kontakte_fehler, it) } ?: "")
             },
         )

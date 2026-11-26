@@ -118,6 +118,25 @@ class Speicher(context: Context) {
             }
         }
 
+    /** Platzhalter „Job Neu …“, die die App gelöscht hat (Kontakte.kt), damit „Nicht mehr benennen“ sie zurückholt; höchstens 200. */
+    var kontakteGeloescht: List<Geloescht>
+        get() = try {
+            val a = JSONArray(p.getString(KONTAKTE_GELOESCHT, null) ?: return emptyList())
+            (0 until a.length()).mapNotNull { i ->
+                val o = a.optJSONObject(i) ?: return@mapNotNull null
+                val n = o.optJSONArray("nummern") ?: JSONArray()
+                Geloescht(o.optString("name"), (0 until n.length()).map { n.optString(it) }.filter { it.isNotEmpty() })
+            }
+        } catch (e: JSONException) {
+            emptyList()
+        }
+        set(wert) {
+            p.edit {
+                if (wert.isEmpty()) remove(KONTAKTE_GELOESCHT)
+                else putString(KONTAKTE_GELOESCHT, JSONArray().also { a -> wert.takeLast(200).forEach { g -> a.put(JSONObject().put("name", g.name).put("nummern", JSONArray(g.nummern))) } }.toString())
+            }
+        }
+
     /** Briefing beim Anruf und Nachschlagen unbekannter Nummern (Anrufer.kt)? Tobi schaltet es in der App an und aus. */
     var anruferErkennen: Boolean
         get() = p.getBoolean(ANRUFER_ERKENNEN, false)
@@ -300,6 +319,7 @@ class Speicher(context: Context) {
         const val KONTAKTE_ANGELEGT = "kontakte_angelegt"
         const val KONTAKTE_UMBENANNT = "kontakte_umbenannt"
         const val KONTAKTE_FEHLER = "kontakte_fehler"
+        const val KONTAKTE_GELOESCHT = "kontakte_geloescht"
         const val ANRUFER_ERKENNEN = "anrufer_erkennen"
         const val KI_SCHLUESSEL = "ki_schluessel"
         const val KI_ANGEFRAGT = "ki_angefragt"
