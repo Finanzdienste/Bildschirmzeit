@@ -125,6 +125,9 @@ data class Auswertung(
     /** Ø je Tag – nur über die Tage, für die es Daten gibt. */
     val schnitt: Long? get() = if (belegt > 0) (gesamt.toDouble() / belegt).roundToLong() else null
 
+    /** Ø je Tag unproduktiv – über dieselben Tage wie `schnitt`; null, wenn es nichts gibt. */
+    val unproduktivSchnitt: Long? get() = if (belegt > 0 && unproduktiv > 0L) (unproduktiv.toDouble() / belegt).roundToLong() else null
+
     /** Vergangene Tage ab dem Beginn des Verlaufs, für die nichts da ist. */
     val luecken: List<LocalDate>
         get() = tage.filter { it.sekunden == null && !it.zukunft && datenSeit != null && it.datum >= datenSeit }.map { it.datum }
@@ -194,8 +197,10 @@ fun gesamtText(a: Auswertung): String = if (a.belegt == 0) "keine Daten" else su
 /**
  * „Ø je Tag 2 Std. 15 Min.“ und, wenn Tage fehlen, „· 5 von 7 Tagen mit Daten“ – nur bei Woche und Monat.
  * Für eine App darunter ihr Anteil: „27 % deiner Bildschirmzeit“ (auch am Tag).
- * Für alle Apps „davon unproduktiv: 3 Std. 5 Min. (29 %)“, wenn es etwas gibt;
- * für eine, die als unproduktiv zählt, „zählt als unproduktiv“.
+ * Für alle Apps „davon unproduktiv: 3 Std. 5 Min. (29 %)“, wenn es etwas gibt,
+ * bei Woche und Monat darunter „Ø je Tag unproduktiv: 26 Min.“ (Tobi, 26.11.:
+ * „Will auch bei der unproduktiven Zeit den tagesschnitt wissen“); für eine
+ * App, die als unproduktiv zählt, „zählt als unproduktiv“.
  */
 fun schnittText(a: Auswertung): String? {
     val zeilen = ArrayList<String>()
@@ -206,7 +211,11 @@ fun schnittText(a: Auswertung): String? {
     }
     if (a.nur != null && a.alle > 0L && a.gesamt > 0L) zeilen += "${anteilText(a.gesamt, a.alle)} deiner Bildschirmzeit"
     // Wie im Widget „davon unproduktiv“ (hier nur, wenn es etwas gibt); eine gewählte App sagt, ob sie zählt.
-    if (a.nur == null && a.unproduktiv > 0L && a.gesamt > 0L) zeilen += "davon unproduktiv: ${summeText(a.unproduktiv)} (${anteilText(a.unproduktiv, a.gesamt)})"
+    if (a.nur == null && a.unproduktiv > 0L && a.gesamt > 0L) {
+        zeilen += "davon unproduktiv: ${summeText(a.unproduktiv)} (${anteilText(a.unproduktiv, a.gesamt)})"
+        val u = a.unproduktivSchnitt
+        if (a.zeitraum.reiter != Reiter.TAG && u != null) zeilen += "Ø je Tag unproduktiv: ${summeText(u)}"
+    }
     if (a.nur != null && a.nurUnproduktiv) zeilen += "zählt als unproduktiv"
     return zeilen.takeIf { it.isNotEmpty() }?.joinToString("\n")
 }

@@ -71,7 +71,12 @@ class UnproduktivTest {
         val ist = { k: String -> UnproduktivRegeln.vorgabe(k) }
         val woche = auswerten(Zeitraum.um(Reiter.WOCHE, tag.plusDays(1)), verlauf, tag.plusDays(1), tag, unproduktiv = ist)
         assertEquals(3600L, woche.unproduktiv)
-        assertTrue(schnittText(woche)!!, schnittText(woche)!!.endsWith("\ndavon unproduktiv: 1 Std. (50\u00A0%)"))
+        // Tobi, 26.11.: „Will auch bei der unproduktiven Zeit den tagesschnitt wissen“ – über dieselben Tage wie „Ø je Tag“.
+        assertEquals("Ø je Tag 1 Std.\ndavon unproduktiv: 1 Std. (50\u00A0%)\nØ je Tag unproduktiv: 30 Min.", schnittText(woche))
+        assertEquals(1800L, woche.unproduktivSchnitt)
+        // Am Tag kein Schnitt (wie oben bei der Gesamtzeit).
+        val tagAllein = auswerten(Zeitraum.um(Reiter.TAG, tag), verlauf, tag.plusDays(1), tag, unproduktiv = ist)
+        assertEquals("davon unproduktiv: 30 Min. (50\u00A0%)", schnittText(tagAllein))
         val yt = auswerten(Zeitraum.um(Reiter.WOCHE, tag.plusDays(1)), verlauf, tag.plusDays(1), tag, nur = "com.google.android.youtube", unproduktiv = ist)
         assertTrue(yt.nurUnproduktiv)
         assertTrue(schnittText(yt)!!, schnittText(yt)!!.endsWith("zählt als unproduktiv"))

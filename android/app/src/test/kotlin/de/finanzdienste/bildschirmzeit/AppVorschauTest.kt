@@ -77,6 +77,8 @@ class AppVorschauTest {
             Posten("boxenstopp", "Boxenstopp", 28 * 60L),
             Posten("com.android.chrome", "Chrome", 26 * 60L),
             Posten("com.beispiel.karten", "Karten", 21 * 60L),
+            // Zählt von selbst als unproduktiv (UnproduktivRegeln) – so zeigt die Statistik „davon unproduktiv“ und den Schnitt.
+            Posten("com.google.android.youtube", "YouTube", 19 * 60L),
             Posten("freizeit", "Freizeit", 14 * 60L),
             Posten("com.beispiel.kamera", "Kamera", 8 * 60L),
         ),

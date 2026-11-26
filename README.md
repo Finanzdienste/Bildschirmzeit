@@ -101,7 +101,9 @@ der Statistik, mit dem Weg über die eingeschränkte Einstellung).
   Statistik darunter „davon unproduktiv: …“. Entschieden: Vorgaben statt
   einer Liste von Tobi (Spiele, Video, soziale Netzwerke ohne Messenger,
   YouTube, Netflix, DAZN …, „Sonstiges“), jeder Eintrag lässt sich in der
-  Statistik umstellen (unten „Davon unproduktiv“).
+  Statistik umstellen (unten „Davon unproduktiv“). „Will auch bei der u
+  produktiven Zeit den tagesschnitt wissen“ (26.11.) – seit v31 bei Woche und
+  Monat „Ø je Tag unproduktiv: …“.
 - „Aber statt sonstiges können wir das ja einfach Firefox nennen. Und Dating
   Apps sind dann stattdessen sonstiges“ (25.11.) – seit v28 zählen Seiten,
   die nicht einzeln stehen (klein, ohne Namen, Erotik, Dating, selbst
@@ -1167,7 +1169,10 @@ voller Größe, „(davon unproduktiv: 2:10 Std.)“, dann „(unproduktiv: 2:10
 Std.)“, sonst nichts – die Gesamtzeit geht vor (`WidgetAnsicht.Kopf`, im 4×1
 und in schmalen Widgets also meist nicht). Die Statistik sagt unter der
 Gesamtzeit „davon unproduktiv: 3 Std. 5 Min. (29 %)“ (nur, wenn es etwas
-gibt), eine gewählte App „zählt als unproduktiv“.
+gibt), bei Woche und Monat darunter „Ø je Tag unproduktiv: 26 Min.“ – über
+dieselben Tage wie „Ø je Tag“, also nur die mit Daten (v31; Tobi, 26.11.:
+„Will auch bei der u produktiven Zeit den tagesschnitt wissen“). Eine
+gewählte App sagt „zählt als unproduktiv“.
 - **Von selbst** (`UnproduktivRegeln`): Spiele, Video und soziale Netzwerke
   nach Androids Kategorie der App (`ApplicationInfo.category`; Messenger wie
   WhatsApp, Signal, Telegram nie), bekannte Apps (YouTube, Instagram, TikTok,
@@ -1187,7 +1192,7 @@ gibt), eine gewählte App „zählt als unproduktiv“.
   gleich. Alles auf dem Handy, ohne Netz.
 
 **Geprüft:** `UnproduktivTest` (Vorgaben, Rechnung aus dem Verlauf, die
-Zeilen der Statistik), `UnproduktivGeraetTest` (Androids Kategorie, eigene
+Zeilen der Statistik samt Schnitt, am Tag ohne – gegen v30 rot), `UnproduktivGeraetTest` (Androids Kategorie, eigene
 Einstufung bleibt und fällt bei der Vorgabe weg, das Widget ohne Netz mit
 „(davon unproduktiv: 40 Min.)“ und Ansage für TalkBack, der Knopf in der
 Statistik), `VorschauTest.unproduktivHinterDerGesamtzeit` (rechts der
