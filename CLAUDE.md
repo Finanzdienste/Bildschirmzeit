@@ -14,11 +14,18 @@ und arbeite ohne Workflows.
 ## Modell und Aufwand – immer konkret
 Tobi, 15.11.: „Sowas sollst du immer konkret mit angeben“. Was läuft, zeigt
 `get_session` (`model`, `effort_level`, `flag_settings.ultracode`).
-- Am Ende jeder Antwort, mit der du eine Aufgabe abschließt (nicht bei
-  Zwischenständen), ein Satz: was lief und ob es passte, etwa „Opus 5.5 mit
-  `/effort max`, passt – nichts umstellen“. Tobi, 16.11.: „So eine nachricht
-  gibst du mir irgendwie nur in diesen chat, nicht in den anderen“ – die Regel
-  stand nur hier; jetzt gleich in Workout, Boxenstopp und Freizeit.
+- **Nur melden, wenn etwas zu ändern ist** (Tobi, 26.11.2026: „Dass Opus okay
+  ist brauch ich nicht zu wissen, ich brauch nur zu wissen wenn was geändert
+  werden muss“): Kein Schlusssatz mehr wie „passt – nichts umstellen“. Sollte
+  etwas umgestellt werden (Modell, Aufwand, neuer Chat), am Ende ein Satz mit
+  Grund und dem genauen Befehl.
+- **Neuer Chat** (Tobi, 26.11.2026: „in allen Chats bescheid geben wenn ein
+  neuer Chat nötig ist“): von selbst in einem Satz sagen, sobald einer nötig
+  ist – wenn der Verlauf schon zusammengefasst wurde oder `get_session` mehr
+  als etwa die Hälfte von `context_usage.max_tokens` belegt zeigt, wenn du
+  frühere Entscheidungen nicht mehr sicher weißt, oder wenn ein ganz neues
+  Thema anfängt. Vorher alles Offene in die Dateien schreiben und einen kurzen
+  Starttext zum Einfügen mitgeben.
 - Rätst du von etwas ab (Ultracode, ein anderes Modell), sag in einem Satz,
   was stattdessen gilt, mit dem genauen Befehl, z. B. „kein Ultracode – Opus
   mit `/effort max` reicht, läuft schon“.
