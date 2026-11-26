@@ -1823,6 +1823,10 @@ spricht mit dem echten Supabase oder GitHub (`Netz.gesperrt`).
   je Eintrag umstellbar (Abschnitt „Davon unproduktiv“). 282 Prüfungen grün,
   Lint ohne Fehler; Prüfsumme gleich dem `digest`, Zertifikat
   `bc6f91b9…759e`, versionCode 30, dieselben 14 Rechte.
+- 26.11.2026: Release **v31** (Fassung 1.31, aus 43494d9) – in der Statistik
+  bei Woche und Monat auch „Ø je Tag unproduktiv: …“. 282 Prüfungen grün,
+  Lint ohne Fehler; Prüfsumme gleich dem `digest`, Zertifikat
+  `bc6f91b9…759e`, versionCode 31, dieselben 14 Rechte.
 - Noch nicht auf dem S24 ausprobiert: Größen des Startbildschirms, Akku-
   Verhalten von One UI (ob es die App trotz Widget schlafen legt), ob
   Chrome den Verbinden-Link in der installierten Web-App oder als Tab
