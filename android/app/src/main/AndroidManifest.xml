@@ -66,6 +66,27 @@
             </intent-filter>
         </activity>
 
+        <!-- bildschirmzeit://firefox?url=… aus der Bewerbungszentrale (FirefoxEinstieg.kt): öffnet die
+             Adresse in Firefox als richtigen Tab – ohne eigene Oberfläche, gleich wieder zu, nicht in
+             den zuletzt benutzten Apps. BROWSABLE, weil Firefox es an jeden Link hängt, den es an eine
+             App gibt; eigene Task-Affinität, damit der Bildschirmzeit-Task nicht nach vorn kommt. -->
+        <activity
+            android:name=".FirefoxOeffnen"
+            android:excludeFromRecents="true"
+            android:exported="true"
+            android:noHistory="true"
+            android:taskAffinity=""
+            android:theme="@android:style/Theme.NoDisplay">
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data
+                    android:host="firefox"
+                    android:scheme="bildschirmzeit" />
+            </intent-filter>
+        </activity>
+
         <!-- Anrufer erkennen (Anrufer.kt): PHONE_STATE kommt nur vom System. -->
         <receiver
             android:name=".AnrufEmpfaenger"

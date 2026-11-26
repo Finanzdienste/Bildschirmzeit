@@ -1156,6 +1156,38 @@ merkt keinen Namen, Anzeige und Statistik nur „Firefox“ bzw. für Apps
 in Widget, Verlauf und Beobachtungen; eine Seite selbst zusammenfassen mit
 Rückfrage, Karte „Diskret“, „Wieder einzeln zeigen“; „Alle Daten löschen“).
 
+## Links in einem richtigen Firefox-Tab (v32)
+
+Aus der Bewerbungszentrale (27.11.2026, über ihren Chat): „neuer Einstieg
+bildschirmzeit://firefox?url=<Adresse, mit encodeURIComponent kodiert>. Er
+öffnet die Adresse in Firefox: ACTION_VIEW, Paket org.mozilla.firefox, neuer
+Task, keine Custom-Tab-Extras, keine eigene Oberfläche, danach sofort beenden.
+Ohne Firefox derselbe Intent ohne Paket. Nur http und https.“
+
+**Warum:** Aus der in Firefox installierten Bewerbungszentrale öffnet Firefox
+Links nur im kleinen Fenster, und einen Intent auf sich selbst verwirft es
+still. Eine andere App darf Firefox ganz normal öffnen – diese hier. Der
+Vertrag steht in der README der Bewerbungszentrale unter „Links in einem
+richtigen Firefox-Tab“; dort schaltet man es im Profil ein („Anzeigen in
+Firefox“).
+
+**Jetzt** (`FirefoxEinstieg.kt`): `FirefoxOeffnen` ist eine Aktivität ohne
+Oberfläche (`Theme.NoDisplay`, nicht in den zuletzt benutzten Apps,
+`noHistory`, eigene Task-Affinität, damit der Bildschirmzeit-Task nicht nach
+vorn kommt). Ihr Intent-Filter: `VIEW`, `DEFAULT`, `BROWSABLE` (Firefox hängt
+`BROWSABLE` an jeden Link, den es an eine App gibt), Schema `bildschirmzeit`,
+Host `firefox`. Sie liest `url` (schon dekodiert), nimmt nur `http`/`https`
+mit Host (kein `javascript:`, `file:`, `intent:`, `fenix:`, kein zweites
+`bildschirmzeit:`), startet `ACTION_VIEW` im Paket `org.mozilla.firefox` mit
+`FLAG_ACTIVITY_NEW_TASK` und ohne Extras, ohne Firefox denselben Intent ohne
+Paket, und ist gleich wieder zu – auch wenn nichts die Adresse öffnen kann.
+Braucht kein Netz.
+
+**Geprüft:** `FirefoxEinstiegTest` (nur http/https, Firefox findet den
+Einstieg mit `BROWSABLE`, Firefox im neuen Task ohne Extras, ohne Firefox
+der Browser von Android, fremde Adressen und kein Browser: nichts, kein
+Absturz, sofort zu) – gegen v31 rot (es gab den Einstieg nicht).
+
 ## Davon unproduktiv (v30)
 
 > „Ich will dass im widget bei der gesamtatundenzahl dahinter in Klammern
@@ -1466,6 +1498,7 @@ android/                     Gradle-Projekt (Kotlin DSL)
     WebseitenDienst.kt       die Bedienungshilfe „Bildschirmzeit: Webseiten“ (nur die Browser), Drossel
     Diskret.kt               nie mit Namen: Erotik (Prüfsummen), Partnersuche, eigene Liste, Namen aus dem Gespeicherten löschen
     Unproduktiv.kt           „davon unproduktiv“: Vorgaben (rein), eigene Einstufung, Rechnung aus dem Verlauf
+    FirefoxEinstieg.kt       bildschirmzeit://firefox?url=…: die Adresse ohne Oberfläche in Firefox öffnen
     Balken.kt                das Balkendiagramm der Statistik (Canvas)
     Ziel.kt                  wohin das Widget die App öffnet (Extra an MainActivity: statistik, update)
     WidgetAnsicht.kt         WidgetRaster (wie viele Apps in welche Größe, rein), RemoteViews
