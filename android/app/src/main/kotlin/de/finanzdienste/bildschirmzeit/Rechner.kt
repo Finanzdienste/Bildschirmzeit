@@ -21,6 +21,8 @@ data class Ergebnis(
     val updateHinweis: Boolean = false,
     /** Nur fürs Widget: Es ist Samsungs Automatische Sperre – „Update blockiert“ (UpdateRegeln.widgetGesperrt). */
     val updateGesperrt: Boolean = false,
+    /** Davon unproduktiv (Sekunden, Unproduktiv.kt) – im Widget hinter der Gesamtzeit. */
+    val unproduktiv: Long = 0L,
 ) {
     val gesamt: Long get() = posten.sumOf { it.sekunden }
 
@@ -97,7 +99,14 @@ object Rechner {
         val tag = tagAus(heute, android, web.daten.heute, web.daten.gelesen, fertig = false, seiten = seiten, name = mitAltenNamen(bisher, name))
         verlauf.schreiben(tag)
         // Gezeigt werden die Seiten zusammengefasst (beide Browser, ab 5 Minuten einzeln); im Verlauf je Browser.
-        return Ergebnis(erlaubt = true, posten = webseitenZusammenfassen(tag.posten, verborgen::ist, verborgen::app), stand = jetzt, web = web.daten)
+        // Unproduktiv nach den Posten des Verlaufs: eine kleine Seite zählt nach ihrer Domain, auch wenn sie bei „Firefox“ steht.
+        return Ergebnis(
+            erlaubt = true,
+            posten = webseitenZusammenfassen(tag.posten, verborgen::ist, verborgen::app),
+            stand = jetzt,
+            web = web.daten,
+            unproduktiv = unproduktivSekunden(tag.posten, Unproduktiv(context)::ist, verborgen::app),
+        )
     }
 
     private fun ohneErlaubnis(speicher: Speicher, heute: LocalDate, netz: Boolean, jetzt: Long) = Ergebnis(
@@ -247,6 +256,7 @@ object Rechner {
             Verlauf(context).loeschen(Instant.ofEpochMilli(jetzt).atZone(ZoneId.systemDefault()).toLocalDate())
             Beobachtungen(context).loeschen()
             Verborgen(context).alleZeigen()
+            Unproduktiv(context).alleVergessen()
             // Die Anrufe sind mit der Anmeldung bei Supabase weg; geteilt wird erst wieder nach neuer Freigabe.
             speicher.anrufeTeilen = false
             speicher.anrufeGemeldet = 0L

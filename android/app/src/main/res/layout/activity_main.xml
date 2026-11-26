@@ -197,6 +197,13 @@
                 style="@style/Knopf.Leise"
                 android:text="@string/seite_zusammenfassen"
                 android:visibility="gone" />
+
+            <!-- Eine App oder Seite gewählt: als unproduktiv zählen oder nicht (Unproduktiv.kt). -->
+            <Button
+                android:id="@+id/unproduktiv_umstellen"
+                style="@style/Knopf.Leise"
+                android:text="@string/unproduktiv_ja"
+                android:visibility="gone" />
         </LinearLayout>
 
         <LinearLayout

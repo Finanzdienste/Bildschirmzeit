@@ -64,6 +64,8 @@ class VorschauTest {
         ),
         stand = stand,
         web = verbunden,
+        // Instagram (Tobi, 26.11.: „davon unproduktiv“ hinter der Gesamtzeit).
+        unproduktiv = 28 * 60L,
     )
 
     /** Ein langer Tag ohne Netz: lange Zeiten, lange Namen, über zehn Stunden. */
@@ -79,6 +81,7 @@ class VorschauTest {
         ),
         stand = stand,
         web = verbunden.copy(ohneNetz = true),
+        unproduktiv = 4 * 3600L + 12 * 60L,
     )
 
     @After
@@ -138,6 +141,49 @@ class VorschauTest {
     @Test
     @Config(qualifiers = "+night")
     fun webseitenDunkel() = speichern("webseiten-dunkel", mitSeiten(), 400f, 201f, nacht = true)
+
+    /**
+     * Tobi, 26.11.: „Ich will dass im widget bei der gesamtatundenzahl dahinter in
+     * Klammern steht "davon unproduktiv:" oder so“ – in seinem 4×2 ganz, rechts neben
+     * der Gesamtzeit in voller Größe; enger kürzer, im 4×1 gar nicht (die Gesamtzeit
+     * geht vor), nie abgeschnitten – auch mit großer Schrift.
+     */
+    @Test
+    fun unproduktivHinterDerGesamtzeit() {
+        val gross = aufgebaut(beispiel(), 400f, 201f)
+        assertEquals("(davon unproduktiv: 28 Min.)", ganzNebenDerGesamtzeit(gross))
+        assertEquals(WidgetAnsicht.Kopf.GESAMT_SP * kontext.resources.displayMetrics.scaledDensity, gross.findViewById<TextView>(R.id.gesamt).textSize, 0.5f)
+        // Über zehn Stunden in 3×2: die kurze Zeit („4:12 Std.“) oder gar nichts – aber nie halb.
+        val lang = aufgebaut(langerTag(), 300f, 201f)
+        val l = lang.findViewById<TextView>(R.id.unproduktiv)
+        if (l.visibility == View.VISIBLE) assertTrue(ganzNebenDerGesamtzeit(lang), ganzNebenDerGesamtzeit(lang).endsWith("4:12 Std.)"))
+        assertEquals(View.GONE, aufgebaut(beispiel(), 400f, 100f).findViewById<View>(R.id.unproduktiv).visibility)
+        for (b in listOf(200f, 300f, 400f)) {
+            for (schrift in listOf(1f, 1.3f, 2f)) {
+                RuntimeEnvironment.setFontScale(schrift)
+                val v = aufgebaut(langerTag(), b, 201f)
+                if (v.findViewById<View>(R.id.unproduktiv).visibility == View.VISIBLE) ganzNebenDerGesamtzeit(v)
+                val w = aufgebaut(beispiel(), b, 201f)
+                if (w.findViewById<View>(R.id.unproduktiv).visibility == View.VISIBLE) ganzNebenDerGesamtzeit(w)
+            }
+        }
+        RuntimeEnvironment.setFontScale(1f)
+        // Ganz ohne Nutzung: nichts dahinter.
+        assertEquals(View.GONE, aufgebaut(beispiel().copy(posten = emptyList(), unproduktiv = 0L), 400f, 201f).findViewById<View>(R.id.unproduktiv).visibility)
+    }
+
+    /** Der Text hinter der Gesamtzeit – rechts von ihr, ganz zu sehen und nicht über den Rand. */
+    private fun ganzNebenDerGesamtzeit(v: View): String {
+        val t = v.findViewById<TextView>(R.id.unproduktiv)
+        val g = v.findViewById<TextView>(R.id.gesamt)
+        assertEquals(View.VISIBLE, t.visibility)
+        assertTrue("rechts der Gesamtzeit", t.left >= g.right)
+        assertTrue("nicht über den Rand: ${t.right} > ${(t.parent as View).width}", t.right <= (t.parent as View).width)
+        val noetig = android.text.Layout.getDesiredWidth(t.text, t.paint)
+        assertTrue("ganz zu sehen: ${t.text} braucht $noetig, hat ${t.width}", noetig <= t.width + 1f)
+        assertTrue("die Gesamtzeit auch: ${g.text}", android.text.Layout.getDesiredWidth(g.text, g.paint) <= g.width + 1f)
+        return t.text.toString()
+    }
 
     /** In Tobis 4×2 steht „Sonstiges“ ganz da. */
     @Test

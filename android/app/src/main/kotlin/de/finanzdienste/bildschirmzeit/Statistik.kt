@@ -109,6 +109,10 @@ data class Auswertung(
     val nur: String? = null,
     /** Die Zeit aller Apps im Zeitraum – für den Anteil der einen. */
     val alle: Long = apps.sumOf { it.sekunden },
+    /** Davon unproduktiv (alle Apps im Zeitraum, Unproduktiv.kt). */
+    val unproduktiv: Long = 0L,
+    /** Zählt die eine gewählte App (`nur`) als unproduktiv? */
+    val nurUnproduktiv: Boolean = false,
 ) {
     val gesamt: Long get() = apps.sumOf { it.sekunden }
 
@@ -146,6 +150,7 @@ fun auswerten(
     nur: String? = null,
     verborgen: (String) -> Boolean = { false },
     appVerborgen: (String, String) -> Boolean = { _, _ -> false },
+    unproduktiv: (String) -> Boolean = { false },
 ): Auswertung {
     val summe = HashMap<String, Long>()
     val namen = HashMap<String, String>()
@@ -177,7 +182,10 @@ fun auswerten(
     }
     val alle = sortiert(gruppiert.map { (k, s) -> Posten(k, anzeigename(k) ?: namen[k] ?: if (k == firefox) FIREFOX_NAME else k, s) })
     val apps = if (nur == null) alle else alle.filter { it.schluessel == nur }
-    return Auswertung(z, heute, tage, apps, datenSeit, nur, alle.sumOf { it.sekunden })
+    // Unproduktiv nach den Posten jedes Tages (eine kleine Seite nach ihrer Domain, wie im Widget).
+    val roh = z.tage.filter { it <= heute }.flatMap { verlauf[it]?.posten.orEmpty() }
+    val u = unproduktivSekunden(roh, unproduktiv, appVerborgen, firefox)
+    return Auswertung(z, heute, tage, apps, datenSeit, nur, alle.sumOf { it.sekunden }, u, nur?.let(unproduktiv) == true)
 }
 
 /** Die große Zahl: „12 Std. 34 Min.“, ein Tag ganz ohne Nutzung „0 Min.“ (wie im Widget), oder „keine Daten“. */
@@ -186,6 +194,8 @@ fun gesamtText(a: Auswertung): String = if (a.belegt == 0) "keine Daten" else su
 /**
  * „Ø je Tag 2 Std. 15 Min.“ und, wenn Tage fehlen, „· 5 von 7 Tagen mit Daten“ – nur bei Woche und Monat.
  * Für eine App darunter ihr Anteil: „27 % deiner Bildschirmzeit“ (auch am Tag).
+ * Für alle Apps „davon unproduktiv: 3 Std. 5 Min. (29 %)“, wenn es etwas gibt;
+ * für eine, die als unproduktiv zählt, „zählt als unproduktiv“.
  */
 fun schnittText(a: Auswertung): String? {
     val zeilen = ArrayList<String>()
@@ -195,6 +205,9 @@ fun schnittText(a: Auswertung): String? {
         zeilen += if (a.belegt < a.vergangen) "$text · ${a.belegt} von ${a.vergangen} Tagen mit Daten" else text
     }
     if (a.nur != null && a.alle > 0L && a.gesamt > 0L) zeilen += "${anteilText(a.gesamt, a.alle)} deiner Bildschirmzeit"
+    // Wie im Widget „davon unproduktiv“ (hier nur, wenn es etwas gibt); eine gewählte App sagt, ob sie zählt.
+    if (a.nur == null && a.unproduktiv > 0L && a.gesamt > 0L) zeilen += "davon unproduktiv: ${summeText(a.unproduktiv)} (${anteilText(a.unproduktiv, a.gesamt)})"
+    if (a.nur != null && a.nurUnproduktiv) zeilen += "zählt als unproduktiv"
     return zeilen.takeIf { it.isNotEmpty() }?.joinToString("\n")
 }
 

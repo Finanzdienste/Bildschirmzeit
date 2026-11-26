@@ -46,6 +46,8 @@
     <string name="schritt4_haengt">Eingeschaltet, läuft aber nicht: „Eingabehilfe öffnen“ → „Installierte Apps“ → „Bildschirmzeit: Webseiten“ aus- und wieder einschalten.</string>
     <string name="seite_zusammenfassen">Unter „Firefox“ zusammenfassen</string>
     <string name="app_zusammenfassen">Unter „Sonstiges“ zusammenfassen</string>
+    <string name="unproduktiv_ja">Als unproduktiv zählen</string>
+    <string name="unproduktiv_nein">Nicht als unproduktiv zählen</string>
     <string name="seite_zusammenfassen_titel">„%1$s“ zusammenfassen?</string>
     <string name="seite_zusammenfassen_text">Die Seite zählt dann im Widget und in der Statistik nur noch zu „Firefox“\u00A0– auch rückwirkend, die Zeit bleibt. Ihr Name wird auch aus dem Verlauf auf dem Handy gelöscht. „Wieder einzeln zeigen“ (Karte „Diskret“) gilt nur für die Zukunft.</string>
     <string name="seite_zusammenfassen_ja">Zusammenfassen</string>

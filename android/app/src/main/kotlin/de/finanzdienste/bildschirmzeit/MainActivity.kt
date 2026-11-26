@@ -451,7 +451,7 @@ class MainActivity : Activity(), UpdateBeobachter {
         faeden.execute {
             val tage = verlauf.lesen(z.von, minOf(z.bis, heute))
             val v = Verborgen(applicationContext)
-            val a = auswerten(z, tage, heute, verlauf.erster(), nur, v::ist, v::app)
+            val a = auswerten(z, tage, heute, verlauf.erster(), nur, v::ist, v::app, Unproduktiv(applicationContext)::ist)
             imVordergrund {
                 if (nr == auftrag) {
                     statistikZeigen(a)
@@ -500,9 +500,15 @@ class MainActivity : Activity(), UpdateBeobachter {
             knopf.visibility = if (gewaehlt.schluessel != SONSTIGES && gewaehlt.schluessel !in FIREFOXE) View.VISIBLE else View.GONE
             knopf.setText(if (gewaehlt.schluessel.startsWith(WEBSEITE)) R.string.seite_zusammenfassen else R.string.app_zusammenfassen)
             knopf.setOnClickListener { zusammenfassenFragen(gewaehlt.schluessel, name) }
+            // Jeder Eintrag lässt sich als unproduktiv zählen oder nicht – gilt für Widget und Statistik.
+            val umstellen = findViewById<Button>(R.id.unproduktiv_umstellen)
+            umstellen.visibility = View.VISIBLE
+            umstellen.setText(if (a.nurUnproduktiv) R.string.unproduktiv_nein else R.string.unproduktiv_ja)
+            umstellen.setOnClickListener { unproduktivUmstellen(gewaehlt.schluessel) }
         } else {
             kopf.visibility = View.GONE
             findViewById<View>(R.id.seite_zusammenfassen).visibility = View.GONE
+            findViewById<View>(R.id.unproduktiv_umstellen).visibility = View.GONE
             liste.visibility = View.VISIBLE
             val symbolPx = (30 * dichte).roundToInt()
             for (p in a.apps) {
@@ -582,6 +588,20 @@ class MainActivity : Activity(), UpdateBeobachter {
         val eigene = Verborgen(this).eigene().size
         textSetzen(R.id.diskret_eigene, if (eigene == 0) null else getString(R.string.diskret_eigene, eigene))
         findViewById<View>(R.id.diskret_wieder_zeigen).visibility = if (eigene > 0) View.VISIBLE else View.GONE
+    }
+
+    /** Den gewählten Eintrag andersherum als unproduktiv zählen; Statistik und Widget neu. */
+    private fun unproduktivUmstellen(schluessel: String) {
+        val ctx = applicationContext
+        findViewById<View>(R.id.unproduktiv_umstellen).isEnabled = false
+        faeden.execute {
+            Unproduktiv(ctx).umstellen(schluessel)
+            Aktualisierung.neuZeichnen(ctx)
+            imVordergrund {
+                findViewById<View>(R.id.unproduktiv_umstellen).isEnabled = true
+                statistikNeu()
+            }
+        }
     }
 
     /**

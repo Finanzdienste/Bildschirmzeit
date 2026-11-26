@@ -95,6 +95,13 @@ der Statistik, mit dem Weg über die eingeschränkte Einstellung).
   Web-Apps steht an vier Stellen (`BZ_APPS` im Modul, Tabelle und
   `bildschirmzeit_melden` in Supabase, `WebApp` in der App);
   `tests/test-web.mjs` prüft, dass alle gleich sind (unten „Der Vertrag“).
+- „Ich will dass im widget bei der gesamtatundenzahl dahinter in Klammern
+  steht "davon unproduktiv:" oder so“ (26.11.) – seit v30 steht im Widget
+  hinter der Gesamtzeit leise „(davon unproduktiv: 28 Min.)“, in der
+  Statistik darunter „davon unproduktiv: …“. Entschieden: Vorgaben statt
+  einer Liste von Tobi (Spiele, Video, soziale Netzwerke ohne Messenger,
+  YouTube, Netflix, DAZN …, „Sonstiges“), jeder Eintrag lässt sich in der
+  Statistik umstellen (unten „Davon unproduktiv“).
 - „Aber statt sonstiges können wir das ja einfach Firefox nennen. Und Dating
   Apps sind dann stattdessen sonstiges“ (25.11.) – seit v28 zählen Seiten,
   die nicht einzeln stehen (klein, ohne Namen, Erotik, Dating, selbst
@@ -1147,6 +1154,48 @@ merkt keinen Namen, Anzeige und Statistik nur „Firefox“ bzw. für Apps
 in Widget, Verlauf und Beobachtungen; eine Seite selbst zusammenfassen mit
 Rückfrage, Karte „Diskret“, „Wieder einzeln zeigen“; „Alle Daten löschen“).
 
+## Davon unproduktiv (v30)
+
+> „Ich will dass im widget bei der gesamtatundenzahl dahinter in Klammern
+> steht "davon unproduktiv:" oder so“ – Tobi, 26.11.
+
+**Vorher:** Das Widget zeigte nur die Gesamtzeit von heute.
+
+**Jetzt** (`Unproduktiv.kt`): Hinter der Gesamtzeit steht leise „(davon
+unproduktiv: 2 Std. 10 Min.)“; passt das nicht neben die Gesamtzeit in
+voller Größe, „(davon unproduktiv: 2:10 Std.)“, dann „(unproduktiv: 2:10
+Std.)“, sonst nichts – die Gesamtzeit geht vor (`WidgetAnsicht.Kopf`, im 4×1
+und in schmalen Widgets also meist nicht). Die Statistik sagt unter der
+Gesamtzeit „davon unproduktiv: 3 Std. 5 Min. (29 %)“ (nur, wenn es etwas
+gibt), eine gewählte App „zählt als unproduktiv“.
+- **Von selbst** (`UnproduktivRegeln`): Spiele, Video und soziale Netzwerke
+  nach Androids Kategorie der App (`ApplicationInfo.category`; Messenger wie
+  WhatsApp, Signal, Telegram nie), bekannte Apps (YouTube, Instagram, TikTok,
+  Facebook, X, Reddit, Snapchat, Pinterest, Netflix, Prime Video, Disney+,
+  DAZN, Twitch), dieselben Seiten (youtube.com, netflix.com, …) und
+  „Sonstiges“ (Dating-Apps, selbst zusammengelegte). Nicht: „Firefox“ (Suche,
+  kleine Seiten, Seiten ohne Namen), Chrome, Tobis Web-Apps und alles andere.
+- **Umstellen:** Statistik → Eintrag antippen → unten „Als unproduktiv
+  zählen“ bzw. „Nicht als unproduktiv zählen“. Gilt vor der Vorgabe, auch
+  rückwirkend, für Widget und Statistik; gespeichert nur auf dem Handy
+  (`noBackupFilesDir/unproduktiv.txt`, „+schlüssel“/„-schlüssel“), „Alle
+  Daten löschen“ nimmt es mit.
+- **Gerechnet** nach den Posten des Verlaufs (`unproduktivSekunden`): eine
+  Seite nach ihrer Domain – auch eine kleine, die bei „Firefox“ steht –,
+  Seiten ohne Namen und Firefox selbst wie „Firefox“, Apps, die nie mit
+  Namen erscheinen, wie „Sonstiges“. So sind Widget, Tag, Woche und Monat
+  gleich. Alles auf dem Handy, ohne Netz.
+
+**Geprüft:** `UnproduktivTest` (Vorgaben, Rechnung aus dem Verlauf, die
+Zeilen der Statistik), `UnproduktivGeraetTest` (Androids Kategorie, eigene
+Einstufung bleibt und fällt bei der Vorgabe weg, das Widget ohne Netz mit
+„(davon unproduktiv: 40 Min.)“ und Ansage für TalkBack, der Knopf in der
+Statistik), `VorschauTest.unproduktivHinterDerGesamtzeit` (rechts der
+Gesamtzeit, ganz zu sehen, nie über den Rand, auch mit großer Schrift; im
+4×1 nicht). Gegen v29 rot.
+
+![Widget mit „davon unproduktiv“, dunkel](docs/vorschau-gross-dunkel.png)
+
 ## Anrufe für die Bewerbungszentrale (v20)
 
 Tobi, 23.11.2026: „lass doch machen dass du meine verpassten und angenommenen
@@ -1411,6 +1460,7 @@ android/                     Gradle-Projekt (Kotlin DSL)
     Webseiten.kt             Seiten in Firefox und Chrome: Domain, Adresszeile, Aufteilung, Zusammenfassen (rein), Beobachtungen, Schalter
     WebseitenDienst.kt       die Bedienungshilfe „Bildschirmzeit: Webseiten“ (nur die Browser), Drossel
     Diskret.kt               nie mit Namen: Erotik (Prüfsummen), Partnersuche, eigene Liste, Namen aus dem Gespeicherten löschen
+    Unproduktiv.kt           „davon unproduktiv“: Vorgaben (rein), eigene Einstufung, Rechnung aus dem Verlauf
     Balken.kt                das Balkendiagramm der Statistik (Canvas)
     Ziel.kt                  wohin das Widget die App öffnet (Extra an MainActivity: statistik, update)
     WidgetAnsicht.kt         WidgetRaster (wie viele Apps in welche Größe, rein), RemoteViews

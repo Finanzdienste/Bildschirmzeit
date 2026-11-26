@@ -256,6 +256,8 @@ object WidgetAnsicht {
         v.setTextViewText(R.id.stand, kopf.stand)
         v.setTextViewText(R.id.gesamt, gesamtZeichen(ergebnis.gesamt))
         v.setTextViewTextSize(R.id.gesamt, TypedValue.COMPLEX_UNIT_SP, kopf.gesamtSp)
+        v.setTextViewText(R.id.unproduktiv, kopf.unproduktiv.orEmpty())
+        v.setViewVisibility(R.id.unproduktiv, if (kopf.unproduktiv != null) View.VISIBLE else View.GONE)
         if (raster.form == WidgetRaster.Form.FLACH && Build.VERSION.SDK_INT >= 31) {
             v.setViewLayoutWidth(R.id.kopf, WidgetRaster.KOPF_SEITE * schrift(context), TypedValue.COMPLEX_UNIT_DIP)
         }
@@ -268,7 +270,8 @@ object WidgetAnsicht {
         v.setOnClickPendingIntent(android.R.id.background, oeffnen(context, ziel))
         v.setContentDescription(
             android.R.id.background,
-            "Bildschirmzeit heute: ${dauerText(ergebnis.gesamt)}. " + when {
+            "Bildschirmzeit heute: ${dauerText(ergebnis.gesamt)}" +
+                (if (ergebnis.gesamt > 0L) ", davon unproduktiv ${summeText(ergebnis.unproduktiv)}. " else ". ") + when {
                 ergebnis.updateHinweis && ergebnis.updateGesperrt -> "Update blockiert – antippen öffnet das Update."
                 ergebnis.updateHinweis -> "Antippen öffnet das Update."
                 else -> "Antippen öffnet die Statistik."
@@ -375,9 +378,12 @@ object WidgetAnsicht {
      * Luft (falls die Schrift auf dem Handy breiter läuft). Passt
      * „Stand 21:40 · ohne Netz“ nicht, fällt erst „· ohne Netz“ weg, dann
      * „Stand“; „Update: antippen“ und „Update blockiert“ werden „Update“; die Gesamtzeit wird kleiner
-     * statt abgeschnitten („18 Std. 49“ ohne „Min.“ läse man falsch).
+     * statt abgeschnitten („18 Std. 49“ ohne „Min.“ läse man falsch). Dahinter
+     * „(davon unproduktiv: 2 Std. 10 Min.)“, enger „(davon unproduktiv: 2:10
+     * Std.)“, dann „(unproduktiv: 2:10 Std.)“ – passt nichts davon neben die
+     * Gesamtzeit in voller Größe, steht es nicht da (die Gesamtzeit geht vor).
      */
-    internal class Kopf(val titel: String, val stand: String, val gesamtSp: Float) {
+    internal class Kopf(val titel: String, val stand: String, val gesamtSp: Float, val unproduktiv: String? = null) {
         companion object {
             const val GESAMT_SP = 26f
             const val GESAMT_MIN_SP = 12f
@@ -386,6 +392,10 @@ object WidgetAnsicht {
 
             /** Abstand zwischen „Heute“ und dem Stand in der breiten Form (widget_gross.xml). */
             private const val STAND_ABSTAND = 12f
+
+            /** „(davon unproduktiv: …)“: Größe und Abstand zur Gesamtzeit (widget_*.xml). */
+            const val UNPRODUKTIV_SP = 13f
+            private const val UNPRODUKTIV_ABSTAND = 6f
             private const val LUFT = 1.05f
 
             fun fuer(context: Context, ergebnis: Ergebnis, raster: WidgetRaster.Raster, breite: Float, hinweis: Boolean): Kopf {
@@ -411,7 +421,15 @@ object WidgetAnsicht {
                 val zeichen = gesamtZeichen(ergebnis.gesamt)
                 var sp = GESAMT_SP
                 while (sp > GESAMT_MIN_SP && !passt(context, zeichen, sp, mittel = true, platz)) sp -= 1f
-                return Kopf(titel, stand, sp)
+                val unproduktiv = if (sp < GESAMT_SP || ergebnis.gesamt <= 0L) {
+                    null
+                } else {
+                    val u = ergebnis.unproduktiv.coerceIn(0L, ergebnis.gesamt)
+                    val gesamtBreite = breiteDp(context, zeichen, sp, mittel = true)
+                    listOf("(davon unproduktiv: ${summeText(u)})", "(davon unproduktiv: ${kurzText(u)})", "(unproduktiv: ${kurzText(u)})").distinct()
+                        .firstOrNull { (gesamtBreite + UNPRODUKTIV_ABSTAND + breiteDp(context, it, UNPRODUKTIV_SP, mittel = false)) * LUFT <= platz }
+                }
+                return Kopf(titel, stand, sp, unproduktiv)
             }
 
             private fun passt(context: Context, text: CharSequence, sp: Float, mittel: Boolean, platz: Float, tnum: Boolean = false): Boolean =

@@ -47,16 +47,35 @@
             android:textSize="12sp" />
     </LinearLayout>
 
-    <TextView
-        android:id="@+id/gesamt"
+    <!-- Die Gesamtzeit, dahinter leise „(davon unproduktiv: 2:10 Std.)“ – nur, wenn es daneben passt (WidgetAnsicht.Kopf). -->
+    <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:fontFamily="sans-serif-medium"
-        android:includeFontPadding="false"
-        android:maxLines="1"
-        android:text="@string/strich"
-        android:textColor="@color/widget_text"
-        android:textSize="26sp" />
+        android:baselineAligned="true"
+        android:orientation="horizontal">
+
+        <TextView
+            android:id="@+id/gesamt"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:fontFamily="sans-serif-medium"
+            android:includeFontPadding="false"
+            android:maxLines="1"
+            android:text="@string/strich"
+            android:textColor="@color/widget_text"
+            android:textSize="26sp" />
+
+        <TextView
+            android:id="@+id/unproduktiv"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="6dp"
+            android:includeFontPadding="false"
+            android:maxLines="1"
+            android:textColor="@color/widget_text_leise"
+            android:textSize="13sp"
+            android:visibility="gone" />
+    </LinearLayout>
 
     <TextView
         android:id="@+id/leer"
