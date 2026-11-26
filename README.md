@@ -1813,6 +1813,11 @@ spricht mit dem echten Supabase oder GitHub (`Netz.gesperrt`).
 - 26.11.2026: Release **v29** (aus a348cdc): Platzhalter „Job Neu …“ in den Kontakten: mit Bewerbungsnummer
   umbenannt, sonst gelöscht (Abschnitt „Kontakte aus den Bewerbungen“).
   275 Prüfungen grün (2 neue in `KontakteTest`, eine ohne Netz).
+- 26.11.2026: Release **v30** (Fassung 1.30, aus 4e653f1) – im Widget
+  „(davon unproduktiv: …)“ hinter der Gesamtzeit, in der Statistik darunter,
+  je Eintrag umstellbar (Abschnitt „Davon unproduktiv“). 282 Prüfungen grün,
+  Lint ohne Fehler; Prüfsumme gleich dem `digest`, Zertifikat
+  `bc6f91b9…759e`, versionCode 30, dieselben 14 Rechte.
 - Noch nicht auf dem S24 ausprobiert: Größen des Startbildschirms, Akku-
   Verhalten von One UI (ob es die App trotz Widget schlafen legt), ob
   Chrome den Verbinden-Link in der installierten Web-App oder als Tab
