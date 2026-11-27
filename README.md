@@ -1904,8 +1904,22 @@ spricht mit dem echten Supabase oder GitHub (`Netz.gesperrt`).
   bei Woche und Monat auch „Ø je Tag unproduktiv: …“. 282 Prüfungen grün,
   Lint ohne Fehler; Prüfsumme gleich dem `digest`, Zertifikat
   `bc6f91b9…759e`, versionCode 31, dieselben 14 Rechte.
+- 27.11.2026: Release **v32** (Fassung 1.32, aus 7cdab27) – Einstieg
+  `bildschirmzeit://firefox?url=…` für die Bewerbungszentrale (Abschnitt
+  „Links in einem richtigen Firefox-Tab“). 288 Prüfungen grün, Lint ohne
+  Fehler; Prüfsumme gleich dem `digest`, Zertifikat `bc6f91b9…759e`,
+  versionCode 32, dieselben 14 Rechte, der Intent-Filter steht im Manifest
+  der APK.
+- 27.11.2026: Release **v33** (Fassung 1.33, aus d03157c) – im Widget die
+  Schalter „Alle · Produktiv · Unproduktiv“ (Abschnitt „Alle, produktiv,
+  unproduktiv“). 292 Prüfungen grün, Lint ohne Fehler; Prüfsumme gleich dem
+  `digest`, Zertifikat `bc6f91b9…759e`, versionCode 33, dieselben 14 Rechte,
+  `Hintergrund` weiter nicht exportiert.
 - Noch nicht auf dem S24 ausprobiert: Größen des Startbildschirms, Akku-
   Verhalten von One UI (ob es die App trotz Widget schlafen legt), ob
   Chrome den Verbinden-Link in der installierten Web-App oder als Tab
   öffnet (beides teilt sich den Speicher), und alles unter „Zeigt sich erst
-  auf dem S24“ bei den Updates.
+  auf dem S24“ bei den Updates. Dazu seit v32/v33: der Firefox-Einstieg aus
+  der Bewerbungszentrale (dort Profil → „Anzeigen in Firefox“) und die
+  Schalter im Widget (ob One UI den Tipp auf einen Schalter sofort neu
+  zeichnet).
