@@ -23,6 +23,9 @@ data class Ergebnis(
     val updateGesperrt: Boolean = false,
     /** Davon unproduktiv (Sekunden, Unproduktiv.kt) – im Widget hinter der Gesamtzeit. */
     val unproduktiv: Long = 0L,
+    /** Fürs Widget „Produktiv“ und „Unproduktiv“ (WidgetFilter): die Posten jeweils für sich zusammengefasst. */
+    val produktivPosten: List<Posten> = emptyList(),
+    val unproduktivPosten: List<Posten> = emptyList(),
 ) {
     val gesamt: Long get() = posten.sumOf { it.sekunden }
 
@@ -100,12 +103,18 @@ object Rechner {
         verlauf.schreiben(tag)
         // Gezeigt werden die Seiten zusammengefasst (beide Browser, ab 5 Minuten einzeln); im Verlauf je Browser.
         // Unproduktiv nach den Posten des Verlaufs: eine kleine Seite zählt nach ihrer Domain, auch wenn sie bei „Firefox“ steht.
+        // Für die Ansichten des Widgets beide Teile je für sich zusammengefasst – so ist die Liste so lang wie die Zeit darüber.
+        val ist = Unproduktiv(context)::ist
+        val firefox = firefoxSchluessel(tag.posten.map { it.schluessel })
+        val (unproduktiv, produktiv) = tag.posten.partition { it.sekunden > 0L && ist(einstufungsSchluessel(it, firefox, verborgen::app)) }
         return Ergebnis(
             erlaubt = true,
             posten = webseitenZusammenfassen(tag.posten, verborgen::ist, verborgen::app),
             stand = jetzt,
             web = web.daten,
-            unproduktiv = unproduktivSekunden(tag.posten, Unproduktiv(context)::ist, verborgen::app),
+            unproduktiv = unproduktiv.sumOf { it.sekunden },
+            produktivPosten = webseitenZusammenfassen(produktiv.filter { it.sekunden > 0L }, verborgen::ist, verborgen::app),
+            unproduktivPosten = webseitenZusammenfassen(unproduktiv, verborgen::ist, verborgen::app),
         )
     }
 

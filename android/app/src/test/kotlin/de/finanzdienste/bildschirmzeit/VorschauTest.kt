@@ -18,6 +18,7 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.RuntimeEnvironment
+import org.robolectric.Shadows.shadowOf
 import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
 import org.xmlpull.v1.XmlPullParser
@@ -48,24 +49,28 @@ class VorschauTest {
     private val verbunden = WebDaten(emptyMap(), mapOf("workout" to stand, "boxenstopp" to stand), ohneNetz = false, gelesen = stand)
 
     /** 4 Std. 7 Min. in zehn Apps (erfunden). */
+    private val beispielPosten = listOf(
+        Posten("boxenstopp", "Boxenstopp", 69 * 60L),
+        Posten("com.beispiel.chat", "WhatsApp", 54 * 60L),
+        Posten("workout", "Workout", 41 * 60L),
+        Posten("com.beispiel.fotos", "Instagram", 28 * 60L),
+        Posten("com.android.chrome", "Chrome", 21 * 60L),
+        Posten("com.beispiel.beruf", "LinkedIn", 14 * 60L),
+        Posten("freizeit", "Freizeit", 9 * 60L),
+        Posten("com.beispiel.karten", "Karten", 6 * 60L),
+        Posten("com.beispiel.kamera", "Kamera", 3 * 60L),
+        Posten("com.beispiel.einstellungen", "Einstellungen", 2 * 60L),
+    )
+
     private fun beispiel() = Ergebnis(
         erlaubt = true,
-        posten = listOf(
-            Posten("boxenstopp", "Boxenstopp", 69 * 60L),
-            Posten("com.beispiel.chat", "WhatsApp", 54 * 60L),
-            Posten("workout", "Workout", 41 * 60L),
-            Posten("com.beispiel.fotos", "Instagram", 28 * 60L),
-            Posten("com.android.chrome", "Chrome", 21 * 60L),
-            Posten("com.beispiel.beruf", "LinkedIn", 14 * 60L),
-            Posten("freizeit", "Freizeit", 9 * 60L),
-            Posten("com.beispiel.karten", "Karten", 6 * 60L),
-            Posten("com.beispiel.kamera", "Kamera", 3 * 60L),
-            Posten("com.beispiel.einstellungen", "Einstellungen", 2 * 60L),
-        ),
+        posten = beispielPosten,
         stand = stand,
         web = verbunden,
         // Instagram (Tobi, 26.11.: „davon unproduktiv“ hinter der Gesamtzeit).
         unproduktiv = 28 * 60L,
+        produktivPosten = beispielPosten.filter { it.name != "Instagram" },
+        unproduktivPosten = beispielPosten.filter { it.name == "Instagram" },
     )
 
     /** Ein langer Tag ohne Netz: lange Zeiten, lange Namen, über zehn Stunden. */
@@ -155,26 +160,26 @@ class VorschauTest {
         assertEquals(WidgetAnsicht.Kopf.GESAMT_SP * kontext.resources.displayMetrics.scaledDensity, gross.findViewById<TextView>(R.id.gesamt).textSize, 0.5f)
         // Über zehn Stunden in 3×2: die kurze Zeit („4:12 Std.“) oder gar nichts – aber nie halb.
         val lang = aufgebaut(langerTag(), 300f, 201f)
-        val l = lang.findViewById<TextView>(R.id.unproduktiv)
+        val l = lang.findViewById<TextView>(R.id.zusatz)
         if (l.visibility == View.VISIBLE) assertTrue(ganzNebenDerGesamtzeit(lang), ganzNebenDerGesamtzeit(lang).endsWith("4:12 Std.)"))
-        assertEquals(View.GONE, aufgebaut(beispiel(), 400f, 100f).findViewById<View>(R.id.unproduktiv).visibility)
+        assertEquals(View.GONE, aufgebaut(beispiel(), 400f, 100f).findViewById<View>(R.id.zusatz).visibility)
         for (b in listOf(200f, 300f, 400f)) {
             for (schrift in listOf(1f, 1.3f, 2f)) {
                 RuntimeEnvironment.setFontScale(schrift)
                 val v = aufgebaut(langerTag(), b, 201f)
-                if (v.findViewById<View>(R.id.unproduktiv).visibility == View.VISIBLE) ganzNebenDerGesamtzeit(v)
+                if (v.findViewById<View>(R.id.zusatz).visibility == View.VISIBLE) ganzNebenDerGesamtzeit(v)
                 val w = aufgebaut(beispiel(), b, 201f)
-                if (w.findViewById<View>(R.id.unproduktiv).visibility == View.VISIBLE) ganzNebenDerGesamtzeit(w)
+                if (w.findViewById<View>(R.id.zusatz).visibility == View.VISIBLE) ganzNebenDerGesamtzeit(w)
             }
         }
         RuntimeEnvironment.setFontScale(1f)
         // Ganz ohne Nutzung: nichts dahinter.
-        assertEquals(View.GONE, aufgebaut(beispiel().copy(posten = emptyList(), unproduktiv = 0L), 400f, 201f).findViewById<View>(R.id.unproduktiv).visibility)
+        assertEquals(View.GONE, aufgebaut(beispiel().copy(posten = emptyList(), unproduktiv = 0L), 400f, 201f).findViewById<View>(R.id.zusatz).visibility)
     }
 
     /** Der Text hinter der Gesamtzeit – rechts von ihr, ganz zu sehen und nicht über den Rand. */
     private fun ganzNebenDerGesamtzeit(v: View): String {
-        val t = v.findViewById<TextView>(R.id.unproduktiv)
+        val t = v.findViewById<TextView>(R.id.zusatz)
         val g = v.findViewById<TextView>(R.id.gesamt)
         assertEquals(View.VISIBLE, t.visibility)
         assertTrue("rechts der Gesamtzeit", t.left >= g.right)
@@ -184,6 +189,84 @@ class VorschauTest {
         assertTrue("die Gesamtzeit auch: ${g.text}", android.text.Layout.getDesiredWidth(g.text, g.paint) <= g.width + 1f)
         return t.text.toString()
     }
+
+    /**
+     * Tobi, 27.11.: „Will im widget auch wechseln können zwischen alle, nur produktiv
+     * und nur unproduktiv“ – im 4×2 drei Schalter statt „Heute“, je Ansicht die Zeit,
+     * „(von …)“ und nur ihre Apps; ein Tipp schickt die Wahl ans Widget.
+     */
+    @Test
+    fun alleProduktivUnproduktiv() {
+        val alle = aufgebaut(beispiel(), 400f, 201f, WidgetFilter.ALLE)
+        assertEquals(View.VISIBLE, alle.findViewById<View>(R.id.schalter).visibility)
+        assertFalse(sichtbar(alle.findViewById(R.id.titel), alle))
+        val farben = listOf(R.id.schalter_alle, R.id.schalter_produktiv, R.id.schalter_unproduktiv).map { alle.findViewById<TextView>(it) }
+        assertEquals(listOf("Alle", "Produktiv", "Unproduktiv"), farben.map { it.text.toString() })
+        assertEquals(listOf(kontext.getColor(R.color.akzent), kontext.getColor(R.color.widget_text_leise), kontext.getColor(R.color.widget_text_leise)), farben.map { it.currentTextColor })
+        assertEquals("(davon unproduktiv: 28 Min.)", ganzNebenDerGesamtzeit(alle))
+        for (t in farben) assertTrue("${t.text} ganz zu sehen", android.text.Layout.getDesiredWidth(t.text, t.paint) <= t.width + 1f)
+        // Ohne Netz bleiben die Schalter, und „· ohne Netz“ steht trotzdem ganz da.
+        val ohne = aufgebaut(beispiel().copy(web = verbunden.copy(ohneNetz = true)), 400f, 201f, WidgetFilter.ALLE)
+        assertEquals(View.VISIBLE, ohne.findViewById<View>(R.id.schalter).visibility)
+        assertEquals("Stand 21:40 · ohne Netz", text(ohne, R.id.stand))
+        ohne.findViewById<TextView>(R.id.stand).let { assertTrue(android.text.Layout.getDesiredWidth(it.text, it.paint) <= it.width + 1f) }
+        // Im 3×2 reicht der Platz nicht für beides: dann der Titel, der Hinweis bleibt.
+        val drei = aufgebaut(beispiel().copy(web = verbunden.copy(ohneNetz = true)), 300f, 201f, WidgetFilter.ALLE)
+        assertEquals(View.GONE, drei.findViewById<View>(R.id.schalter).visibility)
+        assertEquals("Heute", text(drei, R.id.titel))
+        assertEquals("Stand 21:40 · ohne Netz", text(drei, R.id.stand))
+
+        val un = aufgebaut(beispiel(), 400f, 201f, WidgetFilter.UNPRODUKTIV)
+        assertEquals("28 Min.", text(un, R.id.gesamt))
+        assertEquals("(von 4 Std. 7 Min.)", ganzNebenDerGesamtzeit(un))
+        assertEquals(listOf("Instagram"), alleTexte(un).filter { n -> beispielPosten.any { it.name == n } })
+        assertEquals(kontext.getColor(R.color.akzent), un.findViewById<TextView>(R.id.schalter_unproduktiv).currentTextColor)
+
+        val pro = aufgebaut(beispiel(), 400f, 201f, WidgetFilter.PRODUKTIV)
+        assertEquals("3 Std. 39 Min.", text(pro, R.id.gesamt))
+        assertFalse(alleTexte(pro).contains("Instagram"))
+        assertTrue(alleTexte(pro).containsAll(listOf("Boxenstopp", "WhatsApp")))
+
+        // Nichts Unproduktives heute: das sagt die Liste.
+        val leer = aufgebaut(beispiel().copy(unproduktiv = 0L, unproduktivPosten = emptyList()), 400f, 201f, WidgetFilter.UNPRODUKTIV)
+        assertEquals("0 Min.", text(leer, R.id.gesamt))
+        assertTrue(alleTexte(leer).contains("Heute noch nichts Unproduktives"))
+
+        // Ein Tipp auf einen Schalter schickt die Wahl ans Widget (BildschirmzeitWidget.onReceive).
+        alle.findViewById<View>(R.id.schalter_produktiv).performClick()
+        val gesendet = shadowOf(kontext).broadcastIntents.last()
+        assertEquals(WidgetAnsicht.FILTER_AKTION, gesendet.action)
+        assertEquals("PRODUKTIV", gesendet.getStringExtra(WidgetAnsicht.FILTER_EXTRA))
+        assertEquals(Hintergrund::class.java.name, gesendet.component?.className)
+
+        // 2×2: kein Platz für die Schalter – der Titel sagt, was gezeigt wird, und schaltet weiter.
+        val klein = aufgebaut(beispiel(), 200f, 201f, WidgetFilter.UNPRODUKTIV)
+        assertEquals("Unproduktiv", text(klein, R.id.titel))
+        klein.findViewById<View>(R.id.titel).performClick()
+        assertEquals("ALLE", shadowOf(kontext).broadcastIntents.last().getStringExtra(WidgetAnsicht.FILTER_EXTRA))
+        assertEquals("Heute", text(aufgebaut(beispiel(), 200f, 201f, WidgetFilter.ALLE), R.id.titel))
+
+        // Große Schrift: lieber der Titel als abgeschnittene Schalter.
+        for (schrift in listOf(1.3f, 2f)) {
+            RuntimeEnvironment.setFontScale(schrift)
+            val v = aufgebaut(beispiel(), 400f, 201f, WidgetFilter.PRODUKTIV)
+            // Bei großer Schrift kann das Raster auch den schmalen oder flachen Kopf nehmen (ohne Schalter).
+            if (v.findViewById<View>(R.id.schalter)?.visibility == View.VISIBLE) {
+                for (id in listOf(R.id.schalter_alle, R.id.schalter_produktiv, R.id.schalter_unproduktiv)) {
+                    val t = v.findViewById<TextView>(id)
+                    assertTrue("${t.text} bei $schrift ganz", android.text.Layout.getDesiredWidth(t.text, t.paint) <= t.width + 1f)
+                }
+                assertTrue("Stand bei $schrift ganz", android.text.Layout.getDesiredWidth(text(v, R.id.stand), v.findViewById<TextView>(R.id.stand).paint) <= v.findViewById<TextView>(R.id.stand).width + 1f)
+            } else {
+                assertEquals("Produktiv", text(v, R.id.titel))
+            }
+        }
+        RuntimeEnvironment.setFontScale(1f)
+    }
+
+    @Test
+    @Config(qualifiers = "+night")
+    fun unproduktivDunkel() = speichern("gross-unproduktiv-dunkel", beispiel(), 400f, 201f, nacht = true, filter = WidgetFilter.UNPRODUKTIV)
 
     /** In Tobis 4×2 steht „Sonstiges“ ganz da. */
     @Test
@@ -442,8 +525,8 @@ class VorschauTest {
         File(ordner, "widget_vorschau_dunkel.png").outputStream().use { bild.compress(Bitmap.CompressFormat.PNG, 100, it) }
     }
 
-    private fun speichern(name: String, ergebnis: Ergebnis, breite: Float, hoehe: Float, nacht: Boolean) {
-        val ansicht = WidgetAnsicht.ansicht(kontext, ergebnis, breite, hoehe)
+    private fun speichern(name: String, ergebnis: Ergebnis, breite: Float, hoehe: Float, nacht: Boolean, filter: WidgetFilter = WidgetFilter.ALLE) {
+        val ansicht = WidgetAnsicht.ansicht(kontext, ergebnis, breite, hoehe, filter = filter)
         // Ein ruhiger „Hintergrundbild“-Ton, damit man die Ecken der Karte sieht.
         val bild = zeichnen(ansicht, breite, hoehe, rahmen = 20, hintergrund = if (nacht) 0xFF0D1015.toInt() else 0xFFD9DFE7.toInt())
         val ordner = File(System.getProperty("vorschau.ordner") ?: "build/vorschau")
@@ -516,8 +599,8 @@ class VorschauTest {
     private fun ellipsen(t: TextView): Int = t.layout.getEllipsisCount(0)
 
     /** Die RemoteViews als echte Views, gemessen und gelegt in breite × hoehe dp. */
-    private fun aufgebaut(ergebnis: Ergebnis, breite: Float, hoehe: Float): View =
-        aufgebaut(WidgetAnsicht.ansicht(kontext, ergebnis, breite, hoehe), breite, hoehe)
+    private fun aufgebaut(ergebnis: Ergebnis, breite: Float, hoehe: Float, filter: WidgetFilter = WidgetFilter.ALLE): View =
+        aufgebaut(WidgetAnsicht.ansicht(kontext, ergebnis, breite, hoehe, filter = filter), breite, hoehe)
 
     private fun aufgebaut(ansicht: RemoteViews, breite: Float, hoehe: Float): View {
         val dichte = kontext.resources.displayMetrics.density

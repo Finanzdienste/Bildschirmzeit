@@ -21,6 +21,7 @@ import android.util.TypedValue
 import android.view.View
 import android.widget.RemoteViews
 import androidx.annotation.ColorRes
+import androidx.annotation.StringRes
 import androidx.core.os.BundleCompat
 import kotlin.math.ceil
 import kotlin.math.floor
@@ -171,6 +172,31 @@ object WidgetRaster {
 }
 
 /**
+ * Was das Widget zeigt – Tobi, 27.11.: „Will im widget auch wechseln können
+ * zwischen alle, nur produktiv und nur unproduktiv“. Gemerkt in
+ * Speicher.widgetFilter (für alle Widgets), gewechselt mit einem Tipp im Kopf.
+ */
+enum class WidgetFilter(@StringRes val bezeichnung: Int, @StringRes val titel: Int, @StringRes val leer: Int) {
+    ALLE(R.string.widget_alle, R.string.widget_heute, R.string.widget_leer),
+    PRODUKTIV(R.string.widget_produktiv, R.string.widget_produktiv, R.string.widget_leer_produktiv),
+    UNPRODUKTIV(R.string.widget_unproduktiv, R.string.widget_unproduktiv, R.string.widget_leer_unproduktiv),
+    ;
+
+    /** Für den Titel in schmalen Widgets: Antippen schaltet weiter. */
+    fun naechster(): WidgetFilter = entries[(ordinal + 1) % entries.size]
+
+    companion object {
+        fun von(name: String?): WidgetFilter = entries.firstOrNull { it.name == name } ?: ALLE
+
+        fun aus(context: Context): WidgetFilter = try {
+            von(Speicher(context).widgetFilter)
+        } catch (e: RuntimeException) {
+            ALLE
+        }
+    }
+}
+
+/**
  * Zeichnet das Widget nach dem WidgetRaster: Kopf mit „Heute“, Gesamtzeit und
  * Stand, darunter die Top-Apps mit Symbol, Name und Zeit. Antippen öffnet die
  * App mit der Statistik (Ziel.STATISTIK); wartet ein Update auf Tobi, steht im
@@ -230,13 +256,14 @@ object WidgetAnsicht {
         return if (b > 0 && h > 0) listOf(SizeF(b.toFloat(), h.toFloat())) else emptyList()
     }
 
-    /** Das Widget für eine Größe (dp). */
+    /** Das Widget für eine Größe (dp); `filter`: was es zeigt (Alle, Produktiv, Unproduktiv). */
     fun ansicht(
         context: Context,
         ergebnis: Ergebnis,
         breite: Float,
         hoehe: Float,
         symbole: MutableMap<String, Bitmap> = HashMap(),
+        filter: WidgetFilter = WidgetFilter.aus(context),
     ): RemoteViews {
         if (!ergebnis.erlaubt) return einrichten(context)
         val raster = WidgetRaster.fuer(breite, hoehe, schrift(context))
@@ -248,30 +275,53 @@ object WidgetAnsicht {
         val v = RemoteViews(context.packageName, layout)
         // Alles immer setzen: Der Startbildschirm legt neue RemoteViews mit demselben Layout über die alten.
         val hinweis = ergebnis.updateHinweis && raster.titel
-        val kopf = Kopf.fuer(context, ergebnis, raster, breite, hinweis)
-        v.setViewVisibility(R.id.titel, if (raster.titel) View.VISIBLE else View.GONE)
+        // Was gezeigt wird: alles, nur das Produktive oder nur das Unproduktive – je für sich zusammengefasst (Rechner).
+        val gezeigt = when (filter) {
+            WidgetFilter.ALLE -> ergebnis.posten
+            WidgetFilter.PRODUKTIV -> ergebnis.produktivPosten
+            WidgetFilter.UNPRODUKTIV -> ergebnis.unproduktivPosten
+        }
+        val summe = if (filter == WidgetFilter.ALLE) ergebnis.gesamt else gezeigt.sumOf { it.sekunden }
+        val kopf = Kopf.fuer(context, ergebnis, raster, breite, hinweis, filter, summe)
+        val ziel = if (ergebnis.updateHinweis) Ziel.UPDATE else Ziel.STATISTIK
+        v.setViewVisibility(R.id.titel, if (raster.titel && !kopf.schalter) View.VISIBLE else View.GONE)
         v.setTextViewText(R.id.titel, kopf.titel)
         textFarbe(context, v, R.id.titel, if (hinweis) R.color.akzent else R.color.widget_text_leise)
+        // Schmal (oder kein Platz für die Schalter): Antippen des Titels schaltet weiter; mit Update-Hinweis öffnet er das Update.
+        v.setOnClickPendingIntent(R.id.titel, if (hinweis) oeffnen(context, ziel) else filterAbsicht(context, filter.naechster()))
+        if (raster.form == WidgetRaster.Form.BREIT) {
+            v.setViewVisibility(R.id.schalter, if (raster.titel && kopf.schalter) View.VISIBLE else View.GONE)
+            for ((f, id) in WidgetFilter.entries.zip(SCHALTER.toList())) {
+                v.setTextViewText(id, context.getString(f.bezeichnung))
+                textFarbe(context, v, id, if (f == filter) R.color.akzent else R.color.widget_text_leise)
+                v.setOnClickPendingIntent(id, filterAbsicht(context, f))
+                v.setContentDescription(id, context.getString(f.bezeichnung) + if (f == filter) ", gewählt" else ", zeigen")
+            }
+        }
         v.setViewVisibility(R.id.stand, if (raster.stand) View.VISIBLE else View.GONE)
         v.setTextViewText(R.id.stand, kopf.stand)
-        v.setTextViewText(R.id.gesamt, gesamtZeichen(ergebnis.gesamt))
+        v.setTextViewText(R.id.gesamt, gesamtZeichen(summe))
         v.setTextViewTextSize(R.id.gesamt, TypedValue.COMPLEX_UNIT_SP, kopf.gesamtSp)
-        v.setTextViewText(R.id.unproduktiv, kopf.unproduktiv.orEmpty())
-        v.setViewVisibility(R.id.unproduktiv, if (kopf.unproduktiv != null) View.VISIBLE else View.GONE)
+        v.setTextViewText(R.id.zusatz, kopf.zusatz.orEmpty())
+        v.setViewVisibility(R.id.zusatz, if (kopf.zusatz != null) View.VISIBLE else View.GONE)
         if (raster.form == WidgetRaster.Form.FLACH && Build.VERSION.SDK_INT >= 31) {
             v.setViewLayoutWidth(R.id.kopf, WidgetRaster.KOPF_SEITE * schrift(context), TypedValue.COMPLEX_UNIT_DIP)
         }
 
-        val top = ergebnis.posten.take(raster.plaetze)
+        val top = gezeigt.take(raster.plaetze)
         listeFuellen(context, v, raster, top, symbole)
         v.setViewVisibility(R.id.leer, if (top.isEmpty() && raster.zeilen > 0) View.VISIBLE else View.GONE)
+        v.setTextViewText(R.id.leer, context.getString(filter.leer))
 
-        val ziel = if (ergebnis.updateHinweis) Ziel.UPDATE else Ziel.STATISTIK
         v.setOnClickPendingIntent(android.R.id.background, oeffnen(context, ziel))
         v.setContentDescription(
             android.R.id.background,
-            "Bildschirmzeit heute: ${dauerText(ergebnis.gesamt)}" +
-                (if (ergebnis.gesamt > 0L) ", davon unproduktiv ${summeText(ergebnis.unproduktiv)}. " else ". ") + when {
+            when (filter) {
+                WidgetFilter.ALLE -> "Bildschirmzeit heute: ${dauerText(ergebnis.gesamt)}" +
+                    if (ergebnis.gesamt > 0L) ", davon unproduktiv ${summeText(ergebnis.unproduktiv)}. " else ". "
+                WidgetFilter.PRODUKTIV -> "Produktiv heute: ${summeText(summe)} von ${summeText(ergebnis.gesamt)}. "
+                WidgetFilter.UNPRODUKTIV -> "Unproduktiv heute: ${summeText(summe)} von ${summeText(ergebnis.gesamt)}. "
+            } + when {
                 ergebnis.updateHinweis && ergebnis.updateGesperrt -> "Update blockiert – antippen öffnet das Update."
                 ergebnis.updateHinweis -> "Antippen öffnet das Update."
                 else -> "Antippen öffnet die Statistik."
@@ -349,6 +399,22 @@ object WidgetAnsicht {
         return PendingIntent.getActivity(context, code, app, PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT)
     }
 
+    /**
+     * Antippen eines Schalters (oder des Titels): an das Widget, das sich `filter`
+     * merkt und ohne Netz neu zeichnet (BildschirmzeitWidget.onReceive).
+     */
+    internal fun filterAbsicht(context: Context, filter: WidgetFilter): PendingIntent {
+        val absicht = Intent(context, Hintergrund::class.java).setAction(FILTER_AKTION).putExtra(FILTER_EXTRA, filter.name)
+        return PendingIntent.getBroadcast(context, CODE_FILTER + filter.ordinal, absicht, PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT)
+    }
+
+    const val FILTER_AKTION = "de.finanzdienste.bildschirmzeit.WIDGET_FILTER"
+    const val FILTER_EXTRA = "filter"
+
+    /** Die drei Schalter im Kopf (widget_gross.xml), in der Reihenfolge von WidgetFilter. */
+    private val SCHALTER = intArrayOf(R.id.schalter_alle, R.id.schalter_produktiv, R.id.schalter_unproduktiv)
+
+    internal const val CODE_FILTER = 20
     internal const val CODE_STATISTIK = 10
     internal const val CODE_UPDATE = 11
     internal const val CODE_STATISTIK_SITZUNG = 12
@@ -382,8 +448,12 @@ object WidgetAnsicht {
      * „(davon unproduktiv: 2 Std. 10 Min.)“, enger „(davon unproduktiv: 2:10
      * Std.)“, dann „(unproduktiv: 2:10 Std.)“ – passt nichts davon neben die
      * Gesamtzeit in voller Größe, steht es nicht da (die Gesamtzeit geht vor).
+     * Zeigt das Widget nur das Produktive oder Unproduktive, steht dort „(von
+     * 4 Std. 7 Min.)“. Im breiten Kopf stehen statt „Heute“ die Schalter „Alle
+     * · Produktiv · Unproduktiv“ (`schalter`), wenn sie neben den Stand passen;
+     * sonst sagt der Titel, was gezeigt wird, und Antippen schaltet weiter.
      */
-    internal class Kopf(val titel: String, val stand: String, val gesamtSp: Float, val unproduktiv: String? = null) {
+    internal class Kopf(val titel: String, val stand: String, val gesamtSp: Float, val zusatz: String? = null, val schalter: Boolean = false) {
         companion object {
             const val GESAMT_SP = 26f
             const val GESAMT_MIN_SP = 12f
@@ -393,12 +463,23 @@ object WidgetAnsicht {
             /** Abstand zwischen „Heute“ und dem Stand in der breiten Form (widget_gross.xml). */
             private const val STAND_ABSTAND = 12f
 
-            /** „(davon unproduktiv: …)“: Größe und Abstand zur Gesamtzeit (widget_*.xml). */
+            /** „(davon unproduktiv: …)“ bzw. „(von …)“: Größe und Abstand zur Gesamtzeit (widget_*.xml). */
             const val UNPRODUKTIV_SP = 13f
             private const val UNPRODUKTIV_ABSTAND = 6f
+
+            /** Abstand zwischen den Schaltern (widget_gross.xml). */
+            private const val SCHALTER_ABSTAND = 14f
             private const val LUFT = 1.05f
 
-            fun fuer(context: Context, ergebnis: Ergebnis, raster: WidgetRaster.Raster, breite: Float, hinweis: Boolean): Kopf {
+            fun fuer(
+                context: Context,
+                ergebnis: Ergebnis,
+                raster: WidgetRaster.Raster,
+                breite: Float,
+                hinweis: Boolean,
+                filter: WidgetFilter = WidgetFilter.ALLE,
+                summe: Long = ergebnis.gesamt,
+            ): Kopf {
                 val schrift = context.resources.configuration.fontScale.takeIf { it > 0f } ?: 1f
                 val innen = breite - 2 * WidgetRaster.RAND_SEITE
                 val platz = if (raster.form == WidgetRaster.Form.FLACH) minOf(innen, WidgetRaster.KOPF_SEITE * schrift) else innen
@@ -406,30 +487,42 @@ object WidgetAnsicht {
                     when {
                         hinweis && ergebnis.updateGesperrt -> R.string.widget_update_gesperrt
                         hinweis -> R.string.widget_update
-                        else -> R.string.widget_heute
+                        else -> filter.titel
                     },
                 )
                 val titel = if (!hinweis || passt(context, titelLang, TITEL_SP, mittel = true, platz)) titelLang else context.getString(R.string.widget_update_kurz)
-                // Breit: Der Stand steht rechts neben „Heute“ (bzw. „Update: antippen“).
-                val standPlatz = if (raster.form == WidgetRaster.Form.BREIT && raster.titel) {
-                    platz - STAND_ABSTAND - breiteDp(context, titel, TITEL_SP, mittel = true) * LUFT
-                } else {
-                    platz
-                }
                 val uhr = uhrzeit(ergebnis.stand)
-                val stand = listOf(standText(ergebnis), "Stand $uhr", uhr).firstOrNull { passt(context, it, STAND_SP, mittel = false, standPlatz, tnum = true) } ?: uhr
-                val zeichen = gesamtZeichen(ergebnis.gesamt)
+                val standWahl = listOf(standText(ergebnis), "Stand $uhr", uhr)
+                // Breit, ohne Update-Hinweis: die drei Schalter statt des Titels – nur, wenn daneben auch
+                // „Stand 21:40 · ohne Netz“ ganz passt. So kosten sie nie den Hinweis „ohne Netz“, und sie
+                // verschwinden nicht, wenn das Netz weg ist; sonst schaltet der Titel weiter.
+                val schalterBreite = WidgetFilter.entries.sumOf { breiteDp(context, context.getString(it.bezeichnung), TITEL_SP, mittel = true).toDouble() }.toFloat() +
+                    SCHALTER_ABSTAND * (WidgetFilter.entries.size - 1)
+                val laengsterStand = if (raster.stand) STAND_ABSTAND + breiteDp(context, "Stand $uhr · ohne Netz", STAND_SP, mittel = false, tnum = true) * LUFT else 0f
+                val schalter = raster.form == WidgetRaster.Form.BREIT && raster.titel && !hinweis && schalterBreite * LUFT + laengsterStand <= platz
+                // Breit: Der Stand steht rechts neben dem Titel bzw. den Schaltern.
+                val standPlatz = when {
+                    raster.form != WidgetRaster.Form.BREIT || !raster.titel -> platz
+                    schalter -> platz - STAND_ABSTAND - schalterBreite * LUFT
+                    else -> platz - STAND_ABSTAND - breiteDp(context, titel, TITEL_SP, mittel = true) * LUFT
+                }
+                val stand = standWahl.firstOrNull { passt(context, it, STAND_SP, mittel = false, standPlatz, tnum = true) } ?: uhr
+                val zeichen = gesamtZeichen(summe)
                 var sp = GESAMT_SP
                 while (sp > GESAMT_MIN_SP && !passt(context, zeichen, sp, mittel = true, platz)) sp -= 1f
-                val unproduktiv = if (sp < GESAMT_SP || ergebnis.gesamt <= 0L) {
+                val zusatz = if (sp < GESAMT_SP || ergebnis.gesamt <= 0L) {
                     null
                 } else {
-                    val u = ergebnis.unproduktiv.coerceIn(0L, ergebnis.gesamt)
                     val gesamtBreite = breiteDp(context, zeichen, sp, mittel = true)
-                    listOf("(davon unproduktiv: ${summeText(u)})", "(davon unproduktiv: ${kurzText(u)})", "(unproduktiv: ${kurzText(u)})").distinct()
-                        .firstOrNull { (gesamtBreite + UNPRODUKTIV_ABSTAND + breiteDp(context, it, UNPRODUKTIV_SP, mittel = false)) * LUFT <= platz }
+                    val wahl = if (filter == WidgetFilter.ALLE) {
+                        val u = ergebnis.unproduktiv.coerceIn(0L, ergebnis.gesamt)
+                        listOf("(davon unproduktiv: ${summeText(u)})", "(davon unproduktiv: ${kurzText(u)})", "(unproduktiv: ${kurzText(u)})")
+                    } else {
+                        listOf("(von ${summeText(ergebnis.gesamt)})", "(von ${kurzText(ergebnis.gesamt)})")
+                    }
+                    wahl.distinct().firstOrNull { (gesamtBreite + UNPRODUKTIV_ABSTAND + breiteDp(context, it, UNPRODUKTIV_SP, mittel = false)) * LUFT <= platz }
                 }
-                return Kopf(titel, stand, sp, unproduktiv)
+                return Kopf(titel, stand, sp, zusatz, schalter)
             }
 
             private fun passt(context: Context, text: CharSequence, sp: Float, mittel: Boolean, platz: Float, tnum: Boolean = false): Boolean =

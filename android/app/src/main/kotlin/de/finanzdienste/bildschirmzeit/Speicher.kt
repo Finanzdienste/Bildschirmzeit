@@ -282,6 +282,13 @@ class Speicher(context: Context) {
             p.edit { putString(REITER, wert) }
         }
 
+    /** Was das Widget zeigt (WidgetFilter: Alle, Produktiv, Unproduktiv); beim ersten Mal null = Alle. */
+    var widgetFilter: String?
+        get() = p.getString(WIDGET_FILTER, null)
+        set(wert) {
+            p.edit { putString(WIDGET_FILTER, wert) }
+        }
+
     /** Mit welchem Stand der Erotik-Erkennung das Gespeicherte zuletzt umgeschrieben wurde (Diskret.kt); 0 = noch nie. */
     var erotikStand: Int
         get() = p.getInt(EROTIK_STAND, 0)
@@ -308,6 +315,8 @@ class Speicher(context: Context) {
         const val NETZ_VERSUCH = "netz_versuch"
         const val NETZ_FEHLT = "netz_fehlt"
         const val REITER = "reiter"
+
+        const val WIDGET_FILTER = "widgetFilter"
         const val EROTIK_STAND = "erotikStand"
         const val ANRUFE_TEILEN = "anrufe_teilen"
         const val ANRUFE_GEMELDET = "anrufe_gemeldet"

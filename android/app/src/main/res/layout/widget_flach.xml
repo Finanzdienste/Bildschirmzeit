@@ -36,7 +36,7 @@
             android:textColor="@color/widget_text_leise"
             android:textSize="13sp" />
 
-        <!-- Die Gesamtzeit, dahinter leise „(davon unproduktiv: 2:10 Std.)“ – nur, wenn es daneben passt (WidgetAnsicht.Kopf). -->
+        <!-- Die Gesamtzeit, dahinter leise „(davon unproduktiv: 2:10 Std.)“ bzw. „(von …)“ – nur, wenn es daneben passt (WidgetAnsicht.Kopf). -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -55,7 +55,7 @@
                 android:textSize="26sp" />
 
             <TextView
-                android:id="@+id/unproduktiv"
+                android:id="@+id/zusatz"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginStart="6dp"

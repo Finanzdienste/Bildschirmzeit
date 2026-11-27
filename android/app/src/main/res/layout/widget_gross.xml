@@ -35,6 +35,33 @@
             android:textColor="@color/widget_text_leise"
             android:textSize="13sp" />
 
+        <!-- Statt „Heute“: Alle · Produktiv · Unproduktiv (WidgetFilter) – antippen wechselt, was das Widget zeigt. -->
+        <LinearLayout
+            android:id="@+id/schalter"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:orientation="horizontal"
+            android:visibility="gone">
+
+            <TextView
+                android:id="@+id/schalter_alle"
+                style="@style/WidgetSchalter"
+                android:text="@string/widget_alle" />
+
+            <TextView
+                android:id="@+id/schalter_produktiv"
+                style="@style/WidgetSchalter"
+                android:layout_marginStart="14dp"
+                android:text="@string/widget_produktiv" />
+
+            <TextView
+                android:id="@+id/schalter_unproduktiv"
+                style="@style/WidgetSchalter"
+                android:layout_marginStart="14dp"
+                android:text="@string/widget_unproduktiv" />
+        </LinearLayout>
+
         <TextView
             android:id="@+id/stand"
             android:layout_width="wrap_content"
@@ -47,7 +74,7 @@
             android:textSize="12sp" />
     </LinearLayout>
 
-    <!-- Die Gesamtzeit, dahinter leise „(davon unproduktiv: 2:10 Std.)“ – nur, wenn es daneben passt (WidgetAnsicht.Kopf). -->
+    <!-- Die Gesamtzeit, dahinter leise „(davon unproduktiv: 2:10 Std.)“ bzw. „(von …)“ – nur, wenn es daneben passt (WidgetAnsicht.Kopf). -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
@@ -66,7 +93,7 @@
             android:textSize="26sp" />
 
         <TextView
-            android:id="@+id/unproduktiv"
+            android:id="@+id/zusatz"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginStart="6dp"

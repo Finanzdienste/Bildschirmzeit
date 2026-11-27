@@ -104,6 +104,21 @@ class UnproduktivGeraetTest {
         }
     }
 
+    /** Bis `fertig` (der Empfänger zeichnet in einem eigenen Faden), höchstens gut zwei Sekunden. */
+    private fun warten(fertig: () -> Boolean) {
+        repeat(100) {
+            shadowOf(Looper.getMainLooper()).idle()
+            if (fertig()) return
+            Thread.sleep(20)
+        }
+    }
+
+    /** Die Namen der Apps in der Liste des Widgets, Spalte für Spalte. */
+    private fun namen(v: View): List<String> = listOf(R.id.spalte1, R.id.spalte2).flatMap { id ->
+        val s = v.findViewById<ViewGroup>(id)
+        if (s.visibility != View.VISIBLE) emptyList() else (0 until s.childCount).map { s.getChildAt(it).findViewById<TextView>(R.id.name).text.toString() }
+    }
+
     @Test
     fun androidsKategorieUndEigeneEinstufung() {
         val u = Unproduktiv(kontext)
@@ -130,11 +145,86 @@ class UnproduktivGeraetTest {
         assertEquals(50 * 60L, e.gesamt)
         assertEquals(40 * 60L, e.unproduktiv)
         val v = aufgebaut(WidgetAnsicht.ansicht(kontext, e, 400f, 201f), 400f, 201f)
-        val t = v.findViewById<TextView>(R.id.unproduktiv)
+        val t = v.findViewById<TextView>(R.id.zusatz)
         assertEquals(View.VISIBLE, t.visibility)
         assertEquals("(davon unproduktiv: 40 Min.)", t.text.toString())
         assertEquals("50 Min.", v.findViewById<TextView>(R.id.gesamt).text.toString())
         assertTrue(v.contentDescription.toString(), v.contentDescription.toString().startsWith("Bildschirmzeit heute: 50 Min., davon unproduktiv 40 Min."))
+    }
+
+    /**
+     * Tobi, 27.11.: „Will im widget auch wechseln können zwischen alle, nur
+     * produktiv und nur unproduktiv“ – auf dem Gerät gerechnet, ohne Netz: je
+     * Ansicht ihre Zeit, „(von …)“ dahinter und nur ihre Apps.
+     */
+    @Test
+    fun nurProduktivOderNurUnproduktiv() {
+        benutzt("com.beispiel.spiel", um(20), um(20, 40))
+        benutzt("com.beispiel.chat", um(21), um(21, 10))
+        val e = Rechner.berechnen(kontext, netz = false, jetzt = um(21, 30))
+        assertEquals(listOf("Spiel"), e.unproduktivPosten.map { it.name })
+        assertEquals(listOf("Chat"), e.produktivPosten.map { it.name })
+        for ((filter, zeit, app) in listOf(
+            Triple(WidgetFilter.ALLE, "50 Min.", listOf("Spiel", "Chat")),
+            Triple(WidgetFilter.UNPRODUKTIV, "40 Min.", listOf("Spiel")),
+            Triple(WidgetFilter.PRODUKTIV, "10 Min.", listOf("Chat")),
+        )) {
+            val v = aufgebaut(WidgetAnsicht.ansicht(kontext, e, 400f, 201f, filter = filter), 400f, 201f)
+            assertEquals("$filter", zeit, v.findViewById<TextView>(R.id.gesamt).text.toString())
+            assertEquals("$filter", if (filter == WidgetFilter.ALLE) "(davon unproduktiv: 40 Min.)" else "(von 50 Min.)", v.findViewById<TextView>(R.id.zusatz).text.toString())
+            assertEquals("$filter", app, namen(v))
+        }
+    }
+
+    /**
+     * Im Widget auf dem Startbildschirm: Ein Tipp auf „Unproduktiv“ geht an den
+     * nicht exportierten Empfänger, wird gemerkt und gleich ohne Netz neu
+     * gezeichnet – und bleibt beim nächsten Takt. Unbekanntes heißt „Alle“.
+     */
+    @Test
+    fun umschaltenImWidgetOhneNetz() {
+        val awm = AppWidgetManager.getInstance(kontext)
+        awm.updateAppWidgetOptions(
+            7,
+            android.os.Bundle().apply {
+                putInt(AppWidgetManager.OPTION_APPWIDGET_MIN_WIDTH, 400)
+                putInt(AppWidgetManager.OPTION_APPWIDGET_MAX_HEIGHT, 201)
+            },
+        )
+        Aktualisierung.neuZeichnen(kontext)
+        val akzent = kontext.getColor(R.color.akzent)
+        fun widget() = shadowOf(awm).getViewFor(7)
+        fun farbe(id: Int) = widget().findViewById<TextView>(id).currentTextColor
+        fun leer() = widget().findViewById<TextView>(R.id.leer).text.toString()
+        assertEquals(View.VISIBLE, widget().findViewById<View>(R.id.schalter).visibility)
+        assertEquals(akzent, farbe(R.id.schalter_alle))
+        assertEquals("Heute noch nichts", leer())
+
+        widget().findViewById<View>(R.id.schalter_unproduktiv).performClick()
+        warten { farbe(R.id.schalter_unproduktiv) == akzent }
+        assertEquals("UNPRODUKTIV", Speicher(kontext).widgetFilter)
+        assertEquals(akzent, farbe(R.id.schalter_unproduktiv))
+        assertTrue(farbe(R.id.schalter_alle) != akzent)
+        assertEquals("Heute noch nichts Unproduktives", leer())
+        assertTrue(widget().contentDescription.toString(), widget().contentDescription.toString().startsWith("Unproduktiv heute: 0 Min. von 0 Min."))
+        // Der nächste Takt (oder ein anderes Neuzeichnen) bleibt dabei.
+        Aktualisierung.allein { }
+        WidgetAnsicht.zeigen(kontext, Rechner.berechnen(kontext, netz = false), intArrayOf(7))
+        assertEquals("Heute noch nichts Unproduktives", leer())
+
+        widget().findViewById<View>(R.id.schalter_produktiv).performClick()
+        warten { leer() == "Heute noch nichts Produktives" }
+        assertEquals("PRODUKTIV", Speicher(kontext).widgetFilter)
+
+        // Was der Empfänger nicht kennt, heißt „Alle“.
+        kontext.sendBroadcast(
+            Intent(WidgetAnsicht.FILTER_AKTION).setComponent(ComponentName(kontext, Hintergrund::class.java)).putExtra(WidgetAnsicht.FILTER_EXTRA, "QUATSCH"),
+        )
+        warten { leer() == "Heute noch nichts" }
+        assertEquals("ALLE", Speicher(kontext).widgetFilter)
+        assertEquals(akzent, farbe(R.id.schalter_alle))
+        // Bis der Faden fertig ist: sonst hält er die Sperre noch im nächsten Test.
+        Aktualisierung.allein { }
     }
 
     /** In der Statistik den Chat als unproduktiv zählen – und zurück. */

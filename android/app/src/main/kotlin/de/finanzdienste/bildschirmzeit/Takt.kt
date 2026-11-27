@@ -114,13 +114,22 @@ object Wecker {
 /**
  * Nicht exportiert: der Wecker (eigener PendingIntent), BOOT_COMPLETED und
  * MY_PACKAGE_REPLACED (beide schickt das System, das darf auch an nicht
- * exportierte Empfänger). Nach Neustart und Update wird neu eingeplant.
+ * exportierte Empfänger). Nach Neustart und Update wird neu eingeplant. Dazu
+ * die Schalter im Kopf des Widgets (Alle, Produktiv, Unproduktiv; eigener
+ * PendingIntent): Die Wahl wird gemerkt und das Widget gleich ohne Netz neu
+ * gezeichnet – hier statt beim exportierten Widget, so kann keine fremde App
+ * umschalten.
  */
 class Hintergrund : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
         val app = context.applicationContext
         when (intent.action) {
             Wecker.TAKT -> imHintergrund { Aktualisierung.imTakt(app, Anlass.WECKER) }
+            WidgetAnsicht.FILTER_AKTION -> {
+                // Gleich hier gemerkt (in der Reihenfolge der Tipps), gezeichnet im Hintergrund.
+                Speicher(app).widgetFilter = WidgetFilter.von(intent.getStringExtra(WidgetAnsicht.FILTER_EXTRA)).name
+                imHintergrund { Aktualisierung.neuZeichnen(app) }
+            }
             Intent.ACTION_BOOT_COMPLETED, Intent.ACTION_MY_PACKAGE_REPLACED -> {
                 val update = intent.action == Intent.ACTION_MY_PACKAGE_REPLACED
                 imHintergrund {

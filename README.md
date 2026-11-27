@@ -320,7 +320,9 @@ die App.
 - Oben klein „Heute“ (wartet ein Update: „Update: antippen“ in der
   Akzentfarbe), rechts daneben „Stand 10:40“, darunter groß die Gesamtzeit
   aller Apps (in den Bildern erfunden „4 Std. 7 Min.“ – dieselbe Summe wie
-  vorher in der Ringmitte).
+  vorher in der Ringmitte). Seit v33 stehen im 4×2 statt „Heute“ die
+  Schalter „Alle · Produktiv · Unproduktiv“ (Abschnitt „Alle, produktiv,
+  unproduktiv“).
 - Darunter die Top-Apps nach Zeit mit Symbol, Name und Zeit – so viele, wie
   ganz hineinpassen, höchstens 8; nie eine halbe Zeile. Kein Ring, keine
   Farbpunkte (die waren nur seine Legende), kein „Andere Apps“, auch nicht im
@@ -1232,6 +1234,48 @@ Gesamtzeit, ganz zu sehen, nie über den Rand, auch mit großer Schrift; im
 4×1 nicht). Gegen v29 rot.
 
 ![Widget mit „davon unproduktiv“, dunkel](docs/vorschau-gross-dunkel.png)
+
+## Alle, produktiv, unproduktiv (v33)
+
+> „Will im widget auch wechseln können zwischen alle, nur produktiv und nur
+> unproduktiv“ – Tobi, 27.11.
+
+**Vorher:** Das Widget zeigte immer alle Apps, hinter der Gesamtzeit
+„(davon unproduktiv: …)“ (v30).
+
+**Jetzt** (`WidgetFilter` in `WidgetAnsicht.kt`): Im breiten Kopf (Tobis
+4×2) stehen statt „Heute“ die Schalter „Alle · Produktiv · Unproduktiv“, der
+gewählte in der Akzentfarbe. Ein Tipp zeigt nur noch das Gewählte: groß die
+Zeit dieser Apps, dahinter „(von 4 Std. 7 Min.)“ (die Gesamtzeit), darunter
+nur ihre Apps – ohne etwas „Heute noch nichts Produktives“ bzw.
+„Unproduktives“. Produktiv ist alles, was nicht als unproduktiv zählt
+(Abschnitt „Davon unproduktiv“, umstellbar wie dort; `Ergebnis.produktivPosten`
+und `unproduktivPosten`). Die Wahl gilt für alle Widgets und bleibt
+(`Speicher.widgetFilter`), auch nach Neustart und Update; der Rest des
+Widgets öffnet weiter die Statistik.
+- **Wenig Platz:** Die Schalter stehen nur da, wenn daneben auch „Stand
+  21:40 · ohne Netz“ ganz passt – so verdrängen sie nie den Hinweis „ohne
+  Netz“ und verschwinden nicht, wenn das Netz weg ist. Sonst (2×2, 3×2, 4×1,
+  große Schrift) sagt der Titel, was gezeigt wird („Heute“, „Produktiv“,
+  „Unproduktiv“), und ein Tipp auf ihn schaltet weiter. Mit Update-Hinweis
+  öffnet der Titel wie bisher das Update.
+- **Ohne Netz:** Der Tipp geht als eigener PendingIntent an den nicht
+  exportierten Empfänger `Hintergrund` (so kann keine fremde App
+  umschalten), die Wahl wird gleich gemerkt und das Widget sofort neu
+  gezeichnet – mit dem, was das Handy weiß (`Aktualisierung.neuZeichnen`,
+  ohne Supabase).
+- **TalkBack:** „Unproduktiv heute: 28 Min. von 4 Std. 7 Min.“; die Schalter
+  sagen „gewählt“ bzw. „zeigen“.
+
+**Geprüft:** `VorschauTest.alleProduktivUnproduktiv` (Schalter im 4×2 ganz
+und in der richtigen Farbe, je Ansicht Zeit, „(von …)“ und Apps, leer; ohne
+Netz Schalter und „· ohne Netz“; im 3×2 und 2×2 der Titel, der weiterschaltet;
+große Schrift), `UnproduktivGeraetTest` (auf dem Gerät gerechnet; im Widget
+auf dem Startbildschirm umgeschaltet, gemerkt, beim nächsten Zeichnen
+geblieben, Unbekanntes wird „Alle“ – ohne Netz). Gegen v32 rot (es gab keine
+Wahl).
+
+![Widget nur mit dem Unproduktiven, dunkel](docs/vorschau-gross-unproduktiv-dunkel.png)
 
 ## Anrufe für die Bewerbungszentrale (v20)
 
