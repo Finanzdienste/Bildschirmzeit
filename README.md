@@ -1920,6 +1920,15 @@ spricht mit dem echten Supabase oder GitHub (`Netz.gesperrt`).
   unproduktiv“). 292 Prüfungen grün, Lint ohne Fehler; Prüfsumme gleich dem
   `digest`, Zertifikat `bc6f91b9…759e`, versionCode 33, dieselben 14 Rechte,
   `Hintergrund` weiter nicht exportiert.
+- 27.11.2026: Release **v34** (Fassung 1.34, aus d299f92) – WhatsApp und
+  WhatsApp Web zählen von selbst als unproduktiv (Abschnitt „Davon
+  unproduktiv“). 292 Prüfungen grün, Lint ohne Fehler; Prüfsumme gleich dem
+  `digest`, Zertifikat `bc6f91b9…759e`, versionCode 34, dieselben 14 Rechte.
+- Offen bei Tobi (27.11.): ob die diskreten Seiten (Erotik, Dating-Seiten)
+  als unproduktiv zählen sollen. Sie stehen ohne Namen bei „Firefox“ und
+  zählen deshalb als produktiv; Dating-Apps („Sonstiges“) zählen schon.
+  Bauen hieße: ein eigenes Zeichen statt `OHNE_DOMAIN` für sie, weiter ohne
+  Namen, nur ab dann.
 - Noch nicht auf dem S24 ausprobiert: Größen des Startbildschirms, Akku-
   Verhalten von One UI (ob es die App trotz Widget schlafen legt), ob
   Chrome den Verbinden-Link in der installierten Web-App oder als Tab
