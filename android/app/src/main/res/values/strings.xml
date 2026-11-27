@@ -72,6 +72,8 @@
     <string name="reiter_woche">Woche</string>
     <string name="reiter_monat">Monat</string>
     <string name="alle_apps">Alle Apps</string>
+    <string name="alle_produktiven">Alle produktiven</string>
+    <string name="alle_unproduktiven">Alle unproduktiven</string>
     <string name="pfeil_zurueck">‹</string>
     <string name="pfeil_weiter">›</string>
     <string name="zurueck">Voriger Zeitraum</string>

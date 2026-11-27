@@ -105,7 +105,9 @@ der Statistik, mit dem Weg über die eingeschränkte Einstellung).
   unproduktiv.“ (27.11.) – seit v34 zählt WhatsApp von selbst mit, andere
   Messenger weiter nicht. Auf die Frage, ob die diskreten Seiten (Erotik,
   Dating) als unproduktiv zählen sollen: „Jo“ (27.11.) – seit v35, weiter ohne
-  Namen bei „Firefox“. „Will auch bei der u
+  Namen bei „Firefox“. „Meinte ich nicht ich will oben so Buttons wo ich
+  zwischen produktiv und unproduktiv und so wechseln kann?“ (27.11., über die
+  Statistik) – seit v36 auch dort „Alle · Produktiv · Unproduktiv“. „Will auch bei der u
   produktiven Zeit den tagesschnitt wissen“ (26.11.) – seit v31 bei Woche und
   Monat „Ø je Tag unproduktiv: …“.
 - „Aber statt sonstiges können wir das ja einfach Firefox nennen. Und Dating
@@ -1310,6 +1312,36 @@ geblieben, Unbekanntes wird „Alle“ – ohne Netz). Gegen v32 rot (es gab kei
 Wahl).
 
 ![Widget nur mit dem Unproduktiven, dunkel](docs/vorschau-gross-unproduktiv-dunkel.png)
+
+**v36 – auch in der Statistik der App** (Tobi, 27.11., mit einem Screenshot
+der Statistik: „Meinte ich nicht ich will oben so Buttons wo ich zwischen
+produktiv und unproduktiv und so wechseln kann? Also in der Ansicht dass mir
+zb nur produktive angezeigt werden“):
+- **Vorher** gab es die Wahl nur im Widget (v33); die Statistik zeigte immer
+  alle Apps mit „davon unproduktiv“.
+- **Jetzt** steht unter Tag · Woche · Monat eine zweite Reihe „Alle ·
+  Produktiv · Unproduktiv“ (Stil `Ansicht`, eine Stufe kleiner als die
+  Reiter). Gewählt zeigt die Statistik nur noch das: die große Zahl, darunter
+  „von 20 Std. 36 Min. (17 %)“ (die ganze Zeit) und bei Woche und Monat „Ø je
+  Tag unproduktiv: …“ bzw. „Ø je Tag produktiv: …“, die Balken je Tag und die
+  Liste mit dem Anteil innerhalb der Ansicht (`auswerten(…, filter)`,
+  `schnittText`). „Firefox“ steht mit seinem Teil in beiden Ansichten (wie im
+  Widget). Ist davon nichts da: „Heute noch nichts Unproduktives.“, „An
+  diesem Tag …“, „In diesem Zeitraum …“ (`filterLeerText`).
+- Eine App aus der Ansicht gewählt: Die Reihe ist weg, die App folgt der
+  Ansicht (bei „Firefox“ also nur sein Teil), und zurück heißt „Alle
+  produktiven“ bzw. „Alle unproduktiven“.
+- Gemerkt wie der Reiter (`Speicher.statistikFilter`), auch über einen
+  Neustart – unabhängig vom Widget, das seine eigene Wahl behält. Alles aus
+  dem Verlauf auf dem Handy, ohne Netz.
+Geprüft: `UnproduktivTest.statistikNurProduktivOderUnproduktiv` (Apps, Tage,
+Ø, „von …“, beide Teile von „Firefox“, die leeren Sätze),
+`UnproduktivGeraetTest.inDerStatistikNurProduktivOderUnproduktiv` (die
+Schalter in der App, ohne Netz: Liste, Zahl, „von …“, ein Tag ohne,
+„Alle produktiven“, gemerkt über einen neuen Start, Widget unberührt),
+`AppVorschauTest.unproduktivDunkel`; gegen v35 rot.
+
+![Statistik nur mit dem Unproduktiven der Woche, dunkel](docs/vorschau-app-unproduktiv-dunkel.png)
 
 ## Anrufe für die Bewerbungszentrale (v20)
 

@@ -130,7 +130,7 @@ class AppStatistikTest {
         assertEquals("MONAT", Speicher(kontext).reiter)
         assertEquals("16. Okt. – 14. Nov.", a.text(R.id.zeitraum_titel))
         assertEquals("Daten seit 3. Nov.\nKeine Daten: 7.–8. Nov.", a.text(R.id.luecken))
-        assertTrue(a.text(R.id.schnitt).endsWith("· 10 von 12 Tagen mit Daten"))
+        assertTrue(a.text(R.id.schnitt).lines().first().endsWith("· 10 von 12 Tagen mit Daten"))
         // Zurück in den Oktober: dort keine Daten, und weiter zurück geht es nicht.
         a.findViewById<View>(R.id.zurueck).performClick()
         warten()
@@ -178,7 +178,7 @@ class AppStatistikTest {
         assertEquals("1.–7. Nov.", a.text(R.id.zeitraum_titel))
         assertEquals("Daten seit 3. Nov.\nKeine Daten: 7. Nov.", a.text(R.id.luecken))
         assertEquals(dauerText(summe(3, 4, 5, 6)), a.text(R.id.gesamt))
-        assertTrue(a.text(R.id.schnitt).endsWith("· 4 von 5 Tagen mit Daten"))
+        assertTrue(a.text(R.id.schnitt).lines().first().endsWith("· 4 von 5 Tagen mit Daten"))
         // Vor dem 3.11. hat der Verlauf nichts: nicht weiter zurück.
         assertFalse(a.findViewById<View>(R.id.zurueck).isEnabled)
         // Vergangene Woche: kein „Stand“ von heute darunter.

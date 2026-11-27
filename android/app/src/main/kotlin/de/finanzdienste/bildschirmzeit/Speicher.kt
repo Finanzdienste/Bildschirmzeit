@@ -282,6 +282,13 @@ class Speicher(context: Context) {
             p.edit { putString(REITER, wert) }
         }
 
+    /** Alle, nur Produktives oder nur Unproduktives in der Statistik der App (WidgetFilter.name) – unabhängig vom Widget. */
+    var statistikFilter: String?
+        get() = p.getString(STATISTIK_FILTER, null)
+        set(wert) {
+            p.edit { putString(STATISTIK_FILTER, wert) }
+        }
+
     /** Was das Widget zeigt (WidgetFilter: Alle, Produktiv, Unproduktiv); beim ersten Mal null = Alle. */
     var widgetFilter: String?
         get() = p.getString(WIDGET_FILTER, null)
@@ -317,6 +324,7 @@ class Speicher(context: Context) {
         const val REITER = "reiter"
 
         const val WIDGET_FILTER = "widgetFilter"
+        const val STATISTIK_FILTER = "statistikFilter"
         const val EROTIK_STAND = "erotikStand"
         const val ANRUFE_TEILEN = "anrufe_teilen"
         const val ANRUFE_GEMELDET = "anrufe_gemeldet"

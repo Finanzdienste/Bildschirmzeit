@@ -98,6 +98,71 @@ class UnproduktivTest {
         assertEquals(1200L, a.unproduktiv)
     }
 
+    /**
+     * Tobi, 27.11.: „Meinte ich nicht ich will oben so Buttons wo ich zwischen
+     * produktiv und unproduktiv und so wechseln kann? Also in der Ansicht dass
+     * mir zb nur produktive angezeigt werden“ – in der Statistik der App je
+     * Ansicht nur ihre Apps, ihre Zeit je Tag und ihr Ø, dahinter „von …“.
+     * „Firefox“ steht mit seinem Teil in beiden. Gegen v35 rot.
+     */
+    @Test
+    fun statistikNurProduktivOderUnproduktiv() {
+        val tag = LocalDate.of(2026, 11, 24)
+        val heute = tag.plusDays(1)
+        val verlauf = (0L..1L).associate { d ->
+            val t = tag.plusDays(d)
+            t to Tag(
+                t,
+                sortiert(
+                    listOf(
+                        Posten("com.google.android.youtube", "YouTube", 1800L),
+                        Posten("com.beispiel.chat", "Chat", 3600L),
+                        // „Firefox“ mit beiden Teilen: eine diskrete Seite (unproduktiv) und eine Suche (nicht).
+                        Posten(seitenSchluessel(ff, DISKRET_DOMAIN), FIREFOX_NAME, 600L),
+                        Posten(seitenSchluessel(ff, OHNE_DOMAIN), FIREFOX_NAME, 300L),
+                    ),
+                ),
+                fertig = true,
+            )
+        }
+        val ist = { k: String -> UnproduktivRegeln.vorgabe(k) }
+        fun woche(f: WidgetFilter, nur: String? = null) =
+            auswerten(Zeitraum.um(Reiter.WOCHE, heute), verlauf, heute, tag, nur = nur, unproduktiv = ist, filter = f)
+        val alle = woche(WidgetFilter.ALLE)
+        assertEquals(12600L, alle.gesamt)
+        val un = woche(WidgetFilter.UNPRODUKTIV)
+        assertEquals(listOf("YouTube" to 3600L, "Firefox" to 1200L), un.apps.map { it.name to it.sekunden })
+        assertEquals(12600L, un.alle)
+        assertEquals(listOf(2400L, 2400L), un.tage.mapNotNull { it.sekunden })
+        assertEquals("von 3 Std. 30 Min. (38\u00A0%)\nØ je Tag unproduktiv: 40 Min.", schnittText(un))
+        val pro = woche(WidgetFilter.PRODUKTIV)
+        assertEquals(listOf("Chat" to 7200L, "Firefox" to 600L), pro.apps.map { it.name to it.sekunden })
+        assertEquals(listOf(3900L, 3900L), pro.tage.mapNotNull { it.sekunden })
+        assertEquals("von 3 Std. 30 Min. (62\u00A0%)\nØ je Tag produktiv: 1 Std. 5 Min.", schnittText(pro))
+        // Zusammen wieder alles – und „davon unproduktiv“ unter „Alle“ ist dieselbe Zahl.
+        assertEquals(alle.gesamt, un.gesamt + pro.gesamt)
+        assertEquals(un.gesamt, alle.unproduktiv)
+        assertFalse(schnittText(un)!!.contains("davon"))
+        // Eine App aus der Ansicht gewählt: nur ihr Teil („Firefox“ unproduktiv: die diskrete Seite).
+        val nurFirefox = woche(WidgetFilter.UNPRODUKTIV, nur = ff)
+        assertEquals(listOf(600L, 600L), nurFirefox.tage.mapNotNull { it.sekunden })
+        assertEquals("Ø je Tag 10 Min.\n10\u00A0% deiner Bildschirmzeit", schnittText(nurFirefox))
+        // Nichts davon im Zeitraum: keine Apps, „von …“ mit 0 % (nicht „<1 %“).
+        val nurChat = mapOf(heute to Tag(heute, sortiert(listOf(Posten("com.beispiel.chat", "Chat", 600L))), fertig = true))
+        val leer = auswerten(Zeitraum.um(Reiter.TAG, heute), nurChat, heute, heute, unproduktiv = ist, filter = WidgetFilter.UNPRODUKTIV)
+        assertTrue(leer.apps.isEmpty())
+        assertEquals(listOf(0L), leer.tage.mapNotNull { it.sekunden })
+        assertEquals("von 10 Min. (0\u00A0%)", schnittText(leer))
+        // Ein Satz statt einer leeren Liste – heute, an einem anderen Tag, in Woche und Monat; nie unter „Alle“.
+        assertEquals("Heute noch nichts Unproduktives.", filterLeerText(leer))
+        val gestern = auswerten(Zeitraum.um(Reiter.TAG, tag), verlauf, heute, tag, unproduktiv = { false }, filter = WidgetFilter.UNPRODUKTIV)
+        assertEquals("An diesem Tag nichts Unproduktives.", filterLeerText(gestern))
+        val wocheLeer = auswerten(Zeitraum.um(Reiter.WOCHE, heute), verlauf, heute, tag, unproduktiv = { true }, filter = WidgetFilter.PRODUKTIV)
+        assertEquals("In diesem Zeitraum nichts Produktives.", filterLeerText(wocheLeer))
+        assertEquals(null, filterLeerText(pro))
+        assertEquals(null, filterLeerText(auswerten(Zeitraum.um(Reiter.TAG, heute), nurChat, heute, heute, unproduktiv = ist)))
+    }
+
     /** In der Statistik: für alle Apps eine Zeile mit Anteil, für eine gewählte, ob sie zählt. */
     @Test
     fun statistik() {

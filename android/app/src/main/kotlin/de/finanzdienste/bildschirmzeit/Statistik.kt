@@ -113,6 +113,8 @@ data class Auswertung(
     val unproduktiv: Long = 0L,
     /** Zählt die eine gewählte App (`nur`) als unproduktiv? */
     val nurUnproduktiv: Boolean = false,
+    /** Alle, nur Produktives oder nur Unproduktives: Dann sind `tage` und `apps` nur das; `alle` bleibt alles. */
+    val filter: WidgetFilter = WidgetFilter.ALLE,
 ) {
     val gesamt: Long get() = apps.sumOf { it.sekunden }
 
@@ -154,6 +156,7 @@ fun auswerten(
     verborgen: (String) -> Boolean = { false },
     appVerborgen: (String, String) -> Boolean = { _, _ -> false },
     unproduktiv: (String) -> Boolean = { false },
+    filter: WidgetFilter = WidgetFilter.ALLE,
 ): Auswertung {
     val summe = HashMap<String, Long>()
     val namen = HashMap<String, String>()
@@ -169,26 +172,36 @@ fun auswerten(
     // Seiten zusammen (ab 5 Minuten einzeln, der Rest zu Firefox), Apps, die nie mit Namen erscheinen, zu „Sonstiges“ (Diskret.kt).
     fun gruppe(k: String, name: String): String =
         if (seiteVon(k) == null && appVerborgen(k, name)) SONSTIGES else anzeigeSchluessel(k, einzeln, firefox)
+    // Nur Produktives oder nur Unproduktives (Tobi, 27.11.): jeder Posten nach Unproduktiv.kt, wie im Widget –
+    // „Firefox“ kann so in beiden Ansichten stehen, je mit seinem Teil.
+    fun zaehlt(p: Posten): Boolean = filter == WidgetFilter.ALLE ||
+        (p.sekunden > 0L && unproduktiv(einstufungsSchluessel(p, firefox, appVerborgen)) == (filter == WidgetFilter.UNPRODUKTIV))
     val tage = z.tage.map { d ->
         val tag = verlauf[d]
         when {
             d > heute -> Tageswert(d, null, zukunft = true)
             tag == null -> Tageswert(d, null)
-            nur == null -> Tageswert(d, tag.gesamt)
-            else -> Tageswert(d, tag.posten.filter { gruppe(it.schluessel, it.name) == nur }.sumOf { it.sekunden })
+            nur == null && filter == WidgetFilter.ALLE -> Tageswert(d, tag.gesamt)
+            nur == null -> Tageswert(d, tag.posten.filter { zaehlt(it) }.sumOf { it.sekunden })
+            else -> Tageswert(d, tag.posten.filter { gruppe(it.schluessel, it.name) == nur && zaehlt(it) }.sumOf { it.sekunden })
         }
     }
     val gruppiert = HashMap<String, Long>()
+    val gezeigt = HashMap<String, Long>()
     for ((k, s) in summe) {
-        val g = gruppe(k, namen[k] ?: k)
+        val name = namen[k] ?: k
+        val g = gruppe(k, name)
         gruppiert[g] = (gruppiert[g] ?: 0L) + s
+        if (filter != WidgetFilter.ALLE && zaehlt(Posten(k, name, s))) gezeigt[g] = (gezeigt[g] ?: 0L) + s
     }
-    val alle = sortiert(gruppiert.map { (k, s) -> Posten(k, anzeigename(k) ?: namen[k] ?: if (k == firefox) FIREFOX_NAME else k, s) })
-    val apps = if (nur == null) alle else alle.filter { it.schluessel == nur }
+    fun liste(m: Map<String, Long>) = sortiert(m.map { (k, s) -> Posten(k, anzeigename(k) ?: namen[k] ?: if (k == firefox) FIREFOX_NAME else k, s) })
+    val alle = liste(gruppiert)
+    val auswahl = if (filter == WidgetFilter.ALLE) alle else liste(gezeigt)
+    val apps = if (nur == null) auswahl else auswahl.filter { it.schluessel == nur }
     // Unproduktiv nach den Posten jedes Tages (eine kleine Seite nach ihrer Domain, wie im Widget).
     val roh = z.tage.filter { it <= heute }.flatMap { verlauf[it]?.posten.orEmpty() }
     val u = unproduktivSekunden(roh, unproduktiv, appVerborgen, firefox)
-    return Auswertung(z, heute, tage, apps, datenSeit, nur, alle.sumOf { it.sekunden }, u, nur?.let(unproduktiv) == true)
+    return Auswertung(z, heute, tage, apps, datenSeit, nur, alle.sumOf { it.sekunden }, u, nur?.let(unproduktiv) == true, filter)
 }
 
 /** Die große Zahl: „12 Std. 34 Min.“, ein Tag ganz ohne Nutzung „0 Min.“ (wie im Widget), oder „keine Daten“. */
@@ -200,24 +213,50 @@ fun gesamtText(a: Auswertung): String = if (a.belegt == 0) "keine Daten" else su
  * Für alle Apps „davon unproduktiv: 3 Std. 5 Min. (29 %)“, wenn es etwas gibt,
  * bei Woche und Monat darunter „Ø je Tag unproduktiv: 26 Min.“ (Tobi, 26.11.:
  * „Will auch bei der unproduktiven Zeit den tagesschnitt wissen“); für eine
- * App, die als unproduktiv zählt, „zählt als unproduktiv“.
+ * App, die als unproduktiv zählt, „zählt als unproduktiv“. Nur Produktives
+ * oder nur Unproduktives (Tobi, 27.11.: „Meinte ich nicht ich will oben so
+ * Buttons wo ich zwischen produktiv und unproduktiv und so wechseln kann?“):
+ * „von 4 Std. 27 Min. (86 %)“ und „Ø je Tag produktiv: …“.
  */
 fun schnittText(a: Auswertung): String? {
     val zeilen = ArrayList<String>()
+    // Nur Produktives oder Unproduktives (Tobi, 27.11.): zuerst, wovon – wie im Widget „(von …)“.
+    val gefiltert = a.nur == null && a.filter != WidgetFilter.ALLE
+    if (gefiltert && a.alle > 0L) zeilen += "von ${summeText(a.alle)} (${if (a.gesamt > 0L) anteilText(a.gesamt, a.alle) else "0\u00A0%"})"
     val s = a.schnitt
     if (a.zeitraum.reiter != Reiter.TAG && s != null) {
-        val text = "Ø je Tag ${summeText(s)}"
+        val text = when {
+            !gefiltert -> "Ø je Tag ${summeText(s)}"
+            a.filter == WidgetFilter.PRODUKTIV -> "Ø je Tag produktiv: ${summeText(s)}"
+            else -> "Ø je Tag unproduktiv: ${summeText(s)}"
+        }
         zeilen += if (a.belegt < a.vergangen) "$text · ${a.belegt} von ${a.vergangen} Tagen mit Daten" else text
     }
     if (a.nur != null && a.alle > 0L && a.gesamt > 0L) zeilen += "${anteilText(a.gesamt, a.alle)} deiner Bildschirmzeit"
     // Wie im Widget „davon unproduktiv“ (hier nur, wenn es etwas gibt); eine gewählte App sagt, ob sie zählt.
-    if (a.nur == null && a.unproduktiv > 0L && a.gesamt > 0L) {
+    if (a.nur == null && a.filter == WidgetFilter.ALLE && a.unproduktiv > 0L && a.gesamt > 0L) {
         zeilen += "davon unproduktiv: ${summeText(a.unproduktiv)} (${anteilText(a.unproduktiv, a.gesamt)})"
         val u = a.unproduktivSchnitt
         if (a.zeitraum.reiter != Reiter.TAG && u != null) zeilen += "Ø je Tag unproduktiv: ${summeText(u)}"
     }
     if (a.nur != null && a.nurUnproduktiv) zeilen += "zählt als unproduktiv"
     return zeilen.takeIf { it.isNotEmpty() }?.joinToString("\n")
+}
+
+/**
+ * Nur Produktives oder Unproduktives, und davon nichts im Zeitraum (Tobi,
+ * 27.11.): ein Satz statt einer leeren Liste – „Heute noch nichts
+ * Unproduktives.“, „An diesem Tag …“, bei Woche und Monat „In diesem Zeitraum
+ * …“. null: nichts zu sagen.
+ */
+fun filterLeerText(a: Auswertung): String? {
+    if (a.nur != null || a.filter == WidgetFilter.ALLE || a.belegt == 0 || a.apps.isNotEmpty()) return null
+    val wort = if (a.filter == WidgetFilter.PRODUKTIV) "Produktives" else "Unproduktives"
+    return when {
+        a.zeitraum.reiter != Reiter.TAG -> "In diesem Zeitraum nichts $wort."
+        a.zeitraum.von == a.heute -> "Heute noch nichts $wort."
+        else -> "An diesem Tag nichts $wort."
+    }
 }
 
 /**

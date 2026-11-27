@@ -55,6 +55,9 @@ class MainActivity : Activity(), UpdateBeobachter {
     private var reiter = Reiter.WOCHE
     private lateinit var zeitraum: Zeitraum
 
+    /** Alle, nur Produktives oder nur Unproduktives (Tobi, 27.11.) – gemerkt wie der Reiter, unabhängig vom Widget. */
+    private var filter = WidgetFilter.ALLE
+
     /** „Heute“, als der Zeitraum gewählt wurde – über Mitternacht offen, rückt der jetzige Zeitraum mit. */
     private lateinit var gewaehltAm: LocalDate
 
@@ -102,6 +105,7 @@ class MainActivity : Activity(), UpdateBeobachter {
         verlauf = Verlauf(this)
         erlaubt = Nutzungsdaten.erlaubt(this)
         reiter = Reiter.von(speicher.reiter)
+        filter = WidgetFilter.von(speicher.statistikFilter)
         gewaehltAm = heute()
         zeitraum = Zeitraum.um(reiter, gewaehltAm)
 
@@ -416,6 +420,14 @@ class MainActivity : Activity(), UpdateBeobachter {
         }
         findViewById<Balken>(R.id.balken).beiTipp = { tag -> tagZeigen(tag) }
         findViewById<View>(R.id.alle_apps).setOnClickListener { alleAppsZeigen() }
+        for ((id, f) in ANSICHT) findViewById<View>(id).setOnClickListener { filterWaehlen(f) }
+    }
+
+    /** Alle, nur Produktives oder nur Unproduktives gewählt: gemerkt, Zeitraum und Reiter bleiben. */
+    internal fun filterWaehlen(f: WidgetFilter) {
+        filter = f
+        speicher.statistikFilter = f.name
+        statistikNeu()
     }
 
     /** Ein Reiter von Hand gewählt: gemerkt, und der Zeitraum um den letzten gezeigten Tag (nie nach heute). */
@@ -446,12 +458,13 @@ class MainActivity : Activity(), UpdateBeobachter {
         if (faeden.isShutdown) return
         val z = zeitraum
         val nur = appWahl?.schluessel
+        val f = filter
         val heute = heute()
         val nr = ++auftrag
         faeden.execute {
             val tage = verlauf.lesen(z.von, minOf(z.bis, heute))
             val v = Verborgen(applicationContext)
-            val a = auswerten(z, tage, heute, verlauf.erster(), nur, v::ist, v::app, Unproduktiv(applicationContext)::ist)
+            val a = auswerten(z, tage, heute, verlauf.erster(), nur, v::ist, v::app, Unproduktiv(applicationContext)::ist, f)
             imVordergrund {
                 if (nr == auftrag) {
                     statistikZeigen(a)
@@ -466,6 +479,7 @@ class MainActivity : Activity(), UpdateBeobachter {
         findViewById<View>(R.id.reiter_tag).isSelected = z.reiter == Reiter.TAG
         findViewById<View>(R.id.reiter_woche).isSelected = z.reiter == Reiter.WOCHE
         findViewById<View>(R.id.reiter_monat).isSelected = z.reiter == Reiter.MONAT
+        for ((id, f) in ANSICHT) findViewById<View>(id).isSelected = a.filter == f
         findViewById<TextView>(R.id.zeitraum_titel).text = zeitraumTitel(z, a.heute)
         findViewById<View>(R.id.zurueck).isEnabled = z.hatVorher(a.datenSeit)
         findViewById<View>(R.id.weiter).isEnabled = z.hatNachher(a.heute)
@@ -484,6 +498,15 @@ class MainActivity : Activity(), UpdateBeobachter {
 
         // Eine App gewählt: oben ihr Name, die Liste weg (die Balken sind ihre Verteilung).
         val gewaehlt = appWahl?.takeIf { it.schluessel == a.nur }
+        // Eine App gewählt: die Schalter weg (sie folgt der Ansicht, aus der sie kam); zurück heißt dann „Alle produktiven“ usw.
+        findViewById<View>(R.id.ansicht).visibility = if (gewaehlt != null) View.GONE else View.VISIBLE
+        findViewById<TextView>(R.id.alle_apps).setText(
+            when (a.filter) {
+                WidgetFilter.ALLE -> R.string.alle_apps
+                WidgetFilter.PRODUKTIV -> R.string.alle_produktiven
+                WidgetFilter.UNPRODUKTIV -> R.string.alle_unproduktiven
+            },
+        )
         val kopf = findViewById<View>(R.id.app_kopf)
         val liste = findViewById<LinearLayout>(R.id.app_liste)
         liste.removeAllViews()
@@ -530,8 +553,11 @@ class MainActivity : Activity(), UpdateBeobachter {
     /** Der leise Satz unten in der Statistik. */
     private fun hinweis(a: Auswertung): String? {
         val e = letztes
+        // Nur Produktives oder Unproduktives, und davon nichts im Zeitraum.
+        val leer = filterLeerText(a)
         return when {
             !erlaubt -> getString(R.string.statistik_ohne_erlaubnis)
+            leer != null -> leer
             a.nur == null && a.zeitraum.reiter == Reiter.TAG && a.belegt == 1 && a.apps.isEmpty() ->
                 getString(if (a.zeitraum.von == a.heute) R.string.heute_leer else R.string.tag_leer)
             e == null || !a.zeitraum.enthaelt(a.heute) -> null
@@ -994,6 +1020,9 @@ class MainActivity : Activity(), UpdateBeobachter {
 
     private companion object {
         const val ZUSTAND_REITER = "reiter"
+
+        /** Die Schalter unter den Reitern, in der Reihenfolge von WidgetFilter. */
+        private val ANSICHT = listOf(R.id.ansicht_alle to WidgetFilter.ALLE, R.id.ansicht_produktiv to WidgetFilter.PRODUKTIV, R.id.ansicht_unproduktiv to WidgetFilter.UNPRODUKTIV)
         const val ZUSTAND_BIS = "bis"
         const val ZUSTAND_AM = "gewaehltAm"
         const val ZUSTAND_UPDATE = "updateOben"

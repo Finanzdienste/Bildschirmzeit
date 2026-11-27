@@ -258,6 +258,79 @@ class UnproduktivGeraetTest {
         assertEquals(View.GONE, knopf.visibility)
     }
 
+    /**
+     * Die Schalter „Alle · Produktiv · Unproduktiv“ in der Statistik der App
+     * (Tobi, 27.11.: „Also in der Ansicht dass mir zb nur produktive angezeigt
+     * werden“), ohne Netz: je Ansicht nur ihre Apps und ihre Zeit, „von …“
+     * darunter; aus einer Ansicht gewählt, führt „Alle produktiven“ zurück;
+     * gemerkt über einen neuen Start; nichts davon: ein Satz statt einer leeren Liste.
+     */
+    @Test
+    fun inDerStatistikNurProduktivOderUnproduktiv() {
+        shadowOf(kontext.getSystemService(AppOpsManager::class.java))
+            .setMode(AppOpsManager.OPSTR_GET_USAGE_STATS, Process.myUid(), kontext.packageName, AppOpsManager.MODE_IGNORED)
+        Verlauf(kontext).schreiben(Tag(heute.minusDays(1), sortiert(listOf(Posten("com.beispiel.chat", "Chat", 900L))), fertig = true))
+        Verlauf(kontext).schreiben(
+            Tag(heute, sortiert(listOf(Posten("com.beispiel.spiel", "Spiel", 1800L), Posten("com.beispiel.chat", "Chat", 600L))), fertig = false),
+        )
+        val a = Robolectric.buildActivity(MainActivity::class.java).setup().get()
+        a.uhrStellen { um(21, 40) }
+        a.findViewById<View>(R.id.reiter_tag).performClick()
+        warten()
+        assertEquals(View.VISIBLE, a.findViewById<View>(R.id.ansicht).visibility)
+        assertTrue(a.findViewById<View>(R.id.ansicht_alle).isSelected)
+        assertEquals(listOf("Spiel", "Chat"), a.namen())
+
+        a.findViewById<View>(R.id.ansicht_unproduktiv).performClick()
+        warten()
+        assertTrue(a.findViewById<View>(R.id.ansicht_unproduktiv).isSelected)
+        assertFalse(a.findViewById<View>(R.id.ansicht_alle).isSelected)
+        assertEquals(listOf("Spiel"), a.namen())
+        assertEquals("30 Min.", a.text(R.id.gesamt))
+        assertEquals("von 40 Min. (75\u00A0%)", a.text(R.id.schnitt))
+        // Gestern nur der Chat: nichts Unproduktives (der Satz dazu: UnproduktivTest).
+        a.findViewById<View>(R.id.zurueck).performClick()
+        warten()
+        assertTrue(a.namen().isEmpty())
+        assertEquals("0 Min.", a.text(R.id.gesamt))
+        a.findViewById<View>(R.id.weiter).performClick()
+        warten()
+
+        a.findViewById<View>(R.id.ansicht_produktiv).performClick()
+        warten()
+        assertEquals(listOf("Chat"), a.namen())
+        assertEquals("10 Min.", a.text(R.id.gesamt))
+        // Eine App aus der Ansicht: die Schalter weg, zurück heißt „Alle produktiven“.
+        a.zeile("Chat").performClick()
+        warten()
+        assertEquals(View.GONE, a.findViewById<View>(R.id.ansicht).visibility)
+        assertEquals("Alle produktiven", a.text(R.id.alle_apps))
+        a.findViewById<View>(R.id.alle_apps).performClick()
+        warten()
+        assertEquals(View.VISIBLE, a.findViewById<View>(R.id.ansicht).visibility)
+        assertEquals(listOf("Chat"), a.namen())
+
+        // Gemerkt: Ein neuer Start zeigt wieder nur das Produktive – das Widget bleibt, wie es war.
+        assertEquals("PRODUKTIV", Speicher(kontext).statistikFilter)
+        assertEquals(null, Speicher(kontext).widgetFilter)
+        val b = Robolectric.buildActivity(MainActivity::class.java).setup().get()
+        b.uhrStellen { um(21, 40) }
+        warten()
+        assertTrue(b.findViewById<View>(R.id.ansicht_produktiv).isSelected)
+        assertEquals(listOf("Chat"), b.namen())
+    }
+
+    private fun MainActivity.namen(): List<String> {
+        val liste = findViewById<ViewGroup>(R.id.app_liste)
+        if (liste.visibility != View.VISIBLE) return emptyList()
+        return (0 until liste.childCount).map { liste.getChildAt(it).findViewById<TextView>(R.id.name).text.toString() }
+    }
+
+    private fun MainActivity.zeile(name: String): View {
+        val liste = findViewById<ViewGroup>(R.id.app_liste)
+        return (0 until liste.childCount).map { liste.getChildAt(it) }.first { it.findViewById<TextView>(R.id.name).text == name }
+    }
+
     private fun MainActivity.text(id: Int) = findViewById<TextView>(id).text.toString()
 
     /** Die RemoteViews als echte Views, gemessen und gelegt in breite × hoehe dp. */

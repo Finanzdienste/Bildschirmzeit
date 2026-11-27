@@ -141,6 +141,12 @@ class AppVorschauTest {
     @Config(qualifiers = "+night")
     fun eineAppDunkel() = aufnehmen("app-eine-dunkel", 0xFF111215.toInt(), update = update(eingerichtet = true), nurStatistik = true, app = "WhatsApp")
 
+    /** Tobi, 27.11.: „… Also in der Ansicht dass mir zb nur produktive angezeigt werden“ – hier nur das Unproduktive der Woche. */
+    @Test
+    @Config(qualifiers = "+night")
+    fun unproduktivDunkel() =
+        aufnehmen("app-unproduktiv-dunkel", 0xFF111215.toInt(), update = update(eingerichtet = true), nurStatistik = true, filter = WidgetFilter.UNPRODUKTIV)
+
     /**
      * Tobis S24 (15.11.): Der Schalter war grau, „Gesteuert durch eingeschränkte
      * Einstellung“, und in der App-Info fehlte ⋮. Das Menü gibt es erst, wenn man
@@ -262,9 +268,11 @@ class AppVorschauTest {
         nurStatistik: Boolean = false,
         verlauf: Boolean = true,
         app: String? = null,
+        filter: WidgetFilter = WidgetFilter.ALLE,
     ) {
         if (verlauf) erfundenerVerlauf(RuntimeEnvironment.getApplication(), beispiel().posten)
         Speicher(RuntimeEnvironment.getApplication()).reiter = reiter.name
+        Speicher(RuntimeEnvironment.getApplication()).statistikFilter = filter.name
         val aktivitaet = Robolectric.buildActivity(MainActivity::class.java).setup().get()
         warten()
         aktivitaet.zeigen(ergebnis)
@@ -312,7 +320,8 @@ internal fun erfundenerVerlauf(kontext: android.content.Context, heute: List<Pos
         Triple("com.beispiel.chat", "WhatsApp", 22 to 35),
         Triple("boxenstopp", "Boxenstopp", 8 to 27),
         Triple("com.android.chrome", "Chrome", 12 to 30),
-        Triple("com.beispiel.video", "Videos", 0 to 64),
+        // Zählt von selbst als unproduktiv – so hat auch die Ansicht „Unproduktiv“ jeden Tag etwas.
+        Triple("com.google.android.youtube", "YouTube", 0 to 64),
         Triple("com.beispiel.karten", "Karten", 0 to 23),
         Triple("freizeit", "Freizeit", 4 to 17),
         Triple("com.beispiel.kamera", "Kamera", 0 to 11),

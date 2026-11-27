@@ -15,6 +15,17 @@
         <item name="android:textSize">15sp</item>
     </style>
 
+    <!-- Alle, Produktiv, Unproduktiv: wie die Reiter, eine Stufe kleiner; passt „Unproduktiv“ nicht (große Schrift), wird es kleiner statt gekürzt. -->
+    <style name="Ansicht" parent="Reiter">
+        <item name="android:layout_height">36dp</item>
+        <item name="android:textSize">14sp</item>
+        <item name="android:maxLines">1</item>
+        <item name="android:autoSizeTextType">uniform</item>
+        <item name="android:autoSizeMinTextSize">10sp</item>
+        <item name="android:autoSizeMaxTextSize">14sp</item>
+        <item name="android:autoSizeStepGranularity">1sp</item>
+    </style>
+
     <!-- ‹ und ›: 44 dp zum Antippen. -->
     <style name="Pfeil">
         <item name="android:layout_width">44dp</item>
