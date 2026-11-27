@@ -24,8 +24,14 @@ class UnproduktivTest {
         assertTrue(UnproduktivRegeln.vorgabe("com.beispiel.spiel", ApplicationInfo.CATEGORY_GAME))
         assertTrue(UnproduktivRegeln.vorgabe("com.beispiel.serien", ApplicationInfo.CATEGORY_VIDEO))
         assertTrue(UnproduktivRegeln.vorgabe("com.beispiel.netz", ApplicationInfo.CATEGORY_SOCIAL))
-        // Messenger nie von selbst – auch wenn sie sich bei Android „sozial“ nennen.
-        assertFalse(UnproduktivRegeln.vorgabe("com.whatsapp", ApplicationInfo.CATEGORY_SOCIAL))
+        // Tobi, 27.11.: „WhatsApp ist unproduktiv.“ – die App und WhatsApp Web.
+        assertTrue(UnproduktivRegeln.vorgabe("com.whatsapp"))
+        assertTrue(UnproduktivRegeln.vorgabe("com.whatsapp", ApplicationInfo.CATEGORY_SOCIAL))
+        assertTrue(UnproduktivRegeln.vorgabe(WEBSEITE + domainAus("https://web.whatsapp.com/")!!))
+        // Andere Messenger nie von selbst – auch wenn sie sich bei Android „sozial“ nennen.
+        assertFalse(UnproduktivRegeln.vorgabe("org.thoughtcrime.securesms", ApplicationInfo.CATEGORY_SOCIAL))
+        assertFalse(UnproduktivRegeln.vorgabe("org.telegram.messenger", ApplicationInfo.CATEGORY_SOCIAL))
+        assertFalse(UnproduktivRegeln.vorgabe("com.whatsapp.w4b", ApplicationInfo.CATEGORY_SOCIAL))
         // Firefox (Suche, kleine Seiten, ohne Namen), Chrome, Tobis Web-Apps, Arbeit, Karten: nicht.
         assertFalse(UnproduktivRegeln.vorgabe(ff, ApplicationInfo.CATEGORY_PRODUCTIVITY))
         assertFalse(UnproduktivRegeln.vorgabe(CHROME))
@@ -47,11 +53,14 @@ class UnproduktivTest {
             Posten(ff, "Firefox", 300L),
             // Dating: wie „Sonstiges“.
             Posten("com.tinder", "Tinder", 900L),
-            Posten("com.whatsapp", "WhatsApp", 1200L),
+            Posten("org.thoughtcrime.securesms", "Signal", 1200L),
             Posten("workout", "Workout", 1800L),
         )
         val vorgabe = { k: String -> UnproduktivRegeln.vorgabe(k) }
         assertEquals(3000L + 120L + 900L, unproduktivSekunden(posten, vorgabe, Partnersuche::app))
+        // WhatsApp zählt mit, auch über WhatsApp Web in Firefox.
+        val mitWhatsApp = posten + Posten("com.whatsapp", "WhatsApp", 1500L) + Posten(seitenSchluessel(ff, "whatsapp.com"), "whatsapp.com", 60L)
+        assertEquals(3000L + 120L + 900L + 1500L + 60L, unproduktivSekunden(mitWhatsApp, vorgabe, Partnersuche::app))
         // „Firefox“ selbst als unproduktiv gestellt: dazu Firefox und die Seiten ohne Namen.
         val mitFirefox = { k: String -> k == ff || UnproduktivRegeln.vorgabe(k) }
         assertEquals(3000L + 120L + 900L + 600L + 300L, unproduktivSekunden(posten, mitFirefox, Partnersuche::app))

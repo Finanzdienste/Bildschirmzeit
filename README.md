@@ -101,7 +101,9 @@ der Statistik, mit dem Weg über die eingeschränkte Einstellung).
   Statistik darunter „davon unproduktiv: …“. Entschieden: Vorgaben statt
   einer Liste von Tobi (Spiele, Video, soziale Netzwerke ohne Messenger,
   YouTube, Netflix, DAZN …, „Sonstiges“), jeder Eintrag lässt sich in der
-  Statistik umstellen (unten „Davon unproduktiv“). „Will auch bei der u
+  Statistik umstellen (unten „Davon unproduktiv“). „WhatsApp ist
+  unproduktiv.“ (27.11.) – seit v34 zählt WhatsApp von selbst mit, andere
+  Messenger weiter nicht. „Will auch bei der u
   produktiven Zeit den tagesschnitt wissen“ (26.11.) – seit v31 bei Woche und
   Monat „Ø je Tag unproduktiv: …“.
 - „Aber statt sonstiges können wir das ja einfach Firefox nennen. Und Dating
@@ -1209,10 +1211,13 @@ dieselben Tage wie „Ø je Tag“, also nur die mit Daten (v31; Tobi, 26.11.:
 gewählte App sagt „zählt als unproduktiv“.
 - **Von selbst** (`UnproduktivRegeln`): Spiele, Video und soziale Netzwerke
   nach Androids Kategorie der App (`ApplicationInfo.category`; Messenger wie
-  WhatsApp, Signal, Telegram nie), bekannte Apps (YouTube, Instagram, TikTok,
-  Facebook, X, Reddit, Snapchat, Pinterest, Netflix, Prime Video, Disney+,
-  DAZN, Twitch), dieselben Seiten (youtube.com, netflix.com, …) und
-  „Sonstiges“ (Dating-Apps, selbst zusammengelegte). Nicht: „Firefox“ (Suche,
+  Signal, Telegram, SMS und WhatsApp Business nie), bekannte Apps (YouTube,
+  Instagram, TikTok, Facebook, X, Reddit, Snapchat, Pinterest, Netflix, Prime
+  Video, Disney+, DAZN, Twitch), dieselben Seiten (youtube.com, netflix.com,
+  …) und „Sonstiges“ (Dating-Apps, selbst zusammengelegte). Seit v34 auch
+  WhatsApp und WhatsApp Web (Tobi, 27.11.: „WhatsApp ist unproduktiv.“) –
+  vorher galt es als Messenger; gilt auch rückwirkend, umstellbar wie alles
+  andere (`UnproduktivTest.vorgaben`, gegen v33 rot). Nicht: „Firefox“ (Suche,
   kleine Seiten, Seiten ohne Namen), Chrome, Tobis Web-Apps und alles andere.
 - **Umstellen:** Statistik → Eintrag antippen → unten „Als unproduktiv
   zählen“ bzw. „Nicht als unproduktiv zählen“. Gilt vor der Vorgabe, auch

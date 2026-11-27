@@ -15,8 +15,9 @@ import java.util.concurrent.ConcurrentHashMap
  *
  * Von selbst (UnproduktivRegeln): Spiele, Video und soziale Netzwerke nach
  * Androids Kategorie der App (Messenger nicht), bekannte Apps und Seiten
- * (YouTube, Netflix, DAZN, Instagram, TikTok …) und „Sonstiges“ (Dating-Apps
- * und selbst zusammengelegte). Nicht: „Firefox“ (Suche, kleine Seiten, ohne
+ * (YouTube, Netflix, DAZN, Instagram, TikTok …), WhatsApp (Tobi, 27.11.:
+ * „WhatsApp ist unproduktiv.“) und „Sonstiges“ (Dating-Apps und selbst
+ * zusammengelegte). Nicht: „Firefox“ (Suche, kleine Seiten, ohne
  * Namen), Chrome, Tobis Web-Apps und alles andere. Jeden Eintrag stellt Tobi
  * in der Statistik um (Unproduktiv.umstellen); das gilt vor der Vorgabe.
  * Gerechnet wird auf dem Handy, ohne Netz.
@@ -26,6 +27,8 @@ import java.util.concurrent.ConcurrentHashMap
 object UnproduktivRegeln {
     /** Diese Apps zählen von selbst, auch wenn sie Android keine Kategorie nennen. */
     val APPS = setOf(
+        // Tobi, 27.11.: „WhatsApp ist unproduktiv.“ (WhatsApp Business bleibt ein Messenger.)
+        "com.whatsapp",
         "com.google.android.youtube",
         "com.instagram.android",
         "com.zhiliaoapp.musically",
@@ -42,9 +45,8 @@ object UnproduktivRegeln {
         "tv.twitch.android.app",
     )
 
-    /** Messenger zählen nie von selbst – auch wenn sie sich bei Android „sozial“ nennen. */
+    /** Andere Messenger zählen nie von selbst – auch wenn sie sich bei Android „sozial“ nennen. */
     val MESSENGER = setOf(
-        "com.whatsapp",
         "com.whatsapp.w4b",
         "org.telegram.messenger",
         "org.thoughtcrime.securesms",
@@ -69,6 +71,8 @@ object UnproduktivRegeln {
         "primevideo.com",
         "disneyplus.com",
         "9gag.com",
+        // WhatsApp Web (web.whatsapp.com) wie die App.
+        "whatsapp.com",
     )
 
     /** Androids Kategorien (ApplicationInfo.category), die von selbst zählen. */
