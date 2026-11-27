@@ -1953,6 +1953,11 @@ spricht mit dem echten Supabase oder GitHub (`Netz.gesperrt`).
   WhatsApp Web zählen von selbst als unproduktiv (Abschnitt „Davon
   unproduktiv“). 292 Prüfungen grün, Lint ohne Fehler; Prüfsumme gleich dem
   `digest`, Zertifikat `bc6f91b9…759e`, versionCode 34, dieselben 14 Rechte.
+- 27.11.2026: Release **v35** (Fassung 1.35, aus eacb191) – diskrete Seiten
+  (Erotik, Dating, selbst zusammengefasste) zählen als unproduktiv, weiter
+  ohne Namen bei „Firefox“ (Abschnitt „Diskret“, v35). 294 Prüfungen grün,
+  Lint ohne Fehler; Prüfsumme gleich dem `digest`, Zertifikat
+  `bc6f91b9…759e`, versionCode 35, dieselben 14 Rechte.
 - Noch nicht auf dem S24 ausprobiert: Größen des Startbildschirms, Akku-
   Verhalten von One UI (ob es die App trotz Widget schlafen legt), ob
   Chrome den Verbinden-Link in der installierten Web-App oder als Tab
