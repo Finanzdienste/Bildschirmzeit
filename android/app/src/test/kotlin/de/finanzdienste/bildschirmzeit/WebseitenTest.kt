@@ -304,6 +304,7 @@ class WebseitenTest {
         )
         assertEquals(listOf("Firefox" to 1000L, "Chrome" to 60L), gezeigt.map { it.name to it.sekunden })
         assertEquals(FIREFOX_NAME, anzeigename(seitenSchluessel(ff, OHNE_DOMAIN)))
+        assertEquals(FIREFOX_NAME, anzeigename(seitenSchluessel(CHROME, DISKRET_DOMAIN)))
     }
     /** Tobi, 16.11.: „Zwei Stunden Chrome?“ – wie die Browserzeit aufgeteilt war, für Karte 4. */
     @Test

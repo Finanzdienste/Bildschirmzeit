@@ -118,6 +118,8 @@ class DiskretGeraetTest {
         val e = Rechner.berechnen(kontext, netz = false, jetzt = um(21, 30))
         // Gleich lang: nach Name (sortiert).
         assertEquals(listOf("Firefox" to 30 * 60L, "youtube.com" to 30 * 60L), e.posten.map { it.name to it.sekunden })
+        // Seit v35 zählt die umgeschriebene Erotikseite als unproduktiv (wie youtube.com).
+        assertEquals(60 * 60L, e.unproduktiv)
         assertEquals(DISKRET_STAND, Speicher(kontext).erotikStand)
         assertFalse(beobachtungenText().contains("porno"))
         val alt = Verlauf(kontext).lesen(gestern)!!
@@ -154,6 +156,9 @@ class DiskretGeraetTest {
         warten()
         assertEquals(setOf("meine-seite.de"), Verborgen(kontext).eigene())
         assertTrue(namen().toString(), "meine-seite.de" !in namen() && "Firefox" in namen())
+        // Seit v35 zählt sie dann wie „Sonstiges“ als unproduktiv (der Dialog sagt es).
+        val schnitt = a.findViewById<TextView>(R.id.schnitt).text.toString()
+        assertTrue(schnitt, schnitt.contains("davon unproduktiv: 30 Min."))
         assertFalse(beobachtungenText().contains("meine-seite"))
         assertTrue(Verlauf(kontext).lesen(heute)!!.posten.none { "meine-seite" in it.schluessel })
         // Die Karte „Diskret“ sagt es und kann es zurücknehmen (für die Zukunft).
@@ -168,6 +173,30 @@ class DiskretGeraetTest {
         (0 until liste.childCount).map { liste.getChildAt(it) }.first { it.findViewById<TextView>(R.id.name).text == "Firefox" }.performClick()
         warten()
         assertEquals(View.GONE, a.findViewById<View>(R.id.seite_zusammenfassen).visibility)
+    }
+
+    /**
+     * Tobi, 27.11., auf die Frage, ob die diskreten Seiten als unproduktiv
+     * zählen sollen: „Jo“. Der Dienst merkt sich eine Erotikseite nur als
+     * „diskrete Seite ohne Namen“; die Rechnung zeigt sie bei „Firefox“ und
+     * zählt sie als unproduktiv – eine Suche (auch ohne Namen) nicht. Ohne Netz.
+     */
+    @Test
+    fun diskreteSeitenZaehlenAlsUnproduktiv() {
+        benutzt(ff, um(20), um(21))
+        val verborgen = Verborgen(kontext)::ist
+        val b = Beobachtungen(kontext)
+        b.merken(Beobachtung(um(20), ff, zuMerken(ff, Befund.Seite("beispiel-porno.de"), verborgen).second))
+        b.merken(Beobachtung(um(20, 40), ff, zuMerken(ff, Befund.Keine, verborgen).second))
+        val e = Rechner.berechnen(kontext, netz = false, jetzt = um(21, 30))
+        assertEquals(listOf("Firefox" to 60 * 60L), e.posten.map { it.name to it.sekunden })
+        assertEquals(40 * 60L, e.unproduktiv)
+        // Im Widget unter „Unproduktiv“ nur „Firefox“ mit den 40 Minuten, unter „Produktiv“ der Rest.
+        assertEquals(listOf("Firefox" to 40 * 60L), e.unproduktivPosten.map { it.name to it.sekunden })
+        assertEquals(listOf("Firefox" to 20 * 60L), e.produktivPosten.map { it.name to it.sekunden })
+        // Nirgends ein Name.
+        assertFalse(beobachtungenText().contains("porno"))
+        assertTrue(Verlauf(kontext).lesen(heute)!!.posten.none { "porno" in it.schluessel || "porno" in it.name })
     }
 
     /** Eine Dating-App aus Androids Ereignissen steht im Widget nur unter „Sonstiges“. */

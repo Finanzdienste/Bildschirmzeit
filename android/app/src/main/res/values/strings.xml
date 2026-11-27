@@ -54,7 +54,7 @@
     <string name="unproduktiv_ja">Als unproduktiv zählen</string>
     <string name="unproduktiv_nein">Nicht als unproduktiv zählen</string>
     <string name="seite_zusammenfassen_titel">„%1$s“ zusammenfassen?</string>
-    <string name="seite_zusammenfassen_text">Die Seite zählt dann im Widget und in der Statistik nur noch zu „Firefox“\u00A0– auch rückwirkend, die Zeit bleibt. Ihr Name wird auch aus dem Verlauf auf dem Handy gelöscht. „Wieder einzeln zeigen“ (Karte „Diskret“) gilt nur für die Zukunft.</string>
+    <string name="seite_zusammenfassen_text">Die Seite zählt dann im Widget und in der Statistik nur noch zu „Firefox“ und wie „Sonstiges“ als unproduktiv\u00A0– auch rückwirkend, die Zeit bleibt. Ihr Name wird auch aus dem Verlauf auf dem Handy gelöscht. „Wieder einzeln zeigen“ (Karte „Diskret“) gilt nur für die Zukunft.</string>
     <string name="seite_zusammenfassen_ja">Zusammenfassen</string>
     <string name="seite_zusammengefasst">%1$s zählt jetzt zu „Firefox“.</string>
     <string name="app_zusammengefasst">%1$s steht jetzt unter „Sonstiges“.</string>

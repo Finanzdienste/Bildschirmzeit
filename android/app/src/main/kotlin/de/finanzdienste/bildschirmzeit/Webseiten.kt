@@ -81,6 +81,18 @@ const val WEB_APPS_DOMAIN = "finanzdienste.github.io"
  */
 const val OHNE_DOMAIN = "?"
 
+/**
+ * Eine diskrete Seite (Erotik, Dating, selbst zusammengefasste – Diskret.kt):
+ * ohne Namen wie OHNE_DOMAIN und bei „Firefox“, zählt aber wie „Sonstiges“ als
+ * unproduktiv (Unproduktiv.kt) – Tobi, 27.11., auf die Frage, ob die
+ * diskreten Seiten als unproduktiv zählen sollen: „Jo“. Seit v35; was vorher
+ * gespeichert wurde, bleibt OHNE_DOMAIN (lässt sich nicht mehr trennen).
+ */
+const val DISKRET_DOMAIN = "?diskret"
+
+/** Eine Seite ohne Namen: OHNE_DOMAIN oder DISKRET_DOMAIN. */
+fun namenlos(domain: String?): Boolean = domain == OHNE_DOMAIN || domain == DISKRET_DOMAIN
+
 /** Eine Beobachtung gilt höchstens so lange, wenn danach keine mehr kam (Vollbild-Video: keine Leiste zu sehen). */
 const val BEOBACHTUNG_GILT_MS = 12 * 60 * 60 * 1000L
 
@@ -183,12 +195,13 @@ fun gemerkteDomain(paket: String, domain: String): String? = if (paket in BROWSE
 
 /**
  * Was zu einem Befund in die Beobachtungen kommt: die Domain, OHNE_DOMAIN
- * (eine Seite ohne Namen), null (kein Web, die Zeit bleibt beim Browser) –
- * oder gar nichts (Unbekannt: das Bisherige gilt weiter, Rückgabe `false`).
+ * (eine Seite ohne Namen), DISKRET_DOMAIN (eine diskrete, auch ohne Namen),
+ * null (kein Web, die Zeit bleibt beim Browser) – oder gar nichts (Unbekannt:
+ * das Bisherige gilt weiter, Rückgabe `false`).
  */
 fun zuMerken(paket: String, befund: Befund, verborgen: (String) -> Boolean = { false }): Pair<Boolean, String?> = when (befund) {
-    // Eine Seite, die nie mit Namen erscheinen soll (Diskret.kt): nur „eine Seite ohne Namen“.
-    is Befund.Seite -> true to gemerkteDomain(paket, befund.domain)?.let { if (verborgen(it)) OHNE_DOMAIN else it }
+    // Eine Seite, die nie mit Namen erscheinen soll (Diskret.kt): nur „eine diskrete Seite ohne Namen“.
+    is Befund.Seite -> true to gemerkteDomain(paket, befund.domain)?.let { if (verborgen(it)) DISKRET_DOMAIN else it }
     Befund.Keine, Befund.Privat -> true to OHNE_DOMAIN
     Befund.KeinWeb -> true to null
     Befund.Unbekannt -> false to null
@@ -344,7 +357,7 @@ fun browserZeiten(intervalle: List<Intervall>, beobachtungen: List<Beobachtung>,
         val art = when {
             b == null || b.paket == ALLE -> 3
             b.domain == null -> 2
-            b.domain == OHNE_DOMAIN -> 1
+            namenlos(b.domain) -> 1
             else -> 0
         }
         ms.getValue(paket)[art] += dauer
@@ -410,9 +423,9 @@ fun seitenAbziehen(geteilt: Map<String, Long>, seiten: Map<String, Long>, mindes
  */
 fun einzelneDomains(sekunden: Map<String, Long>, immer: String? = null, verborgen: (String) -> Boolean = { false }): Set<String> {
     val jeDomain = HashMap<String, Long>()
-    for ((k, s) in sekunden) seiteVon(k)?.let { (_, d) -> if (d != OHNE_DOMAIN && !verborgen(d)) jeDomain[d] = (jeDomain[d] ?: 0L) + s }
+    for ((k, s) in sekunden) seiteVon(k)?.let { (_, d) -> if (!namenlos(d) && !verborgen(d)) jeDomain[d] = (jeDomain[d] ?: 0L) + s }
     val aus = jeDomain.filterValues { it >= WEBSEITE_EINZELN_SEKUNDEN }.keys.toMutableSet()
-    val angetippt = immer?.takeIf { it.startsWith(WEBSEITE) && it != SONSTIGES && it != WEBSEITE + OHNE_DOMAIN }?.removePrefix(WEBSEITE)
+    val angetippt = immer?.takeIf { it.startsWith(WEBSEITE) && it != SONSTIGES && !namenlos(it.removePrefix(WEBSEITE)) }?.removePrefix(WEBSEITE)
     if (angetippt != null && !verborgen(angetippt)) aus += angetippt
     return aus
 }
@@ -504,7 +517,7 @@ class Beobachtungen(context: Context) {
 
     /** Die letzte erkannte Seite (mit Namen) – für „zuletzt erkannt: youtube.com in Firefox, 16:40“; `pakete`: nur diese Browser. */
     fun zuletztErkannt(pakete: Set<String> = BROWSER, verborgen: (String) -> Boolean = { false }): Beobachtung? = synchronized(SPERRE) {
-        alleLesen().lastOrNull { it.domain != null && it.domain != OHNE_DOMAIN && it.paket in pakete && !verborgen(it.domain) }
+        alleLesen().lastOrNull { it.domain != null && !namenlos(it.domain) && it.paket in pakete && !verborgen(it.domain) }
     }
 
     /** Ältere als BEOBACHTUNG_BEHALTEN_MS weg – sie gelten ohnehin nicht mehr (BEOBACHTUNG_GILT_MS). */
@@ -526,11 +539,11 @@ class Beobachtungen(context: Context) {
         letzte = null
     }
 
-    /** Die Namen der Seiten, für die `weg` gilt, durch „?“ ersetzen (Diskret.kt); die Zeiten bleiben. */
+    /** Die Namen der Seiten, für die `weg` gilt, durch DISKRET_DOMAIN ersetzen (Diskret.kt); die Zeiten bleiben. */
     fun namenErsetzen(weg: (String) -> Boolean) = synchronized(SPERRE) {
         val alle = alleLesen()
-        if (alle.none { it.domain != null && it.domain != OHNE_DOMAIN && weg(it.domain) }) return@synchronized
-        val neu = alle.map { if (it.domain != null && it.domain != OHNE_DOMAIN && weg(it.domain)) it.copy(domain = OHNE_DOMAIN) else it }
+        if (alle.none { it.domain != null && !namenlos(it.domain) && weg(it.domain) }) return@synchronized
+        val neu = alle.map { if (it.domain != null && !namenlos(it.domain) && weg(it.domain)) it.copy(domain = DISKRET_DOMAIN) else it }
         try {
             datei.writeText(neu.joinToString("") { "${it.zeit}\t${it.paket}\t${it.domain ?: "-"}\n" })
         } catch (e: IOException) {

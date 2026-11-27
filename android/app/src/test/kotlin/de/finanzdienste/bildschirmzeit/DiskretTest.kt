@@ -23,7 +23,7 @@ class DiskretTest {
         }
         // Keine Fehltreffer: „sex“ mitten im Wort, Nudeln, das Übliche.
         for (nein in listOf("youtube.com", "spiegel.de", "wikipedia.org", "sussex.ac.uk", "essex.gov.uk", "middlesex.ac.uk",
-            "nudelrezepte.de", "finanzdienste.github.io", OHNE_DOMAIN)) {
+            "nudelrezepte.de", "finanzdienste.github.io", OHNE_DOMAIN, DISKRET_DOMAIN)) {
             assertFalse(nein, Erotik.ist(nein))
         }
     }
@@ -31,8 +31,12 @@ class DiskretTest {
     @Test
     fun derDienstMerktSichKeinenNamen() {
         val verborgen = { d: String -> Erotik.ist(d) || d == "meine-seite.de" }
-        assertEquals(true to OHNE_DOMAIN, zuMerken(ff, Befund.Seite("beispiel-porno.de"), verborgen))
-        assertEquals(true to OHNE_DOMAIN, zuMerken(CHROME, Befund.Seite("meine-seite.de"), verborgen))
+        // Seit v35 als diskrete Seite (ohne Namen, zählt als unproduktiv), Suche und private Tabs weiter OHNE_DOMAIN.
+        assertEquals(true to DISKRET_DOMAIN, zuMerken(ff, Befund.Seite("beispiel-porno.de"), verborgen))
+        assertEquals(true to DISKRET_DOMAIN, zuMerken(CHROME, Befund.Seite("meine-seite.de"), verborgen))
+        assertEquals(true to OHNE_DOMAIN, zuMerken(ff, Befund.Keine, verborgen))
+        assertEquals(true to OHNE_DOMAIN, zuMerken(ff, Befund.Privat, verborgen))
+        assertTrue(namenlos(DISKRET_DOMAIN) && namenlos(OHNE_DOMAIN) && !namenlos("youtube.com"))
         assertEquals(true to "youtube.com", zuMerken(ff, Befund.Seite("youtube.com"), verborgen))
         // Ohne Angabe wie bisher.
         assertEquals(true to "beispiel-porno.de", zuMerken(ff, Befund.Seite("beispiel-porno.de")))
@@ -73,10 +77,12 @@ class DiskretTest {
             fertig = true,
         )
         val neu = ohneNamen(tag, Erotik::ist)!!
+        // Die Erotikseite wird eine diskrete Seite ohne Namen (zählt als unproduktiv), die Suche bleibt, wie sie war.
         assertEquals(
-            mapOf(seitenSchluessel(ff, OHNE_DOMAIN) to 660L, seitenSchluessel(ff, "youtube.com") to 300L, ff to 100L),
+            mapOf(seitenSchluessel(ff, DISKRET_DOMAIN) to 600L, seitenSchluessel(ff, OHNE_DOMAIN) to 60L, seitenSchluessel(ff, "youtube.com") to 300L, ff to 100L),
             neu.posten.associate { it.schluessel to it.sekunden },
         )
+        assertEquals(FIREFOX_NAME, neu.posten.single { it.schluessel == seitenSchluessel(ff, DISKRET_DOMAIN) }.name)
         assertEquals(tag.gesamt, neu.gesamt)
         assertEquals(tag.androidTeil(), neu.androidTeil())
         assertTrue(neu.posten.none { "porno" in it.name || "porno" in it.schluessel })

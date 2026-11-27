@@ -16,9 +16,11 @@ import java.util.concurrent.ConcurrentHashMap
  * Von selbst (UnproduktivRegeln): Spiele, Video und soziale Netzwerke nach
  * Androids Kategorie der App (Messenger nicht), bekannte Apps und Seiten
  * (YouTube, Netflix, DAZN, Instagram, TikTok …), WhatsApp (Tobi, 27.11.:
- * „WhatsApp ist unproduktiv.“) und „Sonstiges“ (Dating-Apps und selbst
- * zusammengelegte). Nicht: „Firefox“ (Suche, kleine Seiten, ohne
- * Namen), Chrome, Tobis Web-Apps und alles andere. Jeden Eintrag stellt Tobi
+ * „WhatsApp ist unproduktiv.“), „Sonstiges“ (Dating-Apps und selbst
+ * zusammengelegte) und wie dieses die diskreten Seiten (Erotik, Dating,
+ * selbst zusammengefasste; seit v35, Tobi, 27.11.: „Jo“). Nicht: „Firefox“
+ * (Suche, kleine Seiten, private Tabs), Chrome, Tobis Web-Apps und alles
+ * andere. Jeden Eintrag stellt Tobi
  * in der Statistik um (Unproduktiv.umstellen); das gilt vor der Vorgabe.
  * Gerechnet wird auf dem Handy, ohne Netz.
  */
@@ -94,13 +96,17 @@ object UnproduktivRegeln {
  * Unter welchem gezeigten Schlüssel ein Posten aus dem Verlauf (Seiten je
  * Browser) eingestuft wird: eine Seite nach ihrer Domain – auch eine kleine,
  * die im Widget bei „Firefox“ steht –, eine ohne Namen und Firefox selbst wie
- * „Firefox“ (`firefox`), eine App, die nie mit Namen erscheint, wie
- * „Sonstiges“.
+ * „Firefox“ (`firefox`), eine diskrete Seite (DISKRET_DOMAIN, steht auch bei
+ * „Firefox“) und eine App, die nie mit Namen erscheint, wie „Sonstiges“.
  */
 fun einstufungsSchluessel(p: Posten, firefox: String, appVerborgen: (String, String) -> Boolean): String {
     val seite = seiteVon(p.schluessel)
     return when {
-        seite != null -> if (seite.second == OHNE_DOMAIN) firefox else WEBSEITE + seite.second
+        seite != null -> when (seite.second) {
+            OHNE_DOMAIN -> firefox
+            DISKRET_DOMAIN -> SONSTIGES
+            else -> WEBSEITE + seite.second
+        }
         appVerborgen(p.schluessel, p.name) -> SONSTIGES
         p.schluessel in FIREFOXE -> firefox
         else -> p.schluessel

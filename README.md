@@ -103,7 +103,9 @@ der Statistik, mit dem Weg über die eingeschränkte Einstellung).
   YouTube, Netflix, DAZN …, „Sonstiges“), jeder Eintrag lässt sich in der
   Statistik umstellen (unten „Davon unproduktiv“). „WhatsApp ist
   unproduktiv.“ (27.11.) – seit v34 zählt WhatsApp von selbst mit, andere
-  Messenger weiter nicht. „Will auch bei der u
+  Messenger weiter nicht. Auf die Frage, ob die diskreten Seiten (Erotik,
+  Dating) als unproduktiv zählen sollen: „Jo“ (27.11.) – seit v35, weiter ohne
+  Namen bei „Firefox“. „Will auch bei der u
   produktiven Zeit den tagesschnitt wissen“ (26.11.) – seit v31 bei Woche und
   Monat „Ø je Tag unproduktiv: …“.
 - „Aber statt sonstiges können wir das ja einfach Firefox nennen. Und Dating
@@ -1154,6 +1156,30 @@ mit den kleinen aus beiden Browsern), `statistikFasstJeZeitraumZusammen`,
 `DiskretGeraetTest` (Knöpfe und ihre Namen),
 `WebseitenGeraetTest.chromeUndFirefoxZusammenKleineZuFirefox`; gegen v27 rot.
 
+**v35 – diskrete Seiten zählen als unproduktiv** (Tobi, 27.11., auf die
+Frage, ob die diskreten Seiten als unproduktiv zählen sollen: „Jo“):
+- **Vorher** merkte sich der Dienst eine diskrete Seite (Erotik, Dating,
+  selbst zusammengefasste) als `OHNE_DOMAIN` – wie eine Suche oder einen
+  privaten Tab. Sie zählte bei „Firefox“ und damit als produktiv, während
+  Dating-Apps („Sonstiges“) schon als unproduktiv zählten.
+- **Jetzt** ein eigenes Zeichen, `DISKRET_DOMAIN` („?diskret“): weiter ohne
+  Namen, weiter bei „Firefox“ und nie einzeln, aber für „unproduktiv“ wie
+  „Sonstiges“ (`einstufungsSchluessel`). Wer „Sonstiges“ in der Statistik
+  umstellt, stellt sie mit um. `namenlos()` steht für beide Zeichen überall,
+  wo vorher `OHNE_DOMAIN` stand; `namenEntfernen` schreibt Namen jetzt zu
+  `DISKRET_DOMAIN` um – eine Seite, die Tobi selbst zusammenfasst, zählt also
+  auch rückwirkend als unproduktiv (der Dialog sagt es).
+- Was vor v35 als `OHNE_DOMAIN` gespeichert wurde, bleibt, wie es ist – es
+  lässt sich von Suche und privaten Tabs nicht mehr trennen.
+- Im Widget steht „Firefox“ damit unter „Produktiv“ (Suche, private Tabs,
+  kleine Seiten) und unter „Unproduktiv“ (die diskreten Seiten und kleine
+  unproduktive Seiten) – je mit seinem Teil.
+Geprüft: `UnproduktivTest.diskreteSeitenZaehlenWieSonstiges`,
+`DiskretTest.derDienstMerktSichKeinenNamen`, `imVerlaufOhneNamenDieZeitBleibt`,
+`DiskretGeraetTest.diskreteSeitenZaehlenAlsUnproduktiv` (Dienst, Rechnung und
+Widget-Ansichten ohne Netz, nirgends ein Name), `nachDemUpdateOhneNamen`,
+`eineSeiteSelbstZusammenfassen`; gegen v34 rot.
+
 **Geprüft:** `DiskretTest` (Erkennung mit Fehltreffer-Proben, der Dienst
 merkt keinen Namen, Anzeige und Statistik nur „Firefox“ bzw. für Apps
 „Sonstiges“, ein Tag ohne Namen mit gleicher Zeit) und `DiskretGeraetTest` (nach dem Update ohne Namen
@@ -1217,7 +1243,10 @@ gewählte App sagt „zählt als unproduktiv“.
   …) und „Sonstiges“ (Dating-Apps, selbst zusammengelegte). Seit v34 auch
   WhatsApp und WhatsApp Web (Tobi, 27.11.: „WhatsApp ist unproduktiv.“) –
   vorher galt es als Messenger; gilt auch rückwirkend, umstellbar wie alles
-  andere (`UnproduktivTest.vorgaben`, gegen v33 rot). Nicht: „Firefox“ (Suche,
+  andere (`UnproduktivTest.vorgaben`, gegen v33 rot). Seit v35 auch die
+  diskreten Seiten (Erotik, Dating, selbst zusammengefasste), wie
+  „Sonstiges“ – sie stehen weiter ohne Namen bei „Firefox“ (Abschnitt
+  „Diskret“, v35). Nicht: „Firefox“ (Suche,
   kleine Seiten, Seiten ohne Namen), Chrome, Tobis Web-Apps und alles andere.
 - **Umstellen:** Statistik → Eintrag antippen → unten „Als unproduktiv
   zählen“ bzw. „Nicht als unproduktiv zählen“. Gilt vor der Vorgabe, auch
@@ -1924,11 +1953,6 @@ spricht mit dem echten Supabase oder GitHub (`Netz.gesperrt`).
   WhatsApp Web zählen von selbst als unproduktiv (Abschnitt „Davon
   unproduktiv“). 292 Prüfungen grün, Lint ohne Fehler; Prüfsumme gleich dem
   `digest`, Zertifikat `bc6f91b9…759e`, versionCode 34, dieselben 14 Rechte.
-- Offen bei Tobi (27.11.): ob die diskreten Seiten (Erotik, Dating-Seiten)
-  als unproduktiv zählen sollen. Sie stehen ohne Namen bei „Firefox“ und
-  zählen deshalb als produktiv; Dating-Apps („Sonstiges“) zählen schon.
-  Bauen hieße: ein eigenes Zeichen statt `OHNE_DOMAIN` für sie, weiter ohne
-  Namen, nur ab dann.
 - Noch nicht auf dem S24 ausprobiert: Größen des Startbildschirms, Akku-
   Verhalten von One UI (ob es die App trotz Widget schlafen legt), ob
   Chrome den Verbinden-Link in der installierten Web-App oder als Tab

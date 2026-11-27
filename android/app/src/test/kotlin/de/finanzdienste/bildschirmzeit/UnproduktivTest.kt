@@ -69,6 +69,35 @@ class UnproduktivTest {
         assertEquals(3000L + 120L, unproduktivSekunden(posten, ohneSonstiges, Partnersuche::app))
     }
 
+    /**
+     * Tobi, 27.11., auf die Frage, ob die diskreten Seiten als unproduktiv zählen
+     * sollen: „Jo“. Sie zählen wie „Sonstiges“, stehen aber weiter nur bei
+     * „Firefox“ und nie mit Namen – auch nicht ab 5 Minuten. Suche und private
+     * Tabs (OHNE_DOMAIN) zählen nicht. Gegen v34 rot.
+     */
+    @Test
+    fun diskreteSeitenZaehlenWieSonstiges() {
+        val posten = listOf(
+            Posten(seitenSchluessel(ff, DISKRET_DOMAIN), FIREFOX_NAME, 900L),
+            Posten(seitenSchluessel(CHROME, DISKRET_DOMAIN), FIREFOX_NAME, 300L),
+            Posten(seitenSchluessel(ff, OHNE_DOMAIN), FIREFOX_NAME, 600L),
+            Posten(ff, "Firefox", 200L),
+        )
+        val vorgabe = { k: String -> UnproduktivRegeln.vorgabe(k) }
+        assertEquals(1200L, unproduktivSekunden(posten, vorgabe))
+        // „Sonstiges“ in der Statistik als nicht unproduktiv gestellt: die diskreten Seiten auch nicht.
+        assertEquals(0L, unproduktivSekunden(posten, { k -> k != SONSTIGES && UnproduktivRegeln.vorgabe(k) }))
+        // Angezeigt nur als „Firefox“.
+        assertEquals(listOf(FIREFOX_NAME to 2000L), webseitenZusammenfassen(posten).map { it.name to it.sekunden })
+        assertTrue(einzelneDomains(posten.associate { it.schluessel to it.sekunden }).isEmpty())
+        // In der Statistik genauso: ein Eintrag „Firefox“, davon unproduktiv die diskreten 20 Minuten.
+        val tag = LocalDate.of(2026, 11, 27)
+        val verlauf = mapOf(tag to Tag(tag, sortiert(posten), fertig = true))
+        val a = auswerten(Zeitraum.um(Reiter.TAG, tag), verlauf, tag, tag, unproduktiv = vorgabe)
+        assertEquals(listOf(FIREFOX_NAME), a.apps.map { it.name })
+        assertEquals(1200L, a.unproduktiv)
+    }
+
     /** In der Statistik: für alle Apps eine Zeile mit Anteil, für eine gewählte, ob sie zählt. */
     @Test
     fun statistik() {

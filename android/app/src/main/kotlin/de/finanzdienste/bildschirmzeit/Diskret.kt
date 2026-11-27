@@ -11,10 +11,12 @@ import java.io.IOException
  * der Statistik mit einem Tipp dazu (Verborgen). Seiten zählen dann immer zu
  * „Firefox“, Apps stehen unter „Sonstiges“ (seit v28; vorher beides
  * „Sonstiges“). Bei Seiten zudem: Der Dienst
- * merkt sich für sie nur „eine Seite ohne Namen“ (OHNE_DOMAIN), und was schon
- * mit Namen gespeichert war, wird umgeschrieben (namenEntfernen) – im Verlauf
- * und in den Beobachtungen auf dem Handy steht der Name danach nicht mehr.
- * Die Zeiten bleiben, wie sie sind. Rein getestet in DiskretTest.
+ * merkt sich für sie nur „eine diskrete Seite ohne Namen“ (DISKRET_DOMAIN,
+ * bis v34 OHNE_DOMAIN), und was schon mit Namen gespeichert war, wird
+ * umgeschrieben (namenEntfernen) – im Verlauf und in den Beobachtungen auf
+ * dem Handy steht der Name danach nicht mehr. Die Zeiten bleiben, wie sie
+ * sind. Seit v35 zählen diskrete Seiten wie „Sonstiges“ als unproduktiv
+ * (Tobi, 27.11.: „Jo“). Rein getestet in DiskretTest.
  */
 
 /** Erotikseiten am Namen erkennen – ohne Netz, ohne Liste aus dem Netz. */
@@ -67,7 +69,7 @@ object Erotik {
     /** Ist `domain` (registrierbar, wie domainAus sie liefert) eine Erotikseite? */
     fun ist(domain: String): Boolean {
         val d = domain.lowercase()
-        if (d == OHNE_DOMAIN) return false
+        if (namenlos(d)) return false
         return gesehen.getOrPut(d) { pruefen(d) }
     }
 
@@ -185,16 +187,17 @@ class Verborgen(context: Context) {
 
 /**
  * Ein Tag ohne die Namen der Seiten, für die `weg` gilt: Ihre Posten
- * („seite:<paket>/<domain>“) gehen in „seite:<paket>/?“ auf (Summe, Name
- * „Firefox“, dorthin zählen sie). null: nichts zu tun.
+ * („seite:<paket>/<domain>“) gehen in „seite:<paket>/?diskret“ auf (Summe,
+ * Name „Firefox“, dorthin zählen sie; unproduktiv wie „Sonstiges“). null:
+ * nichts zu tun.
  */
 fun ohneNamen(tag: Tag, weg: (String) -> Boolean): Tag? {
-    if (tag.posten.none { p -> seiteVon(p.schluessel)?.let { (_, d) -> d != OHNE_DOMAIN && weg(d) } == true }) return null
+    if (tag.posten.none { p -> seiteVon(p.schluessel)?.let { (_, d) -> !namenlos(d) && weg(d) } == true }) return null
     val summe = LinkedHashMap<String, Long>()
     val namen = HashMap<String, String>()
     for (p in tag.posten) {
         val seite = seiteVon(p.schluessel)
-        val k = if (seite != null && seite.second != OHNE_DOMAIN && weg(seite.second)) seitenSchluessel(seite.first, OHNE_DOMAIN) else p.schluessel
+        val k = if (seite != null && !namenlos(seite.second) && weg(seite.second)) seitenSchluessel(seite.first, DISKRET_DOMAIN) else p.schluessel
         summe[k] = (summe[k] ?: 0L) + p.sekunden
         namen[k] = if (k == p.schluessel) p.name else FIREFOX_NAME
     }
